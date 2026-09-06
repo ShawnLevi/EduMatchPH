@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduMatch PH — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .dash-page { min-height: 100vh; background: var(--cream); }
+  .dash-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1.5rem; padding: 1rem 2rem; background: var(--navy-900); color: #fff;
+  }
+  .dash-topbar .brand { font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 600; }
+  .dash-nav { display: flex; align-items: center; gap: 1.25rem; margin-left: auto; }
+  .dash-nav a {
+    color: #DCE1EB; font-size: 0.85rem; font-weight: 600;
+    text-decoration: none; padding: 0.5rem 0;
+  }
+  .dash-nav a:hover, .dash-nav a[aria-current="page"] { color: var(--amber-500); }
+  .dash-topbar button {
+    font-family: inherit; font-size: 0.85rem; font-weight: 600;
+    background: none; border: 1px solid rgba(255,255,255,0.3); color: #fff;
+    padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;
+  }
+  .dash-topbar button:hover { background: rgba(255,255,255,0.1); }
+  .dash-main { max-width: 760px; margin: 0 auto; padding: 3rem 2rem; }
+  .dash-main h1 { font-family: 'Fraunces', serif; font-size: 1.8rem; margin: 0 0 0.4rem; color: var(--navy-900); }
+  .dash-main p.lead { color: var(--ink-muted); margin: 0 0 2rem; }
+  .dash-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .dash-card {
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 1.25rem; text-align: left;
+  }
+  .dash-card h3 { font-size: 0.95rem; margin: 0 0 0.35rem; color: var(--navy-900); }
+  .dash-card p { font-size: 0.85rem; color: var(--ink-muted); margin: 0; line-height: 1.5; }
+  @media (max-width: 640px) {
+    .dash-topbar { flex-wrap: wrap; padding: 1rem; }
+    .dash-nav { order: 3; width: 100%; justify-content: space-between; gap: 0.75rem; margin-left: 0; }
+    .dash-nav a { font-size: 0.78rem; }
+    .dash-main { padding: 2rem 1rem; }
+    .dash-cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="dash-page">
+  <header class="dash-topbar">
+    <span class="brand">EduMatch PH</span>
+    <nav class="dash-nav" aria-label="Main navigation">
+      <a href="dashboard.html" aria-current="page">Dashboard</a>
+      <a href="matches.html">Matches</a>
+      <a href="scholarships.html">Scholarships</a>
+      <a href="saved.html">Saved</a>
+      <a href="profile.html">Profile</a>
+    </nav>
+    <button type="button" id="logout-btn">Log out</button>
+  </header>
+
+  <div class="dash-main">
+    <h1 id="welcome-heading">Welcome back</h1>
+    <p class="lead">Keep your scholarship details updated so we can find opportunities that fit you.</p>
+
+    <div class="dash-cards">
+      <div class="dash-card" id="matches">
+        <h3>Your matches</h3>
+        <p>Schools and programs matched to your profile will show up here.</p>
+      </div>
+      <div class="dash-card" id="scholarships">
+        <h3>Scholarships</h3>
+        <p>Track deadlines and application status in one place.</p>
+      </div>
+      <div class="dash-card" id="saved">
+        <h3>Saved offers</h3>
+        <p>Compare the offers you've shortlisted side by side.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const currentUser = localStorage.getItem('edumatch_current_user');
+  if (!currentUser) {
+    // No logged-in session in this demo — send back to login.
+    window.location.href = 'index.html';
+  } else {
+    document.getElementById('welcome-heading').textContent = 'Welcome back, ' + currentUser;
+  }
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('edumatch_current_user');
+    window.location.href = 'index.html';
+  });
+</script>
+</body>
+</html>

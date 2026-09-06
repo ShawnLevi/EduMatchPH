@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduMatch PH — Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .profile-page { min-height: 100vh; background: var(--cream); }
+  .site-header {
+    display: flex; align-items: center; gap: 1.5rem; padding: 1rem 2rem;
+    background: var(--navy-900); color: #fff;
+  }
+  .site-header .brand {
+    color: #fff; font-family: 'Fraunces', serif; font-size: 1.2rem;
+    font-weight: 600; text-decoration: none;
+  }
+  .site-nav { display: flex; align-items: center; gap: 1.25rem; margin-left: auto; }
+  .site-nav a {
+    color: #DCE1EB; font-size: 0.85rem; font-weight: 600;
+    text-decoration: none; padding: 0.5rem 0;
+  }
+  .site-nav a:hover, .site-nav a[aria-current="page"] { color: var(--amber-500); }
+  .site-header button {
+    font-family: inherit; font-size: 0.85rem; font-weight: 600;
+    background: none; border: 1px solid rgba(255,255,255,0.3); color: #fff;
+    padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer;
+  }
+  .site-header button:hover { background: rgba(255,255,255,0.1); }
+  .profile-main { max-width: 820px; margin: 0 auto; padding: 3rem 2rem; }
+  .profile-heading { margin-bottom: 2rem; }
+  .profile-heading h1 {
+    font-family: 'Fraunces', serif; font-size: 1.8rem; margin: 0 0 0.4rem;
+    color: var(--navy-900);
+  }
+  .profile-heading p { color: var(--ink-muted); margin: 0; line-height: 1.5; }
+  .profile-form {
+    background: #fff; border: 1px solid var(--line); border-radius: 12px;
+    padding: 1.5rem; box-shadow: var(--shadow);
+  }
+  .profile-section { border: 0; padding: 0; margin: 0 0 1.75rem; }
+  .profile-section:last-of-type { margin-bottom: 1.5rem; }
+  .profile-section legend {
+    font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600;
+    color: var(--navy-900); margin-bottom: 1rem;
+  }
+  .profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .profile-field { display: flex; flex-direction: column; gap: 0.4rem; }
+  .profile-field.full-width { grid-column: 1 / -1; }
+  .profile-field label { font-size: 0.85rem; font-weight: 600; color: var(--navy-900); }
+  .profile-field input, .profile-field select, .profile-field textarea {
+    font-family: inherit; font-size: 0.95rem; padding: 0.65rem 0.8rem;
+    border-radius: 8px; border: 1px solid var(--line); background: #FCFCFA;
+    color: var(--ink); width: 100%;
+  }
+  .profile-field textarea { min-height: 96px; resize: vertical; }
+  .profile-field input:focus, .profile-field select:focus, .profile-field textarea:focus {
+    outline: none; border-color: var(--amber-500); box-shadow: 0 0 0 3px var(--amber-100);
+  }
+  .profile-actions { display: flex; align-items: center; gap: 1rem; }
+  .profile-status { color: var(--success); font-size: 0.85rem; }
+  @media (max-width: 640px) {
+    .site-header { flex-wrap: wrap; padding: 1rem; }
+    .site-nav { order: 3; width: 100%; justify-content: space-between; gap: 0.75rem; margin-left: 0; }
+    .site-nav a { font-size: 0.78rem; }
+    .profile-main { padding: 2rem 1rem; }
+    .profile-form { padding: 1.1rem; }
+    .profile-grid { grid-template-columns: 1fr; }
+    .profile-field.full-width { grid-column: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="profile-page">
+  <header class="site-header">
+    <a class="brand" href="dashboard.html">EduMatch PH</a>
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="matches.html">Matches</a>
+      <a href="scholarships.html">Scholarships</a>
+      <a href="saved.html">Saved</a>
+      <a href="profile.html" aria-current="page">Profile</a>
+    </nav>
+    <button type="button" id="logout-btn">Log out</button>
+  </header>
+
+  <main class="profile-main">
+    <div class="profile-heading">
+      <h1>Your scholarship profile</h1>
+      <p>Tell us about your goals and circumstances so scholarship recommendations can be more relevant.</p>
+    </div>
+
+    <form class="profile-form" id="profile-form">
+      <fieldset class="profile-section">
+        <legend>About you</legend>
+        <div class="profile-grid">
+          <div class="profile-field">
+            <label for="profile-fullname">Full name</label>
+            <input type="text" id="profile-fullname" name="fullname" autocomplete="name" required>
+          </div>
+          <div class="profile-field">
+            <label for="profile-email">Email</label>
+            <input type="email" id="profile-email" name="email" autocomplete="email" required>
+          </div>
+          <div class="profile-field">
+            <label for="profile-location">City or province</label>
+            <input type="text" id="profile-location" name="location" placeholder="e.g. Cebu City">
+          </div>
+          <div class="profile-field">
+            <label for="profile-income">Estimated household income</label>
+            <select id="profile-income" name="income">
+              <option value="">Select a range</option>
+              <option>Below PHP 150,000</option>
+              <option>PHP 150,000 - 300,000</option>
+              <option>PHP 300,001 - 500,000</option>
+              <option>Above PHP 500,000</option>
+              <option>Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="profile-section">
+        <legend>Education</legend>
+        <div class="profile-grid">
+          <div class="profile-field">
+            <label for="profile-level">Education level</label>
+            <select id="profile-level" name="level" required>
+              <option value="">Select your level</option>
+              <option>Senior high school</option>
+              <option>College freshman</option>
+              <option>College student</option>
+              <option>Graduate student</option>
+              <option>Vocational student</option>
+            </select>
+          </div>
+          <div class="profile-field">
+            <label for="profile-school">Current or target school</label>
+            <input type="text" id="profile-school" name="school" placeholder="School name">
+          </div>
+          <div class="profile-field">
+            <label for="profile-course">Course or intended program</label>
+            <input type="text" id="profile-course" name="course" placeholder="e.g. Computer Science">
+          </div>
+          <div class="profile-field">
+            <label for="profile-grade">Latest grade or GPA</label>
+            <input type="text" id="profile-grade" name="grade" placeholder="e.g. 92 or 1.50">
+          </div>
+          <div class="profile-field full-width">
+            <label for="profile-interests">Interests and achievements</label>
+            <textarea id="profile-interests" name="interests" placeholder="Share activities, awards, skills, or causes you care about."></textarea>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="profile-actions">
+        <button type="submit" class="btn-primary">Save profile</button>
+        <span class="profile-status" id="profile-status" role="status" aria-live="polite"></span>
+      </div>
+    </form>
+  </main>
+</div>
+
+<script>
+  const currentUser = localStorage.getItem('edumatch_current_user');
+  if (!currentUser) {
+    window.location.href = 'index.html';
+  }
+
+  const profileKey = 'edumatch_profile_' + currentUser;
+  const profileForm = document.getElementById('profile-form');
+  const profileStatus = document.getElementById('profile-status');
+  const savedProfile = JSON.parse(localStorage.getItem(profileKey) || '{}');
+  const registeredUsers = JSON.parse(localStorage.getItem('edumatch_demo_users') || '[]');
+  const account = registeredUsers.find(user => user.username === currentUser) || {};
+
+  Object.entries({
+    'profile-fullname': savedProfile.fullname || account.fullname || '',
+    'profile-email': savedProfile.email || account.email || '',
+    'profile-location': savedProfile.location || '',
+    'profile-income': savedProfile.income || '',
+    'profile-level': savedProfile.level || '',
+    'profile-school': savedProfile.school || '',
+    'profile-course': savedProfile.course || '',
+    'profile-grade': savedProfile.grade || '',
+    'profile-interests': savedProfile.interests || ''
+  }).forEach(([id, value]) => {
+    document.getElementById(id).value = value;
+  });
+
+  profileForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const profile = Object.fromEntries(new FormData(profileForm).entries());
+    localStorage.setItem(profileKey, JSON.stringify(profile));
+    profileStatus.textContent = 'Profile saved.';
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('edumatch_current_user');
+    window.location.href = 'index.html';
+  });
+</script>
+</body>
+</html>
