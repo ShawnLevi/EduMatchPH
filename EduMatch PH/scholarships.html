@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduMatch PH — Scholarships</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .page-shell { min-height: 100vh; background: var(--page-gradient); }
+  .site-header { display: flex; align-items: center; gap: 1.5rem; padding: 1rem 2rem; background: var(--navy-900); color: #fff; }
+  .brand { color: #fff; font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 600; text-decoration: none; }
+  .brand img { display: block; width: auto; height: 50px; object-fit: contain; }
+  .site-nav { display: flex; align-items: center; gap: 1.25rem; margin-left: auto; }
+  .site-nav a { color: #DCE1EB; font-size: 0.85rem; font-weight: 600; text-decoration: none; padding: 0.5rem 0; }
+  .site-nav a:hover, .site-nav a[aria-current="page"] { color: var(--amber-500); }
+  .logout-btn { font-family: inherit; font-size: 0.85rem; font-weight: 600; background: none; border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
+  .logout-btn:hover { background: rgba(255,255,255,0.1); }
+  .content { max-width: 760px; margin: 0 auto; padding: 3rem 2rem; }
+  .content h1 { font-family: 'Fraunces', serif; font-size: 1.8rem; margin: 0 0 0.4rem; color: var(--navy-900); }
+  .lead { color: var(--ink-muted); margin: 0 0 2rem; }
+  .empty-state { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 2rem; }
+  .empty-state h2 { color: var(--navy-900); font-size: 1.1rem; margin: 0 0 0.5rem; }
+  .empty-state p { color: var(--ink-muted); line-height: 1.5; margin: 0; }
+  @media (max-width: 640px) { .site-header { flex-wrap: wrap; padding: 1rem; } .site-nav { order: 3; width: 100%; justify-content: space-between; gap: 0.75rem; margin-left: 0; } .site-nav a { font-size: 0.78rem; } .content { padding: 2rem 1rem; } }
+</style>
+</head>
+<body>
+<div class="page-shell">
+  <header class="site-header">
+    <a class="brand" href="dashboard.html"><img src="EduMatchPH_logo.jpg" alt="EduMatch PH"></a>
+    <nav class="site-nav" aria-label="Main navigation">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="matches.html">Matches</a>
+      <a href="scholarships.html" aria-current="page">Scholarships</a>
+      <a href="saved.html">Saved</a>
+      <a href="profile.html">Profile</a>
+    </nav>
+    <button class="logout-btn" type="button" id="logout-btn">Log out</button>
+  </header>
+  <main class="content">
+    <h1>Scholarships</h1>
+    <p class="lead">Keep track of scholarship opportunities and application deadlines.</p>
+    <section class="empty-state">
+      <h2>No scholarships Added yet</h2>
+      <p>Sorry for the inconvenience but the site is in maintainance,the devs are putting best scholarship just for you.</p>
+    </section>
+  </main>
+</div>
+<script>
+  if (!localStorage.getItem('edumatch_current_user')) window.location.href = 'index.html';
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('edumatch_current_user');
+    window.location.href = 'index.html';
+  });
+</script>
+</body>
+</html>
