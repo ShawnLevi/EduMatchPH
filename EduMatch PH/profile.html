@@ -138,20 +138,12 @@
             </select>
           </div>
           <div class="profile-field">
-            <label for="profile-school">Current or target school</label>
-            <input type="text" id="profile-school" name="school" placeholder="School name">
-          </div>
-          <div class="profile-field">
             <label for="profile-course">Course or intended program</label>
             <input type="text" id="profile-course" name="course" placeholder="e.g. Computer Science">
           </div>
           <div class="profile-field">
             <label for="profile-grade">Latest grade or GPA</label>
             <input type="text" id="profile-grade" name="grade" placeholder="e.g. 92 or 1.50">
-          </div>
-          <div class="profile-field full-width">
-            <label for="profile-interests">Interests and achievements</label>
-            <textarea id="profile-interests" name="interests" placeholder="Share activities, awards, skills, or causes you care about."></textarea>
           </div>
         </div>
       </fieldset>
@@ -183,10 +175,8 @@
     'profile-location': savedProfile.location || '',
     'profile-income': savedProfile.income || '',
     'profile-level': savedProfile.level || '',
-    'profile-school': savedProfile.school || '',
     'profile-course': savedProfile.course || '',
-    'profile-grade': savedProfile.grade || '',
-    'profile-interests': savedProfile.interests || ''
+    'profile-grade': savedProfile.grade || ''
   }).forEach(([id, value]) => {
     document.getElementById(id).value = value;
   });
