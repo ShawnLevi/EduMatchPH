@@ -1,0 +1,91 @@
+-- ============================================================
+-- Scholarship Screening & Ranking System — Database Schema
+-- FOR SOFTWARE ENGINEERING / DATA SCIENCE ONLY.
+-- This is a SEPARATE system from EduMatch PH (ResCom).
+-- It uses synthetic data and has no BFI-10/personality component.
+-- Run this in phpMyAdmin's SQL tab, in its own database
+-- (e.g. screening_db) — do NOT run this against your EduMatch
+-- PH / scholarmatch_db database.
+-- ============================================================
+
+DROP TABLE IF EXISTS screening_reasons, screening_results, applicants, scholarship_programs;
+
+-- ------------------------------------------------------------
+-- Scholarship programs being screened against
+-- Mirrors the SCHOLARSHIPS list hardcoded in screening_service.py
+-- ------------------------------------------------------------
+CREATE TABLE scholarship_programs (
+    scholarship_id VARCHAR(20) PRIMARY KEY,   -- e.g. 'SCH-01'
+    scholarship_name VARCHAR(150) NOT NULL,
+    min_gpa DECIMAL(3,2) NOT NULL,            -- PH scale, lower = better
+    income_cap DECIMAL(12,2) NOT NULL,
+    eligible_field ENUM('ANY', 'STEM', 'BUSINESS') NOT NULL DEFAULT 'ANY',
+    location_req VARCHAR(50) NOT NULL DEFAULT 'Nationwide',  -- 'Nationwide', 'Cebu', or a specific city
+    min_entrance INT NOT NULL DEFAULT 0,
+    slots INT DEFAULT NULL                    -- available slots, if limited
+);
+
+-- ------------------------------------------------------------
+-- Applicant pool — one row per (synthetic) applicant
+-- Matches the 8 original fields: userID, family income, GPA,
+-- age, track, course, location, entrance test score
+-- ------------------------------------------------------------
+CREATE TABLE applicants (
+    applicant_id VARCHAR(20) PRIMARY KEY,     -- e.g. 'STU-1000'
+    family_income DECIMAL(12,2) NOT NULL,
+    gpa DECIMAL(3,2) NOT NULL,
+    age TINYINT NOT NULL,
+    track ENUM('STEM', 'ABM', 'HUMSS', 'GAS', 'TVL') NOT NULL,
+    course VARCHAR(100) NOT NULL,
+    location VARCHAR(50) NOT NULL,
+    entrance_test_score TINYINT NOT NULL,
+    date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ------------------------------------------------------------
+-- One row per (applicant, scholarship) screening result —
+-- this is the output of Stage 1 (eligibility) + Stage 2 (ranking)
+-- ------------------------------------------------------------
+CREATE TABLE screening_results (
+    result_id INT AUTO_INCREMENT PRIMARY KEY,
+    applicant_id VARCHAR(20) NOT NULL,
+    scholarship_id VARCHAR(20) NOT NULL,
+    eligible BOOLEAN NOT NULL,
+    priority_score DECIMAL(5,2),              -- NULL if ineligible; ML output if eligible
+    rank_position INT,                        -- NULL if ineligible; rank among eligible applicants for this scholarship
+    shortlist_status ENUM('SHORTLIST', 'WAITLIST', 'N/A') DEFAULT 'N/A',
+    date_screened TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id) ON DELETE CASCADE,
+    FOREIGN KEY (scholarship_id) REFERENCES scholarship_programs(scholarship_id) ON DELETE CASCADE
+);
+
+-- ------------------------------------------------------------
+-- Explanation breakdown per screening result — mirrors the
+-- CRITERIA dict and `reasons` list in screening_service.py
+-- ------------------------------------------------------------
+CREATE TABLE screening_reasons (
+    reason_id INT AUTO_INCREMENT PRIMARY KEY,
+    result_id INT NOT NULL,
+    criterion_name VARCHAR(100) NOT NULL,     -- e.g. 'GPA requirement'
+    met BOOLEAN NOT NULL,
+    points_earned DECIMAL(5,2) NOT NULL,
+    points_possible DECIMAL(5,2) NOT NULL,
+    FOREIGN KEY (result_id) REFERENCES screening_results(result_id) ON DELETE CASCADE
+);
+
+-- ------------------------------------------------------------
+-- Starter data: the 4 scholarship programs already used in
+-- screening_service.py's demo Flask app
+-- ------------------------------------------------------------
+INSERT INTO scholarship_programs (scholarship_id, scholarship_name, min_gpa, income_cap, eligible_field, location_req, min_entrance, slots) VALUES
+('SCH-01', 'National Merit Grant', 1.45, 500000.00, 'ANY', 'Nationwide', 88, 5),
+('SCH-02', 'S&T Undergraduate Grant', 1.90, 400000.00, 'STEM', 'Nationwide', 80, 10),
+('SCH-03', 'Need-Based Tuition Subsidy', 2.75, 180000.00, 'ANY', 'Nationwide', 0, 5),
+('SCH-04', 'Provincial Education Aid', 2.50, 250000.00, 'ANY', 'Cebu', 0, 8);
+
+-- NOTE: Load the 500 synthetic applicants from
+-- synthetic_scholarship_recommender_500.csv into `applicants`
+-- using phpMyAdmin's Import tab, or a small Python/pandas script
+-- using SQLAlchemy / mysql-connector — the CSV's student_id,
+-- family_income, GPA, age, track, course, location, and
+-- entrance_test_score columns map directly to this table.
