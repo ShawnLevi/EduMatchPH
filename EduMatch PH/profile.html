@@ -79,23 +79,23 @@
     <a class="brand" href="dashboard.html"><img src="EduMatchPH_logo.jpg" alt="EduMatch PH"></a>
     <nav class="site-nav" aria-label="Main navigation">
       <a href="dashboard.html">Dashboard</a>
-      <a href="matches.html">Matches</a>
       <a href="scholarships.html">Scholarships</a>
-      <a href="saved.html">Saved</a>
-      <a href="profile.html" aria-current="page">Profile</a>
+      <a href="applicants.html">Applicants</a>
+      <a href="ranking.html">Rankings</a>
+      <a href="saved.html">Shortlisted Applicants</a>
     </nav>
     <button type="button" id="logout-btn">Log out</button>
   </header>
 
   <main class="profile-main">
     <div class="profile-heading">
-      <h1>Your scholarship profile</h1>
-      <p>Tell us about your goals and circumstances so scholarship recommendations can be more relevant.</p>
+      <h1>Administrator profile</h1>
+      <p>Update the account details used to access the scholarship screening dashboard.</p>
     </div>
 
     <form class="profile-form" id="profile-form">
       <fieldset class="profile-section">
-        <legend>About you</legend>
+        <legend>Account details</legend>
         <div class="profile-grid">
           <div class="profile-field">
             <label for="profile-fullname">Full name</label>
@@ -105,45 +105,9 @@
             <label for="profile-email">Email</label>
             <input type="email" id="profile-email" name="email" autocomplete="email" required>
           </div>
-          <div class="profile-field">
-            <label for="profile-location">City or province</label>
-            <input type="text" id="profile-location" name="location" placeholder="e.g. Cebu City">
-          </div>
-          <div class="profile-field">
-            <label for="profile-income">Estimated household income</label>
-            <select id="profile-income" name="income">
-              <option value="">Select a range</option>
-              <option>Below PHP 150,000</option>
-              <option>PHP 150,000 - 300,000</option>
-              <option>PHP 300,001 - 500,000</option>
-              <option>Above PHP 500,000</option>
-              <option>Prefer not to say</option>
-            </select>
-          </div>
-        </div>
-      </fieldset>
-
-      <fieldset class="profile-section">
-        <legend>Education</legend>
-        <div class="profile-grid">
-          <div class="profile-field">
-            <label for="profile-level">Education level</label>
-            <select id="profile-level" name="level" required>
-              <option value="">Select your level</option>
-              <option>Senior high school</option>
-              <option>College freshman</option>
-              <option>College student</option>
-              <option>Graduate student</option>
-              <option>Vocational student</option>
-            </select>
-          </div>
-          <div class="profile-field">
-            <label for="profile-course">Course or intended program</label>
-            <input type="text" id="profile-course" name="course" placeholder="e.g. Computer Science">
-          </div>
-          <div class="profile-field">
-            <label for="profile-grade">Latest grade or GPA</label>
-            <input type="text" id="profile-grade" name="grade" placeholder="e.g. 92 or 1.50">
+          <div class="profile-field full-width">
+            <label for="profile-role">Role</label>
+            <input type="text" id="profile-role" name="role" value="Scholarship Administrator" readonly>
           </div>
         </div>
       </fieldset>
@@ -157,39 +121,33 @@
 </div>
 
 <script>
-  const currentUser = localStorage.getItem('edumatch_current_user');
+  const currentUser = localStorage.getItem('edumatch_admin_current_user');
   if (!currentUser) {
     window.location.href = 'index.html';
   }
 
-  const profileKey = 'edumatch_profile_' + currentUser;
+  const profileKey = 'edumatch_admin_profile';
   const profileForm = document.getElementById('profile-form');
   const profileStatus = document.getElementById('profile-status');
   const savedProfile = JSON.parse(localStorage.getItem(profileKey) || '{}');
-  const registeredUsers = JSON.parse(localStorage.getItem('edumatch_demo_users') || '[]');
-  const account = registeredUsers.find(user => user.username === currentUser) || {};
+  const admin = JSON.parse(localStorage.getItem('edumatch_demo_admins') || '[]').find(item => item.email === currentUser) || {};
 
-  Object.entries({
-    'profile-fullname': savedProfile.fullname || account.fullname || '',
-    'profile-email': savedProfile.email || account.email || '',
-    'profile-location': savedProfile.location || '',
-    'profile-income': savedProfile.income || '',
-    'profile-level': savedProfile.level || '',
-    'profile-course': savedProfile.course || '',
-    'profile-grade': savedProfile.grade || ''
-  }).forEach(([id, value]) => {
-    document.getElementById(id).value = value;
-  });
+  document.getElementById('profile-fullname').value = savedProfile.fullname || admin.name || 'Alicia Ramos';
+  document.getElementById('profile-email').value = savedProfile.email || admin.email || currentUser;
 
   profileForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    const profile = Object.fromEntries(new FormData(profileForm).entries());
+    const profile = {
+      fullname: document.getElementById('profile-fullname').value.trim(),
+      email: document.getElementById('profile-email').value.trim(),
+      role: 'Scholarship Administrator'
+    };
     localStorage.setItem(profileKey, JSON.stringify(profile));
     profileStatus.textContent = 'Profile saved.';
   });
 
   document.getElementById('logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('edumatch_current_user');
+    localStorage.removeItem('edumatch_admin_current_user');
     window.location.href = 'index.html';
   });
 </script>

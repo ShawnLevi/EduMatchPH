@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EduMatch PH — Scholarships</title>
+<title>EduMatch PH — Manage Scholarships</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -12,18 +12,30 @@
   .site-header { display: flex; align-items: center; gap: 1.5rem; padding: 1rem 2rem; background: var(--navy-900); color: #fff; }
   .brand { color: #fff; font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 600; text-decoration: none; }
   .brand img { display: block; width: auto; height: 50px; object-fit: contain; }
-  .site-nav { display: flex; align-items: center; gap: 1.25rem; margin-left: auto; }
-  .site-nav a { color: #DCE1EB; font-size: 0.85rem; font-weight: 600; text-decoration: none; padding: 0.5rem 0; }
-  .site-nav a:hover, .site-nav a[aria-current="page"] { color: var(--amber-500); }
+  .site-nav { display: flex; align-items: center; gap: 0.75rem; margin-left: auto; }
+  .site-nav a { color: #DCE1EB; text-decoration: none; font-size: 0.82rem; font-weight: 600; padding: 0.6rem 0.8rem; border-radius: 8px; }
+  .site-nav a:hover, .site-nav a[aria-current="page"] { background: rgba(255,255,255,0.08); color: var(--amber-500); }
   .logout-btn { font-family: inherit; font-size: 0.85rem; font-weight: 600; background: none; border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
   .logout-btn:hover { background: rgba(255,255,255,0.1); }
-  .content { max-width: 760px; margin: 0 auto; padding: 3rem 2rem; }
-  .content h1 { font-family: 'Fraunces', serif; font-size: 1.8rem; margin: 0 0 0.4rem; color: var(--navy-900); }
-  .lead { color: var(--ink-muted); margin: 0 0 2rem; }
-  .empty-state { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 2rem; }
-  .empty-state h2 { color: var(--navy-900); font-size: 1.1rem; margin: 0 0 0.5rem; }
-  .empty-state p { color: var(--ink-muted); line-height: 1.5; margin: 0; }
-  @media (max-width: 640px) { .site-header { flex-wrap: wrap; padding: 1rem; } .site-nav { order: 3; width: 100%; justify-content: space-between; gap: 0.75rem; margin-left: 0; } .site-nav a { font-size: 0.78rem; } .content { padding: 2rem 1rem; } }
+  .content { max-width: 1160px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+  .topbar h1 { margin: 0; font-family: 'Fraunces', serif; font-size: 1.9rem; color: var(--navy-900); }
+  .topbar .btn-primary { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
+  .panel-header h2 { margin: 0; font-size: 1.1rem; color: var(--navy-900); }
+  .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .filters input, .filters select { font-family: inherit; font-size: 0.9rem; padding: 0.55rem 0.7rem; border: 1px solid var(--line); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 0.9rem 1rem; border-bottom: 1px solid var(--line); text-align: left; font-size: 0.9rem; }
+  th { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.7rem; color: var(--ink-muted); }
+  .status-pill { display: inline-flex; align-items: center; justify-content: center; padding: 0.38rem 0.7rem; border-radius: 999px; font-weight: 700; font-size: 0.72rem; }
+  .status-pill.open { background: #E7F4EC; color: var(--success); }
+  .status-pill.review { background: #F7F0E8; color: var(--amber-600); }
+  .status-pill.closed { background: #FBEAEA; color: var(--danger); }
+  .action-link { display: inline-block; text-decoration: none; background: var(--amber-100); color: var(--navy-900); font-weight: 600; padding: 0.5rem 0.8rem; border-radius: 8px; }
+  .muted { color: var(--ink-muted); }
+  @media (max-width: 640px) { .site-header { flex-wrap: wrap; padding: 1rem; } .site-nav { order: 3; width: 100%; justify-content: space-between; overflow-x: auto; } .topbar { flex-direction: column; align-items: flex-start; } }
 </style>
 </head>
 <body>
@@ -32,28 +44,94 @@
     <a class="brand" href="dashboard.html"><img src="EduMatchPH_logo.jpg" alt="EduMatch PH"></a>
     <nav class="site-nav" aria-label="Main navigation">
       <a href="dashboard.html">Dashboard</a>
-      <a href="matches.html">Matches</a>
       <a href="scholarships.html" aria-current="page">Scholarships</a>
-      <a href="saved.html">Saved</a>
-      <a href="profile.html">Profile</a>
+      <a href="applicants.html">Applicants</a>
+      <a href="ranking.html">Rankings</a>
+      <a href="saved.html">Shortlisted Applicants</a>
     </nav>
-    <button class="logout-btn" type="button" id="logout-btn">Log out</button>
+    <button class="logout-btn" type="button" data-logout="true">Log out</button>
   </header>
+
   <main class="content">
-    <h1>Scholarships</h1>
-    <p class="lead">Keep track of scholarship opportunities and application deadlines.</p>
-    <section class="empty-state">
-      <h2>No scholarships Added yet</h2>
-      <p>No scholarships available yet. Check back soon.</p>
+    <div class="topbar">
+      <h1>Manage Scholarships</h1>
+      <a class="btn-primary" href="scholarships.html#add-scholarship">Add Scholarship</a>
+    </div>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Scholarship portfolio</h2>
+        <div class="filters">
+          <input type="text" id="search-scholarship" placeholder="Search scholarships">
+          <select id="status-filter">
+            <option value="all">All statuses</option>
+            <option value="Open">Open</option>
+            <option value="Review">Review</option>
+            <option value="Closed">Closed</option>
+          </select>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Scholarship</th>
+              <th>Provider</th>
+              <th>Deadline</th>
+              <th>Slots</th>
+              <th>Applicants</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="scholarship-table-body"></tbody>
+        </table>
+      </div>
     </section>
   </main>
 </div>
+
+<script src="script.js"></script>
 <script>
-  if (!localStorage.getItem('edumatch_current_user')) window.location.href = 'index.html';
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('edumatch_current_user');
+  const currentAdmin = localStorage.getItem('edumatch_admin_current_user');
+  if (!currentAdmin) {
     window.location.href = 'index.html';
-  });
+  }
+
+  const searchInput = document.getElementById('search-scholarship');
+  const statusFilter = document.getElementById('status-filter');
+  const tableBody = document.getElementById('scholarship-table-body');
+
+  function renderScholarships() {
+    const query = searchInput.value.trim().toLowerCase();
+    const status = statusFilter.value;
+    const scholarships = getScholarships().filter(item => {
+      const matchesQuery = !query || item.name.toLowerCase().includes(query) || item.provider.toLowerCase().includes(query);
+      const matchesStatus = status === 'all' || item.status === status;
+      return matchesQuery && matchesStatus;
+    });
+
+    if (!scholarships.length) {
+      tableBody.innerHTML = '<tr><td colspan="7" class="muted">No scholarships match your filter.</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = scholarships.map(scholarship => `
+      <tr>
+        <td><strong>${scholarship.name}</strong><div class="muted">${scholarship.description}</div></td>
+        <td>${scholarship.provider}</td>
+        <td>${scholarship.deadline}</td>
+        <td>${scholarship.availableSlots}</td>
+        <td>${scholarship.applications || scholarship.applicants?.length || 0}</td>
+        <td><span class="status-pill ${scholarship.status.toLowerCase()}">${scholarship.status}</span></td>
+        <td><a class="action-link" href="applicants.html?scholarship=${scholarship.id}">View Applicants</a></td>
+      </tr>
+    `).join('');
+  }
+
+  searchInput.addEventListener('input', renderScholarships);
+  statusFilter.addEventListener('change', renderScholarships);
+  renderScholarships();
 </script>
 </body>
 </html>

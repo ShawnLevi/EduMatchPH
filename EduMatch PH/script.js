@@ -1,250 +1,370 @@
-// EduMatch PH — login/register demo logic.
-// Frontend-only mock: "accounts" are stored in localStorage so the demo
-// can simulate register -> login without a real backend.
+const STORAGE_KEYS = {
+  admins: 'edumatch_demo_admins',
+  currentUser: 'edumatch_admin_current_user',
+  scholarships: 'edumatch_scholarships',
+  shortlist: 'edumatch_shortlisted_applicants',
+  currentScholarship: 'edumatch_current_scholarship'
+};
 
-const STORAGE_KEY = 'edumatch_demo_users';
+function seedDemoData() {
+  if (!localStorage.getItem(STORAGE_KEYS.admins)) {
+    localStorage.setItem(STORAGE_KEYS.admins, JSON.stringify([
+      {
+        name: 'Alicia Ramos',
+        email: 'admin@edumatch.ph',
+        password: 'admin123',
+        role: 'Scholarship Administrator'
+      }
+    ]));
+  }
 
-function getUsers() {
+  if (!localStorage.getItem(STORAGE_KEYS.scholarships)) {
+    const mockScholarships = [
+      {
+        id: 'sm-foundation',
+        name: 'SM Foundation College Scholarship',
+        provider: 'SM Foundation',
+        status: 'Open',
+        description: 'Need-based and merit-driven support for Filipino college students pursuing degree programs in accredited institutions.',
+        deadline: '2026-10-15',
+        availableSlots: 20,
+        applications: 91,
+        eligibleApplicants: 61,
+        minGpa: 2.5,
+        eligibleCourses: ['Computer Science', 'Business Administration', 'Engineering', 'Accountancy', 'Economics'],
+        incomeRequirement: 'Household income below PHP 300,000',
+        locationRequirement: 'Metro Manila, Cebu, Davao, or provincial partner areas',
+        citizenshipRequirement: 'Filipino citizen',
+        criteria: ['Minimum GPA requirement', 'Eligible course', 'Income requirement', 'Location requirement', 'Citizenship requirement'],
+        applicants: [
+          {
+            id: 'app-101',
+            name: 'Maria Santos',
+            course: 'Computer Science',
+            yearLevel: '3rd Year',
+            gpa: 95.8,
+            income: 180000,
+            location: 'Quezon City',
+            citizenship: 'Filipino',
+            eligibilityStatus: 'Eligible',
+            screening: {
+              minimumGpa: true,
+              eligibleCourse: true,
+              incomeRequirement: true,
+              locationRequirement: true,
+              citizenshipRequirement: true
+            },
+            rank: 1,
+            rankingScore: 96.8,
+            rankingFactors: [
+              { name: 'Academic performance', contribution: 23, possible: 25 },
+              { name: 'Course fit', contribution: 19, possible: 20 },
+              { name: 'Need assessment', contribution: 17, possible: 20 },
+              { name: 'Leadership record', contribution: 14, possible: 15 },
+              { name: 'Community service', contribution: 11, possible: 20 }
+            ]
+          },
+          {
+            id: 'app-102',
+            name: 'Juan Dela Cruz',
+            course: 'Accountancy',
+            yearLevel: '2nd Year',
+            gpa: 92.5,
+            income: 245000,
+            location: 'Cebu City',
+            citizenship: 'Filipino',
+            eligibilityStatus: 'Eligible',
+            screening: {
+              minimumGpa: true,
+              eligibleCourse: true,
+              incomeRequirement: true,
+              locationRequirement: true,
+              citizenshipRequirement: true
+            },
+            rank: 2,
+            rankingScore: 94.5,
+            rankingFactors: [
+              { name: 'Academic performance', contribution: 22, possible: 25 },
+              { name: 'Course fit', contribution: 18, possible: 20 },
+              { name: 'Need assessment', contribution: 18, possible: 20 },
+              { name: 'Leadership record', contribution: 12, possible: 15 },
+              { name: 'Community service', contribution: 9, possible: 20 }
+            ]
+          },
+          {
+            id: 'app-103',
+            name: 'Ana Reyes',
+            course: 'Business Administration',
+            yearLevel: '4th Year',
+            gpa: 89.7,
+            income: 350000,
+            location: 'Davao City',
+            citizenship: 'Filipino',
+            eligibilityStatus: 'Ineligible',
+            screening: {
+              minimumGpa: true,
+              eligibleCourse: true,
+              incomeRequirement: false,
+              locationRequirement: true,
+              citizenshipRequirement: true
+            },
+            rank: null,
+            rankingScore: null,
+            rankingFactors: []
+          },
+          {
+            id: 'app-104',
+            name: 'Leo Mercado',
+            course: 'Engineering',
+            yearLevel: '1st Year',
+            gpa: 86.2,
+            income: 210000,
+            location: 'Iloilo City',
+            citizenship: 'Filipino',
+            eligibilityStatus: 'Eligible',
+            screening: {
+              minimumGpa: true,
+              eligibleCourse: true,
+              incomeRequirement: true,
+              locationRequirement: true,
+              citizenshipRequirement: true
+            },
+            rank: 5,
+            rankingScore: 89.7,
+            rankingFactors: [
+              { name: 'Academic performance', contribution: 19, possible: 25 },
+              { name: 'Course fit', contribution: 18, possible: 20 },
+              { name: 'Need assessment', contribution: 17, possible: 20 },
+              { name: 'Leadership record', contribution: 10, possible: 15 },
+              { name: 'Community service', contribution: 9, possible: 20 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'dlsu-scholarship',
+        name: 'DLSU Merit Grant',
+        provider: 'De La Salle University',
+        status: 'Review',
+        description: 'Scholarship support for students with strong academic standing and active campus leadership.',
+        deadline: '2026-11-20',
+        availableSlots: 12,
+        applications: 44,
+        eligibleApplicants: 31,
+        minGpa: 3.0,
+        eligibleCourses: ['Computer Science', 'Engineering', 'Accounting', 'Economics'],
+        incomeRequirement: 'Household income below PHP 500,000',
+        locationRequirement: 'Metro Manila or recognized partner school network',
+        citizenshipRequirement: 'Filipino citizen',
+        criteria: ['Minimum GPA requirement', 'Eligible course', 'Income requirement', 'Location requirement', 'Citizenship requirement'],
+        applicants: [
+          {
+            id: 'app-201',
+            name: 'Rhea Lim',
+            course: 'Engineering',
+            yearLevel: '3rd Year',
+            gpa: 96.9,
+            income: 280000,
+            location: 'Pasay City',
+            citizenship: 'Filipino',
+            eligibilityStatus: 'Eligible',
+            screening: {
+              minimumGpa: true,
+              eligibleCourse: true,
+              incomeRequirement: true,
+              locationRequirement: true,
+              citizenshipRequirement: true
+            },
+            rank: 1,
+            rankingScore: 97.4,
+            rankingFactors: [
+              { name: 'Academic performance', contribution: 24, possible: 25 },
+              { name: 'Course fit', contribution: 20, possible: 20 },
+              { name: 'Need assessment', contribution: 15, possible: 20 },
+              { name: 'Leadership record', contribution: 14, possible: 15 },
+              { name: 'Community service', contribution: 13, possible: 20 }
+            ]
+          },
+          {
+            id: 'app-202',
+            name: 'Bea Cruz',
+            course: 'Economics',
+            yearLevel: '2nd Year',
+            gpa: 88.6,
+            income: 520000,
+            location: 'Makati City',
+            citizenship: 'Filipino',
+            eligibilityStatus: 'Ineligible',
+            screening: {
+              minimumGpa: true,
+              eligibleCourse: true,
+              incomeRequirement: false,
+              locationRequirement: true,
+              citizenshipRequirement: true
+            },
+            rank: null,
+            rankingScore: null,
+            rankingFactors: []
+          }
+        ]
+      }
+    ];
+
+    localStorage.setItem(STORAGE_KEYS.scholarships, JSON.stringify(mockScholarships));
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.shortlist)) {
+    localStorage.setItem(STORAGE_KEYS.shortlist, JSON.stringify([]));
+  }
+}
+
+function getAdmins() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.admins)) || [];
   } catch (e) {
     return [];
   }
 }
 
-function saveUsers(users) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+function getScholarships() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.scholarships)) || [];
+  } catch (e) {
+    return [];
+  }
 }
 
-// ---------- Register modal ----------
-const registerOverlay = document.getElementById('register-overlay');
-
-function openRegister() {
-  registerOverlay.hidden = false;
-  hideBanner();
+function getCurrentScholarshipId() {
+  const current = localStorage.getItem(STORAGE_KEYS.currentScholarship);
+  return current || (getScholarships()[0] && getScholarships()[0].id) || '';
 }
 
-function closeRegister() {
-  registerOverlay.hidden = true;
+function setCurrentScholarship(id) {
+  localStorage.setItem(STORAGE_KEYS.currentScholarship, id);
 }
 
-document.getElementById('open-register').addEventListener('click', openRegister);
-document.getElementById('close-register').addEventListener('click', closeRegister);
-document.getElementById('go-login').addEventListener('click', closeRegister);
-registerOverlay.addEventListener('click', (e) => {
-  if (e.target === registerOverlay) closeRegister();
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !registerOverlay.hidden) closeRegister();
-});
-
-// ---------- Banner ----------
-const banner = document.getElementById('form-banner');
-function showBanner(message, type) {
-  banner.textContent = message;
-  banner.className = 'banner ' + type;
-  banner.hidden = false;
-}
-function hideBanner() {
-  banner.hidden = true;
+function getScholarship(id = getCurrentScholarshipId()) {
+  return getScholarships().find(item => item.id === id) || getScholarships()[0] || null;
 }
 
-// ---------- Password visibility ----------
-document.querySelectorAll('.toggle-visibility').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const input = document.getElementById(btn.dataset.target);
-    const showing = input.type === 'text';
-    input.type = showing ? 'password' : 'text';
-    btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+function getApplicants(scholarshipId = getCurrentScholarshipId()) {
+  const scholarship = getScholarship(scholarshipId);
+  return scholarship ? (scholarship.applicants || []) : [];
+}
+
+function getEligibleApplicants(scholarshipId = getCurrentScholarshipId()) {
+  return getApplicants(scholarshipId).filter(applicant => applicant.eligibilityStatus === 'Eligible');
+}
+
+function getRanking(scholarshipId = getCurrentScholarshipId()) {
+  const scholarship = getScholarship(scholarshipId);
+  if (!scholarship) return [];
+
+  const eligibleApplicants = getEligibleApplicants(scholarshipId)
+    .map(applicant => ({
+      ...applicant,
+      rank: applicant.rank || 0,
+      rankingScore: applicant.rankingScore || 0
+    }))
+    .sort((a, b) => (a.rank || Number.MAX_SAFE_INTEGER) - (b.rank || Number.MAX_SAFE_INTEGER));
+
+  return eligibleApplicants;
+}
+
+function getApplicantDetails(applicantId) {
+  const applicants = getScholarships().flatMap(scholarship => scholarship.applicants || []);
+  return applicants.find(applicant => applicant.id === applicantId) || null;
+}
+
+function shortlistApplicant(applicantId, scholarshipId = getCurrentScholarshipId()) {
+  const shortlist = JSON.parse(localStorage.getItem(STORAGE_KEYS.shortlist) || '[]');
+  const alreadyAdded = shortlist.some(item => item.applicantId === applicantId && item.scholarshipId === scholarshipId);
+  if (alreadyAdded) return shortlist;
+
+  const applicant = getApplicantDetails(applicantId) || getApplicants(scholarshipId).find(item => item.id === applicantId);
+  if (!applicant) return shortlist;
+
+  shortlist.push({
+    applicantId,
+    scholarshipId,
+    applicantName: applicant.name,
+    scholarshipName: getScholarship(scholarshipId)?.name || 'Scholarship',
+    rank: applicant.rank || 'Pending',
+    rankingScore: applicant.rankingScore || 'N/A',
+    eligibilityStatus: applicant.eligibilityStatus || 'Pending',
+    dateShortlisted: new Date().toISOString().slice(0, 10)
   });
-});
 
-// ---------- Validation helpers ----------
-function setError(fieldId, message) {
-  const errorEl = document.getElementById(fieldId + '-error');
-  const inputEl = document.getElementById(fieldId);
-  errorEl.textContent = message || '';
-  inputEl.classList.toggle('invalid', Boolean(message));
+  localStorage.setItem(STORAGE_KEYS.shortlist, JSON.stringify(shortlist));
+  return shortlist;
 }
 
-function isEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+function compareApplicants(applicantIds = []) {
+  if (!Array.isArray(applicantIds) || applicantIds.length === 0) return [];
+
+  const applicants = getScholarships().flatMap(scholarship => (scholarship.applicants || []).filter(applicant => applicantIds.includes(applicant.id)));
+  return applicants;
 }
 
-function findUserByIdentifier(identifier) {
-  const normalizedIdentifier = identifier.toLowerCase();
-  return getUsers().find(user =>
-    user.username.toLowerCase() === normalizedIdentifier ||
-    user.email.toLowerCase() === normalizedIdentifier
-  );
+function screenApplicant(applicantId, scholarshipId = getCurrentScholarshipId()) {
+  const scholarship = getScholarship(scholarshipId);
+  if (!scholarship) return null;
+
+  const applicant = (scholarship.applicants || []).find(item => item.id === applicantId);
+  if (!applicant) return null;
+
+  const screening = applicant.screening || {};
+  const isEligible = Object.values(screening).every(Boolean);
+  applicant.eligibilityStatus = isEligible ? 'Eligible' : 'Ineligible';
+
+  const updatedScholarships = getScholarships().map(item => {
+    if (item.id !== scholarshipId) return item;
+    return {
+      ...item,
+      applicants: (item.applicants || []).map(current => current.id === applicantId ? applicant : current)
+    };
+  });
+
+  localStorage.setItem(STORAGE_KEYS.scholarships, JSON.stringify(updatedScholarships));
+  return applicant;
 }
 
-// ---------- Login ----------
-document.getElementById('panel-login').addEventListener('submit', (e) => {
-  e.preventDefault();
-  hideBanner();
-
-  const username = document.getElementById('login-username').value.trim();
-  const password = document.getElementById('login-password').value;
-
-  let valid = true;
-  setError('login-username', '');
-  setError('login-password', '');
-
-  if (!username) {
-    setError('login-username', 'Enter your username.');
-    valid = false;
+function getShortlist() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.shortlist) || '[]');
+  } catch (e) {
+    return [];
   }
-  if (!password) {
-    setError('login-password', 'Enter your password.');
-    valid = false;
-  }
-  if (!valid) return;
+}
 
-  const users = getUsers();
-  const match = users.find(u => u.username === username && u.password === password);
+function setAdminSession(email) {
+  localStorage.setItem(STORAGE_KEYS.currentUser, email);
+}
 
-  if (match) {
-    showBanner(`Welcome back, ${match.fullname || username}.`, 'success');
-    if (document.getElementById('remember-me').checked) {
-      localStorage.setItem('edumatch_remember_username', username);
+function clearAdminSession() {
+  localStorage.removeItem(STORAGE_KEYS.currentUser);
+}
+
+function initAdminSession() {
+  const currentUser = localStorage.getItem(STORAGE_KEYS.currentUser);
+  if (!currentUser) {
+    if (window.location.pathname.endsWith('dashboard.html') || window.location.pathname.endsWith('scholarships.html') || window.location.pathname.endsWith('applicants.html') || window.location.pathname.endsWith('applicant-details.html') || window.location.pathname.endsWith('ranking.html') || window.location.pathname.endsWith('saved.html') || window.location.pathname.endsWith('profile.html')) {
+      window.location.href = 'index.html';
     }
-    localStorage.setItem('edumatch_current_user', username);
-    setTimeout(() => {
-      window.location.href = 'dashboard.html';
-    }, 700);
-  } else {
-    showBanner('Username or password is incorrect.', 'error');
   }
-});
-
-// ---------- Register ----------
-document.getElementById('panel-register').addEventListener('submit', (e) => {
-  e.preventDefault();
-  hideBanner();
-
-  const fullname = document.getElementById('reg-fullname').value.trim();
-  const username = document.getElementById('reg-username').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-  const confirm = document.getElementById('reg-confirm').value;
-
-  ['reg-fullname', 'reg-username', 'reg-email', 'reg-password', 'reg-confirm', 'reg-agree'].forEach(id => setError(id, ''));
-
-  let valid = true;
-
-  if (!fullname) {
-    setError('reg-fullname', 'Enter your full name.');
-    valid = false;
-  }
-  if (!username) {
-    setError('reg-username', 'Choose a username.');
-    valid = false;
-  } else if (getUsers().some(u => u.username === username)) {
-    setError('reg-username', 'That username is taken.');
-    valid = false;
-  }
-  if (!email) {
-    setError('reg-email', 'Enter your email.');
-    valid = false;
-  } else if (!isEmail(email)) {
-    setError('reg-email', 'Enter a valid email address.');
-    valid = false;
-  }
-  if (!password) {
-    setError('reg-password', 'Create a password.');
-    valid = false;
-  } else if (password.length < 8) {
-    setError('reg-password', 'Use at least 8 characters.');
-    valid = false;
-  }
-  if (confirm !== password) {
-    setError('reg-confirm', 'Passwords do not match.');
-    valid = false;
-  }
-  if (!document.getElementById('reg-agree').checked) {
-    setError('reg-agree', 'You must agree to the Terms, Privacy Policy, and Cookie Policy to register.');
-    valid = false;
-  }
-
-  if (!valid) return;
-
-  const users = getUsers();
-  users.push({ fullname, username, email, password });
-  saveUsers(users);
-
-  document.getElementById('panel-register').reset();
-  setTimeout(() => {
-    closeRegister();
-    document.getElementById('login-username').value = username;
-    showBanner('Account created. You can log in now.', 'success');
-  }, 900);
-});
-
-// ---------- Forgot password modal ----------
-const forgotOverlay = document.getElementById('forgot-overlay');
-const stepRequest = document.getElementById('forgot-step-request');
-const stepSent = document.getElementById('forgot-step-sent');
-
-function openForgot() {
-  forgotOverlay.hidden = false;
-  stepRequest.hidden = false;
-  stepSent.hidden = true;
-  setError('forgot-identifier', '');
-  document.getElementById('forgot-identifier').value = '';
 }
 
-function closeForgot() {
-  forgotOverlay.hidden = true;
-}
+seedDemoData();
 
-document.getElementById('open-forgot').addEventListener('click', openForgot);
-document.getElementById('close-forgot').addEventListener('click', closeForgot);
-document.getElementById('close-forgot-sent').addEventListener('click', closeForgot);
-forgotOverlay.addEventListener('click', (e) => {
-  if (e.target === forgotOverlay) closeForgot();
-});
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !forgotOverlay.hidden) closeForgot();
-});
+if (typeof window !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initAdminSession();
 
-document.getElementById('send-reset').addEventListener('click', () => {
-  const identifier = document.getElementById('forgot-identifier').value.trim();
-  setError('forgot-identifier', '');
-
-  if (!identifier) {
-    setError('forgot-identifier', 'Enter your username or email.');
-    return;
-  }
-
-  if (!findUserByIdentifier(identifier)) {
-    setError('forgot-identifier', 'No account was found with that username or email.');
-    return;
-  }
-
-  stepRequest.hidden = true;
-  stepSent.hidden = false;
-});
-
-// ---------- Cookie consent banner ----------
-const cookieBanner = document.getElementById('cookie-banner');
-const cookieChoice = localStorage.getItem('edumatch_cookie_consent');
-
-if (cookieBanner && !cookieChoice) {
-  cookieBanner.hidden = false;
-}
-
-if (cookieBanner) {
-  document.getElementById('cookie-accept').addEventListener('click', () => {
-    localStorage.setItem('edumatch_cookie_consent', 'accepted');
-    cookieBanner.hidden = true;
-  });
-
-  document.getElementById('cookie-decline').addEventListener('click', () => {
-    // "Decline" still keeps essential storage working (needed for login to
-    // function at all) — it just records that the user opted out of
-    // non-essential preference storage like "Remember me".
-    localStorage.setItem('edumatch_cookie_consent', 'declined');
-    cookieBanner.hidden = true;
+    document.querySelectorAll('[data-logout]').forEach(button => {
+      button.addEventListener('click', () => {
+        clearAdminSession();
+        window.location.href = 'index.html';
+      });
+    });
   });
 }

@@ -42,34 +42,40 @@
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td><code>edumatch_current_user</code></td>
+          <tr>
+        <td><code>edumatch_admin_current_user</code></td>
         <td>Essential</td>
-        <td>Keeps you logged in as you move between pages.</td>
+        <td>Keeps the active scholarship administrator logged in across pages.</td>
         <td>Until you log out</td>
       </tr>
       <tr>
-        <td><code>edumatch_remember_username</code></td>
-        <td>Preference</td>
-        <td>Pre-fills your username if you checked "Remember me" at login.</td>
+        <td><code>edumatch_demo_admins</code></td>
+        <td>Essential</td>
+        <td>Stores demo administrator credentials so the login flow works without a live backend.</td>
+        <td>Until cleared</td>
+      </tr>
+      <tr>
+        <td><code>edumatch_scholarships</code></td>
+        <td>Essential</td>
+        <td>Stores the in-memory scholarship portfolio and applicant screening data used by the dashboard.</td>
+        <td>Until cleared</td>
+      </tr>
+      <tr>
+        <td><code>edumatch_shortlisted_applicants</code></td>
+        <td>Essential</td>
+        <td>Stores shortlist selections created during applicant review.</td>
+        <td>Until cleared</td>
+      </tr>
+      <tr>
+        <td><code>edumatch_current_scholarship</code></td>
+        <td>Essential</td>
+        <td>Remembers the currently selected scholarship so the applicants and ranking pages stay in sync.</td>
         <td>Until cleared</td>
       </tr>
       <tr>
         <td><code>edumatch_cookie_consent</code></td>
         <td>Essential</td>
-        <td>Remembers your choice on this cookie banner, so it doesn't show again.</td>
-        <td>Until cleared</td>
-      </tr>
-      <tr>
-        <td><code>edumatch_demo_users</code></td>
-        <td>Essential</td>
-        <td>Stores registered demo accounts so login/registration work without a live server.</td>
-        <td>Until cleared</td>
-      </tr>
-      <tr>
-        <td><code>edumatch_profile_&lt;username&gt;</code></td>
-        <td>Essential</td>
-        <td>Stores your saved scholarship profile details (school, course, income range, etc.).</td>
+        <td>Remembers whether the site banner was dismissed or accepted.</td>
         <td>Until cleared</td>
       </tr>
     </tbody>
