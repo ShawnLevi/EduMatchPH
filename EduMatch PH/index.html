@@ -31,6 +31,10 @@
 
       <form id="panel-login" class="panel active" novalidate>
         <h2 class="card-title">Administrator Login</h2>
+        <p class="switch-line" style="text-align:left; margin: -0.5rem 0 1rem;">
+          Logging in to <strong id="org-name-label"></strong> ·
+          <a href="org-select.html" style="color: var(--navy-600); font-weight:600;">Change organization</a>
+        </p>
 
         <div class="field">
           <label for="login-email">Email</label>
@@ -76,30 +80,45 @@
 
 <script src="script.js"></script>
 <script>
-  const currentAdmin = localStorage.getItem('edumatch_admin_current_user');
-  if (currentAdmin) {
+  if (hasValidAdminSession()) {
     window.location.href = 'dashboard.html';
   }
+
+  const selectedOrgId = getSelectedOrganizationId();
+  if (!selectedOrgId) {
+    window.location.href = 'org-select.html';
+  }
+
+  const selectedOrg = getOrganization(selectedOrgId);
+  document.getElementById('org-name-label').textContent = selectedOrg ? selectedOrg.name : 'your organization';
 
   document.getElementById('panel-login').addEventListener('submit', function (event) {
     event.preventDefault();
     const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
+    const banner = document.getElementById('form-banner');
 
-    const admins = JSON.parse(localStorage.getItem('edumatch_demo_admins') || '[]');
+    const admins = getAdmins();
     const match = admins.find(admin => admin.email.toLowerCase() === email.toLowerCase() && admin.password === password);
 
     if (!match) {
-      document.getElementById('form-banner').textContent = 'Invalid email or password.';
-      document.getElementById('form-banner').className = 'banner error';
-      document.getElementById('form-banner').hidden = false;
+      banner.textContent = 'Invalid email or password.';
+      banner.className = 'banner error';
+      banner.hidden = false;
       return;
     }
 
-    localStorage.setItem('edumatch_admin_current_user', match.email);
-    document.getElementById('form-banner').textContent = 'Login successful. Redirecting...';
-    document.getElementById('form-banner').className = 'banner success';
-    document.getElementById('form-banner').hidden = false;
+    if (match.organization !== selectedOrgId) {
+      banner.textContent = 'This account is not registered under the selected organization.';
+      banner.className = 'banner error';
+      banner.hidden = false;
+      return;
+    }
+
+    completeAdminLogin(match.email, match.organization);
+    banner.textContent = 'Login successful. Redirecting...';
+    banner.className = 'banner success';
+    banner.hidden = false;
     setTimeout(() => {
       window.location.href = 'dashboard.html';
     }, 600);

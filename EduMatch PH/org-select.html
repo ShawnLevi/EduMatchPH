@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduMatch PH — Select Organization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .org-intro { margin: -0.75rem 0 1.25rem; color: var(--ink-muted); font-size: 0.88rem; line-height: 1.5; }
+  .org-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .org-option {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    width: 100%; text-align: left; font-family: inherit; cursor: pointer;
+    background: #FCFCFA; border: 1px solid var(--line); border-radius: 10px;
+    padding: 0.9rem 1.1rem; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .org-option:hover, .org-option:focus-visible { border-color: var(--amber-500); box-shadow: 0 0 0 3px var(--amber-100); outline: none; }
+  .org-option .org-name { font-weight: 600; color: var(--navy-900); font-size: 0.98rem; }
+  .org-option .org-arrow { color: var(--ink-muted); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="brand-panel">
+    <div class="brand-mark">
+      <span class="brand-mark-dot"></span>
+      <span class="brand-mark-dot"></span>
+    </div>
+    <h1>EduMatch PH</h1>
+    <p class="tagline">Administrative scholarship screening and ranking system for Filipino college students.</p>
+    <ul class="brand-points">
+      <li>Screen applicants against published scholarship criteria</li>
+      <li>Review eligible applicants before ML ranking</li>
+      <li>Compare rankings and shortlist candidates for review</li>
+    </ul>
+  </div>
+
+  <div class="auth-panel">
+    <div class="auth-card">
+      <h2 class="card-title">Select your organization</h2>
+      <p class="org-intro">Choose the organization you administer scholarships for. You'll only see that organization's scholarships and applicants after logging in.</p>
+      <div class="org-list" id="org-list"></div>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <a href="privacy-policy.html">Privacy Policy</a>
+  <span class="footer-dot">&middot;</span>
+  <a href="terms.html">Terms &amp; Conditions</a>
+  <span class="footer-dot">&middot;</span>
+  <a href="cookies.html">Cookie Policy</a>
+</footer>
+
+<script src="script.js"></script>
+<script>
+  if (hasValidAdminSession()) {
+    window.location.href = 'dashboard.html';
+  }
+
+  const orgList = document.getElementById('org-list');
+  orgList.innerHTML = getOrganizations().map(org => `
+    <button type="button" class="org-option" data-org="${org.id}">
+      <span class="org-name">${org.name}</span>
+      <span class="org-arrow" aria-hidden="true">&rarr;</span>
+    </button>
+  `).join('');
+
+  orgList.querySelectorAll('.org-option').forEach(button => {
+    button.addEventListener('click', () => {
+      setSelectedOrganizationId(button.dataset.org);
+      window.location.href = 'index.html';
+    });
+  });
+</script>
+</body>
+</html>

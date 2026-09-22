@@ -110,8 +110,7 @@
 
 <script src="script.js"></script>
 <script>
-  const currentAdmin = localStorage.getItem('edumatch_admin_current_user');
-  if (!currentAdmin) {
+  if (!hasValidAdminSession()) {
     window.location.href = 'index.html';
   }
 

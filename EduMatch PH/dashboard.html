@@ -85,7 +85,7 @@
         <p>Search, filter, add, edit, and review eligibility criteria.</p>
         <span class="card-arrow">Open &rarr;</span>
       </a>
-      <a class="dash-card" href="applicants.html?scholarship=sm-foundation">
+      <a class="dash-card" href="applicants.html">
         <span class="card-icon" aria-hidden="true">👥</span>
         <h3>Applicant Review</h3>
         <p>Screen each applicant against the published scholarship rules.</p>
@@ -128,13 +128,21 @@
 
 <script src="script.js"></script>
 <script>
-  const adminEmail = localStorage.getItem('edumatch_admin_current_user');
-  if (!adminEmail) {
+  if (!hasValidAdminSession()) {
     window.location.href = 'index.html';
   }
 
-  const adminName = 'Alicia Ramos';
+  const adminEmail = localStorage.getItem('edumatch_admin_current_user');
+  const adminRecord = getAdmins().find(admin => admin.email === adminEmail);
+  const adminName = adminRecord ? adminRecord.name : 'Administrator';
   document.getElementById('welcome-heading').textContent = `Welcome back, ${adminName}`;
+  document.getElementById('user-avatar').textContent = adminName
+    .split(' ')
+    .map(part => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
   const scholarships = getScholarships();
   const totalApplications = scholarships.reduce((sum, scholarship) => sum + (scholarship.applications || 0), 0);

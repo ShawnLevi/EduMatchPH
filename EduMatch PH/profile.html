@@ -84,7 +84,7 @@
       <a href="ranking.html">Rankings</a>
       <a href="saved.html">Shortlisted Applicants</a>
     </nav>
-    <button type="button" id="logout-btn">Log out</button>
+    <button type="button" id="logout-btn" data-logout="true">Log out</button>
   </header>
 
   <main class="profile-main">
@@ -121,18 +121,18 @@
 </div>
 
 <script>
-  const currentUser = localStorage.getItem('edumatch_admin_current_user');
-  if (!currentUser) {
+  if (!hasValidAdminSession()) {
     window.location.href = 'index.html';
   }
 
+  const currentUser = localStorage.getItem('edumatch_admin_current_user');
   const profileKey = 'edumatch_admin_profile';
   const profileForm = document.getElementById('profile-form');
   const profileStatus = document.getElementById('profile-status');
   const savedProfile = JSON.parse(localStorage.getItem(profileKey) || '{}');
-  const admin = JSON.parse(localStorage.getItem('edumatch_demo_admins') || '[]').find(item => item.email === currentUser) || {};
+  const admin = getAdmins().find(item => item.email === currentUser) || {};
 
-  document.getElementById('profile-fullname').value = savedProfile.fullname || admin.name || 'Alicia Ramos';
+  document.getElementById('profile-fullname').value = savedProfile.fullname || admin.name || 'Administrator';
   document.getElementById('profile-email').value = savedProfile.email || admin.email || currentUser;
 
   profileForm.addEventListener('submit', (event) => {
@@ -144,11 +144,6 @@
     };
     localStorage.setItem(profileKey, JSON.stringify(profile));
     profileStatus.textContent = 'Profile saved.';
-  });
-
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('edumatch_admin_current_user');
-    window.location.href = 'index.html';
   });
 </script>
 </body>
