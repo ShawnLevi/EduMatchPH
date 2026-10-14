@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Programs — EduMatch PH</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
+<body><div id="shell"></div><main class="wrap">
+<h1>Scholarship programs</h1>
+<p class="lede">Open a program to add applicants, run screening, rank and review the shortlist.</p>
+<div class="toolbar"><a class="btn-primary small" href="program-form.html">+ New program</a></div>
+<div class="card table-scroll"><table>
+<thead><tr><th>Program</th><th>Provider</th><th>Grade scale</th><th>Limit</th><th>Slots</th><th>Status</th><th></th></tr></thead>
+<tbody id="programs-body"><tr><td colspan="7">Loading...</td></tr></tbody></table>
+<div id="programs-message" class="msg"></div></div>
+</main>
+<script src="app.js"></script>
+<script>
+renderShell("programs");
+(async () => {
+  try {
+    const rows = await apiFetch("/api/scholarships");
+    document.getElementById("programs-body").innerHTML = rows.length ? rows.map((p) =>
+      `<tr><td><b>${escapeHtml(p.scholarship_name)}</b></td><td>${escapeHtml(p.provider)}</td>` +
+      `<td>${escapeHtml(p.grade_scale_label || p.grade_scale)}</td><td>${p.gwa_limit}</td>` +
+      `<td>${p.available_slots}</td><td>${statusPill(p.status)}</td>` +
+      `<td><a class="btn-primary small" href="applicants.html?scholarship=${p.scholarship_id}">Open</a> ` +
+      `<a class="btn-secondary small" href="program-form.html?scholarship=${p.scholarship_id}">Edit</a></td></tr>`).join("")
+      : '<tr><td colspan="7">No programs yet. Create the first one.</td></tr>';
+  } catch (err) { showError("programs-message", err); }
+})();
+</script></body></html>

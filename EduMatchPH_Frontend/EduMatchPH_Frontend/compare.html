@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compare — EduMatch PH</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
+<body><div id="shell"></div><main class="wrap">
+<h1>Compare applicants</h1>
+<p class="lede">Pick two ranked applicants and see what separates them.</p>
+<div class="card">
+  <div class="grid2">
+    <div class="field"><label for="compare-a">Applicant A</label><select id="compare-a"></select></div>
+    <div class="field"><label for="compare-b">Applicant B</label><select id="compare-b"></select></div>
+  </div>
+  <div class="toolbar" style="margin-top:1rem"><button class="btn-primary small" id="compare-btn" type="button">Compare</button></div>
+  <div id="compare-message" class="msg"></div>
+  <div id="compare-box" class="table-scroll"></div>
+</div>
+</main>
+<script src="app.js"></script>
+<script>
+const scholarshipId = getScholarshipIdFromUrl();
+if (!scholarshipId) window.location.href = "programs.html";
+renderShell("compare");
+const CRITERION_ROWS = [
+  ["GWA", "GWA"], ["Entrance score", "Entrance Score"], ["Household income (PHP)", "Income"],
+  ["Course", "Field"], ["Year level", "Year Level"], ["Location", "Location"],
+];
+
+async function loadCompareChoices() {
+  try {
+    const rows = await apiFetch(`/api/scholarships/${scholarshipId}/shortlist`);
+    if (rows.length < 2) {
+      document.getElementById("compare-message").textContent =
+        "Run screening and ranking first. You need at least 2 ranked applicants.";
+      return;
+    }
+    const options = rows.map((r) =>
+      `<option value="${r.applicant_id}">#${r.rank_position} ${escapeHtml(r.full_name)}</option>`).join("");
+    document.getElementById("compare-a").innerHTML = options;
+    document.getElementById("compare-b").innerHTML = options;
+    document.getElementById("compare-b").selectedIndex = 1;   // start with rank 1 vs rank 2
+  } catch (err) {
+    showError("compare-message", err);
+  }
+}
+
+function valueOf(screeningEntry, criterionName) {
+  const reason = screeningEntry.reasons.find((x) => x.criterion_name === criterionName);
+  return reason ? reason.applicant_value : "";
+}
+
+function renderComparison(a, b) {
+  // a, b = { name, explanation, screening }
+  const line = (label, va, vb) =>
+    `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(va)}</td><td>${escapeHtml(vb)}</td></tr>`;
+  const sign = (n) => (n > 0 ? "+" : "") + n;
+  let html = `<table><thead><tr><th></th><th>${escapeHtml(a.name)}</th><th>${escapeHtml(b.name)}</th></tr></thead><tbody>`;
+  html += line("Rank", a.explanation.rank_position, b.explanation.rank_position);
+  html += line("Status", STATUS_LABELS[a.explanation.status], STATUS_LABELS[b.explanation.status]);
+  html += line("Priority score", a.explanation.priority_score, b.explanation.priority_score);
+  CRITERION_ROWS.forEach(([label, key]) =>
+    { html += line(label, valueOf(a.screening, key), valueOf(b.screening, key)); });
+  html += `<tr><th colspan="3">What moved the score (priority points, compared with the average eligible applicant)</th></tr>`;
+  a.explanation.effects.forEach((ea, i) => {
+    const eb = b.explanation.effects[i];
+    html += line(ea.label, sign(ea.effect_points), sign(eb.effect_points));
+  });
+  html += `</tbody></table>`;
+  // The input that separates the two applicants the most:
+  let best = 0, gap = -1;
+  a.explanation.effects.forEach((ea, i) => {
+    const d = Math.abs(ea.effect_points - b.explanation.effects[i].effect_points);
+    if (d > gap) { gap = d; best = i; }
+  });
+  html += `<p>The biggest difference between them is <b>${escapeHtml(a.explanation.effects[best].label)}</b> ` +
+          `(${sign(a.explanation.effects[best].effect_points)} against ` +
+          `${sign(b.explanation.effects[best].effect_points)} points).</p>`;
+  html += `<p><i>${escapeHtml(a.explanation.note)}</i></p>`;
+  return html;
+}
+
+document.getElementById("compare-btn").addEventListener("click", async () => {
+  const idA = document.getElementById("compare-a").value;
+  const idB = document.getElementById("compare-b").value;
+  const msg = document.getElementById("compare-message");
+  msg.textContent = "";
+  if (!idA || !idB) { msg.textContent = "Choose two applicants."; return; }
+  if (idA === idB) { msg.textContent = "Choose two different applicants."; return; }
+  try {
+    const base = `/api/scholarships/${scholarshipId}`;
+    const [screening, expA, expB] = await Promise.all([
+      apiFetch(`${base}/screening`),
+      apiFetch(`${base}/applicants/${idA}/explanation`),
+      apiFetch(`${base}/applicants/${idB}/explanation`),
+    ]);
+    const pick = (id) => screening.find((s) => String(s.applicant_id) === String(id));
+    const sa = pick(idA), sb = pick(idB);
+    document.getElementById("compare-box").innerHTML = renderComparison(
+      { name: sa.full_name, explanation: expA, screening: sa },
+      { name: sb.full_name, explanation: expB, screening: sb });
+  } catch (err) {
+    showError("compare-message", err);        // e.g. "Run ranking first"
+  }
+});
+
+document.addEventListener("DOMContentLoaded", loadCompareChoices);
+</script></body></html>

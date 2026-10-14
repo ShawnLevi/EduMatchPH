@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ranking — EduMatch PH</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
+<body><div id="shell"></div><main class="wrap">
+<h1 id="prog-title">Ranking &amp; Shortlist</h1>
+<p class="lede" id="prog-sub"></p>
+<div class="card">
+  <div class="toolbar">
+    <button class="btn-primary" id="run-ranking-btn" type="button">Run Ranking</button>
+    <button class="btn-secondary small" id="export-btn" type="button">Download shortlist (CSV)</button>
+    <span class="hint">Ranks eligible applicants by priority score. Slots decide who is shortlisted.</span>
+  </div>
+  <div id="ranking-message" class="msg"></div>
+  <div id="export-message" class="msg"></div>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Rank</th><th>Applicant</th><th>Priority score</th><th>Status</th><th></th></tr></thead>
+    <tbody id="shortlist-body"><tr><td colspan="5">Loading...</td></tr></tbody></table></div>
+  <div class="note">The system recommends; the administrator makes the final decision.</div>
+</div>
+<div class="card" id="explanation-card" hidden><h2>Why this score?</h2><div id="explanation-box"></div></div>
+</main>
+<script src="app.js"></script>
+<script>
+const scholarshipId = getScholarshipIdFromUrl();
+if (!scholarshipId) window.location.href = "programs.html";
+renderShell("ranking");
+
+async function applyStatusRules() {
+  const program = await apiFetch(`/api/scholarships/${scholarshipId}`);
+  document.getElementById("prog-title").textContent = program.scholarship_name;
+  document.getElementById("prog-sub").innerHTML =
+    `${escapeHtml(program.provider)} · ${statusPill(program.status)} · ${program.available_slots} slots`;
+  const closed = program.status === "Closed";
+  const btn = document.getElementById("run-ranking-btn");
+  btn.disabled = closed;
+  btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
+}
+async function loadShortlist() {
+  try {
+    const rows = await apiFetch(`/api/scholarships/${scholarshipId}/shortlist`);
+    document.getElementById("shortlist-body").innerHTML = rows.length ? rows.map((r) =>
+      `<tr><td>${r.rank_position}</td><td>${escapeHtml(r.full_name)}</td><td>${r.priority_score}</td>` +
+      `<td><span class="pill ${r.status === "SHORTLIST" ? "ok" : "wait"}">${escapeHtml(STATUS_LABELS[r.status])}</span></td>` +
+      `<td><button class="why-btn" data-applicant="${r.applicant_id}">Why?</button></td></tr>`).join("")
+      : '<tr><td colspan="5">No ranking yet. Run screening, then press Run Ranking.</td></tr>';
+  } catch (err) { showError("ranking-message", err); }
+}
+document.getElementById("run-ranking-btn").addEventListener("click", async () => {
+  document.getElementById("explanation-card").hidden = true;
+  try {
+    const r = await apiFetch(`/api/scholarships/${scholarshipId}/rank`, { method: "POST" });
+    showMessage("ranking-message", `Ranked ${r.ranked_count} applicants: ${r.shortlisted} shortlisted, ${r.waitlisted} waitlisted.`);
+    await applyStatusRules();
+    loadShortlist();
+  } catch (err) { showError("ranking-message", err); }
+});
+
+function renderExplanation(e) {
+  const rows = e.effects.map((x) => {
+    const sign = x.effect_points > 0 ? "+" : "";
+    return `<tr><td>${escapeHtml(x.label)}</td><td>${x.applicant_value}</td><td>${x.pool_average}</td><td>${sign}${x.effect_points}</td></tr>`;
+  }).join("");
+  return `<p><b>Score ${e.priority_score}</b> (rank ${e.rank_position}, ${escapeHtml(STATUS_LABELS[e.status])}). ` +
+    `Compared with ${escapeHtml(e.compared_with)}.</p>` +
+    `<div class="table-scroll"><table><thead><tr><th>Input</th><th>This applicant</th><th>Average</th><th>Effect (points)</th></tr></thead><tbody>${rows}</tbody></table></div>` +
+    `<p class="hint"><i>${escapeHtml(e.note)}</i></p>`;
+}
+document.getElementById("shortlist-body").addEventListener("click", async (e) => {
+  const btn = e.target.closest(".why-btn");
+  if (!btn) return;
+  try {
+    const data = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${btn.dataset.applicant}/explanation`);
+    document.getElementById("explanation-card").hidden = false;
+    document.getElementById("explanation-box").innerHTML = renderExplanation(data);
+  } catch (err) {
+    document.getElementById("explanation-card").hidden = false;
+    showError("explanation-box", err);
+  }
+});
+
+document.getElementById("export-btn").addEventListener("click", async () => {
+  showMessage("export-message", "");
+  try {
+    const res = await fetch(`${API}/api/scholarships/${scholarshipId}/shortlist.csv`, { credentials: "include" });
+    if (res.status === 401) { window.location.href = "index.html"; return; }
+    if (!res.ok) {
+      let data = null; try { data = await res.json(); } catch (e) {}
+      throw new Error((data && data.error) || "HTTP " + res.status);
+    }
+    const blob = await res.blob();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `shortlist_program_${scholarshipId}.csv`;
+    document.body.appendChild(link); link.click(); link.remove();
+    URL.revokeObjectURL(link.href);
+  } catch (err) { showError("export-message", err); }
+});
+document.addEventListener("DOMContentLoaded", () => { applyStatusRules().catch((e) => showError("ranking-message", e)); loadShortlist(); });
+</script></body></html>
