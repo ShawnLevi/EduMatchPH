@@ -2,7 +2,16 @@
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applicants — EduMatch PH</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"></head>
+<link rel="stylesheet" href="style.css">
+<style>
+  .stat { cursor: pointer; transition: background .15s, box-shadow .15s; }
+  .stat.stat-eligible { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.45); }
+  .stat.stat-eligible:hover, .stat.stat-eligible.active { background: rgba(34,197,94,.25); }
+  .stat.stat-eligible.active { box-shadow: 0 0 0 2px rgba(34,197,94,.6); }
+  .stat.stat-not-eligible { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.45); }
+  .stat.stat-not-eligible:hover, .stat.stat-not-eligible.active { background: rgba(239,68,68,.25); }
+  .stat.stat-not-eligible.active { box-shadow: 0 0 0 2px rgba(239,68,68,.6); }
+</style></head>
 <body><div id="shell"></div><main class="wrap">
 <h1 id="prog-title">Applicants &amp; Screening</h1>
 <p class="lede" id="prog-sub"></p>
@@ -124,14 +133,30 @@ document.getElementById("import-confirm-btn").addEventListener("click", async ()
   } catch (err) { showError("import-summary", err); }
 });
 
+let screeningFilter = "all";
+function applyScreeningFilter() {
+  document.querySelectorAll("#screening-details .stat[data-filter]").forEach((box) => {
+    box.classList.toggle("active", screeningFilter !== "all" && box.dataset.filter === screeningFilter);
+  });
+  document.querySelectorAll("#screening-details .applicant-card").forEach((card) => {
+    card.style.display = (screeningFilter === "all" || card.classList.contains(screeningFilter)) ? "" : "none";
+  });
+}
+document.getElementById("screening-details").addEventListener("click", (e) => {
+  const box = e.target.closest(".stat[data-filter]");
+  if (!box) return;
+  screeningFilter = (screeningFilter === box.dataset.filter) ? "all" : box.dataset.filter;
+  applyScreeningFilter();
+});
+
 async function loadScreeningDetails() {
   try {
     const rows = await apiFetch(`/api/scholarships/${scholarshipId}/screening`);
     const eligible = rows.filter((r) => r.eligible).length;
     document.getElementById("screening-details").innerHTML = rows.length
-      ? `<div class="stats"><div class="stat"><b>${rows.length}</b><span>screened</span></div>` +
-        `<div class="stat"><b>${eligible}</b><span>eligible</span></div>` +
-        `<div class="stat"><b>${rows.length - eligible}</b><span>not eligible</span></div></div>` +
+      ? `<div class="stats"><div class="stat" data-filter="all"><b>${rows.length}</b><span>screened</span></div>` +
+        `<div class="stat stat-eligible" data-filter="eligible"><b>${eligible}</b><span>eligible</span></div>` +
+        `<div class="stat stat-not-eligible" data-filter="ineligible"><b>${rows.length - eligible}</b><span>not eligible</span></div></div>` +
         rows.map((r) => `<div class="applicant-card ${r.eligible ? "eligible" : "ineligible"}">` +
           `<h4><span>${escapeHtml(r.full_name)} ` +
           `<span class="pill ${r.eligible ? "ok" : "no"}">${r.eligible ? "Eligible" : "Not eligible"}</span></span>` +
@@ -141,6 +166,7 @@ async function loadScreeningDetails() {
             `<td>${escapeHtml(x.threshold_value)}</td><td class="${x.met ? "met" : "notmet"}">${x.met ? "Met" : "Not met"}</td></tr>`).join("") +
           `</tbody></table></div></div>`).join("")
       : '<p class="hint">No screening results yet. Add applicants, then press Run Screening.</p>';
+    applyScreeningFilter();
   } catch (err) { showError("screening-summary", err); }
 }
 document.getElementById("run-screening-btn").addEventListener("click", async () => {
