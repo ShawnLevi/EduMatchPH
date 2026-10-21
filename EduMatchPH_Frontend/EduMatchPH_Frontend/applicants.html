@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Applicants — EduMatch PH</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .stat { cursor: pointer; transition: background .15s, box-shadow .15s; }
+  .stat.stat-eligible { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.45); }
+  .stat.stat-eligible:hover, .stat.stat-eligible.active { background: rgba(34,197,94,.25); }
+  .stat.stat-eligible.active { box-shadow: 0 0 0 2px rgba(34,197,94,.6); }
+  .stat.stat-not-eligible { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.45); }
+  .stat.stat-not-eligible:hover, .stat.stat-not-eligible.active { background: rgba(239,68,68,.25); }
+  .stat.stat-not-eligible.active { box-shadow: 0 0 0 2px rgba(239,68,68,.6); }
+</style></head>
+<body><div id="shell"></div><main class="wrap">
+<h1 id="prog-title">Applicants &amp; Screening</h1>
+<p class="lede" id="prog-sub"></p>
+
+<div class="card">
+  <h2>1. Add applicants</h2>
+  <form id="add-applicant-form" novalidate>
+    <div class="grid3">
+      <div class="field"><label for="full_name">Full name</label><input type="text" id="full_name"></div>
+      <div class="field"><label for="gwa">GWA</label><input type="number" id="gwa" step="any"><span class="hint" id="gwa-hint"></span></div>
+      <div class="field"><label for="entrance_score">Entrance score (0-100)</label><input type="number" id="entrance_score" min="0" max="100"></div>
+      <div class="field"><label for="household_income">Household income (PHP/year)</label><input type="number" id="household_income" min="0"></div>
+      <div class="field"><label for="course">Course</label><select id="course"></select></div>
+      <div class="field"><label for="year_level">Year level</label>
+        <select id="year_level"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+      <div class="field"><label for="location">Location</label><select id="location"></select></div>
+    </div>
+    <div class="toolbar" style="margin-top:1rem"><button class="btn-primary small" type="submit">Add applicant</button></div>
+    <div id="add-applicant-message" class="msg"></div>
+  </form>
+  <hr style="border:0;border-top:1px solid var(--line);margin:1rem 0">
+  <h2>Or import from a file</h2>
+  <p class="hint">A .csv or .xlsx with columns: full_name, gwa, entrance_score, household_income, course, year_level, location. Preview first, then import.</p>
+  <div class="toolbar">
+    <input type="file" id="import-file" accept=".csv,.xlsx" style="max-width:320px">
+    <button class="btn-secondary small" id="import-preview-btn" type="button">Preview</button>
+    <button class="btn-primary small" id="import-confirm-btn" type="button" hidden>Import</button>
+  </div>
+  <div id="import-summary" class="msg"></div>
+  <div class="table-scroll"><table><thead><tr><th>Row</th><th>Problem</th></tr></thead><tbody id="import-errors-body"></tbody></table></div>
+  <div class="table-scroll"><table><thead><tr><th>Name</th><th>GWA</th><th>Course</th><th>Location</th></tr></thead><tbody id="import-sample-body"></tbody></table></div>
+</div>
+
+<div class="card">
+  <h2>2. Screening</h2>
+  <div class="toolbar">
+    <button class="btn-primary" id="run-screening-btn" type="button">Run Screening</button>
+    <span class="hint">Checks every applicant against the six rules.</span>
+  </div>
+  <div id="screening-summary" class="msg"></div>
+  <div id="screening-details"></div>
+</div>
+</main>
+<script src="app.js"></script>
+<script>
+const scholarshipId = getScholarshipIdFromUrl();
+if (!scholarshipId) window.location.href = "programs.html";
+renderShell("applicants");
+let program = null;
+
+async function loadProgram() {
+  program = await apiFetch(`/api/scholarships/${scholarshipId}`);
+  document.getElementById("prog-title").textContent = program.scholarship_name;
+  document.getElementById("prog-sub").innerHTML =
+    `${escapeHtml(program.provider)} · ${statusPill(program.status)} · ${program.available_slots} slots`;
+  const closed = program.status === "Closed";
+  const btn = document.getElementById("run-screening-btn");
+  btn.disabled = closed;
+  btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
+}
+async function setGwaScaleHint() {
+  const meta = await loadMeta();
+  const scale = GRADE_SCALES[program.grade_scale];
+  const gwa = document.getElementById("gwa");
+  gwa.min = scale.min_value; gwa.max = scale.max_value; gwa.step = "any";
+  document.getElementById("gwa-hint").textContent = scaleHintText(scale);
+  fillSelect("course", meta.courses);
+  fillSelect("location", meta.localities);
+}
+
+document.getElementById("add-applicant-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = {
+    full_name: document.getElementById("full_name").value.trim(),
+    gwa: parseFloat(document.getElementById("gwa").value),
+    entrance_score: parseInt(document.getElementById("entrance_score").value, 10),
+    household_income: parseFloat(document.getElementById("household_income").value),
+    course: document.getElementById("course").value,
+    year_level: parseInt(document.getElementById("year_level").value, 10),
+    location: document.getElementById("location").value,
+  };
+  try {
+    const data = await apiFetch(`/api/scholarships/${scholarshipId}/applicants`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) });
+    showMessage("add-applicant-message", `Added applicant #${data.applicant_id}. Run Screening again to include them.`);
+    e.target.reset();
+  } catch (err) { showError("add-applicant-message", err); }
+});
+
+function uploadApplicants(file, save) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("preview", save ? "false" : "true");
+  return apiFetch(`/api/scholarships/${scholarshipId}/applicants/import`, { method: "POST", body: form });
+}
+document.getElementById("import-preview-btn").addEventListener("click", async () => {
+  const summary = document.getElementById("import-summary");
+  const confirmBtn = document.getElementById("import-confirm-btn");
+  confirmBtn.hidden = true;
+  const file = document.getElementById("import-file").files[0];
+  if (!file) { summary.textContent = "Choose a .csv or .xlsx file first."; return; }
+  try {
+    const r = await uploadApplicants(file, false);
+    summary.textContent = `${r.valid_rows} of ${r.total_rows} rows are valid. ` +
+      (r.errors.length ? `${r.errors.length} rows have problems and will be skipped.` : "");
+    document.getElementById("import-errors-body").innerHTML = r.errors
+      .map((x) => `<tr><td>${x.row}</td><td>${escapeHtml(x.error)}</td></tr>`).join("");
+    document.getElementById("import-sample-body").innerHTML = r.sample
+      .map((a) => `<tr><td>${escapeHtml(a.full_name)}</td><td>${a.gwa}</td><td>${escapeHtml(a.course)}</td><td>${escapeHtml(a.location)}</td></tr>`).join("");
+    if (r.valid_rows > 0) { confirmBtn.textContent = `Import ${r.valid_rows} valid rows`; confirmBtn.hidden = false; }
+  } catch (err) { showError("import-summary", err); }
+});
+document.getElementById("import-confirm-btn").addEventListener("click", async () => {
+  const file = document.getElementById("import-file").files[0];
+  try {
+    const r = await uploadApplicants(file, true);
+    showMessage("import-summary", `Imported ${r.imported} applicants. Run Screening again to include them.`);
+    document.getElementById("import-confirm-btn").hidden = true;
+  } catch (err) { showError("import-summary", err); }
+});
+
+let screeningFilter = "all";
+function applyScreeningFilter() {
+  document.querySelectorAll("#screening-details .stat[data-filter]").forEach((box) => {
+    box.classList.toggle("active", screeningFilter !== "all" && box.dataset.filter === screeningFilter);
+  });
+  document.querySelectorAll("#screening-details .applicant-card").forEach((card) => {
+    card.style.display = (screeningFilter === "all" || card.classList.contains(screeningFilter)) ? "" : "none";
+  });
+}
+document.getElementById("screening-details").addEventListener("click", (e) => {
+  const box = e.target.closest(".stat[data-filter]");
+  if (!box) return;
+  screeningFilter = (screeningFilter === box.dataset.filter) ? "all" : box.dataset.filter;
+  applyScreeningFilter();
+});
+
+async function loadScreeningDetails() {
+  try {
+    const rows = await apiFetch(`/api/scholarships/${scholarshipId}/screening`);
+    const eligible = rows.filter((r) => r.eligible).length;
+    document.getElementById("screening-details").innerHTML = rows.length
+      ? `<div class="stats"><div class="stat" data-filter="all"><b>${rows.length}</b><span>screened</span></div>` +
+        `<div class="stat stat-eligible" data-filter="eligible"><b>${eligible}</b><span>eligible</span></div>` +
+        `<div class="stat stat-not-eligible" data-filter="ineligible"><b>${rows.length - eligible}</b><span>not eligible</span></div></div>` +
+        rows.map((r) => `<div class="applicant-card ${r.eligible ? "eligible" : "ineligible"}">` +
+          `<h4><span>${escapeHtml(r.full_name)} ` +
+          `<span class="pill ${r.eligible ? "ok" : "no"}">${r.eligible ? "Eligible" : "Not eligible"}</span></span>` +
+          `<button class="delete-btn" data-applicant="${r.applicant_id}" data-name="${escapeHtml(r.full_name)}">Delete</button></h4>` +
+          `<div class="table-scroll"><table><thead><tr><th>Criterion</th><th>Applicant</th><th>Required</th><th>Result</th></tr></thead><tbody>` +
+          r.reasons.map((x) => `<tr><td>${escapeHtml(x.criterion_name)}</td><td>${escapeHtml(x.applicant_value)}</td>` +
+            `<td>${escapeHtml(x.threshold_value)}</td><td class="${x.met ? "met" : "notmet"}">${x.met ? "Met" : "Not met"}</td></tr>`).join("") +
+          `</tbody></table></div></div>`).join("")
+      : '<p class="hint">No screening results yet. Add applicants, then press Run Screening.</p>';
+    applyScreeningFilter();
+  } catch (err) { showError("screening-summary", err); }
+}
+document.getElementById("run-screening-btn").addEventListener("click", async () => {
+  if (program.status === "Ranking" &&
+      !confirm("Running screening again clears the existing ranking. Continue?")) return;
+  try {
+    const r = await apiFetch(`/api/scholarships/${scholarshipId}/screen`, { method: "POST" });
+    const n = r.filter((x) => x.eligible).length;
+    showMessage("screening-summary", `Screening done: ${n} of ${r.length} applicants are eligible. Next: Ranking & Shortlist.`);
+    await loadProgram();
+    loadScreeningDetails();
+  } catch (err) { showError("screening-summary", err); }
+});
+document.getElementById("screening-details").addEventListener("click", async (e) => {
+  const btn = e.target.closest(".delete-btn");
+  if (!btn) return;
+  if (!confirm(`Delete ${btn.dataset.name}? This removes everything stored about this applicant. It cannot be undone, and any ranking will be cleared.`)) return;
+  try {
+    const r = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${btn.dataset.applicant}`, { method: "DELETE" });
+    showMessage("screening-summary", "Applicant deleted." + (r.ranking_cleared ? " Run Ranking again." : ""));
+    await loadProgram();
+    loadScreeningDetails();
+  } catch (err) { showError("screening-summary", err); }
+});
+document.addEventListener("DOMContentLoaded", async () => {
+  try { await loadProgram(); await setGwaScaleHint(); await loadScreeningDetails(); }
+  catch (err) { showError("screening-summary", err); }
+});
+</script></body></html>

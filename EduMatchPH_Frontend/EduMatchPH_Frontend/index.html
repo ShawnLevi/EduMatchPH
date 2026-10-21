@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduMatch PH — Administrator login</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="page">
+  <div class="brand-panel">
+    <div class="brand-mark"><span class="brand-mark-dot"></span><span class="brand-mark-dot"></span></div>
+    <h1>EduMatch PH</h1>
+    <p class="tagline">Scholarship applicant screening and priority ranking for administrators.</p>
+    <ul class="brand-points">
+      <li>Six eligibility criteria checked with clear reasons</li>
+      <li>Eligible applicants ranked by a priority score</li>
+      <li>You make the final decision</li>
+    </ul>
+  </div>
+  <div class="auth-panel"><div class="auth-card">
+    <img class="login-logo" src="EduMatchPH_logo.jpg" alt="EduMatch PH">
+    <form id="login-form" class="panel" novalidate>
+      <h2 class="card-title">Administrator log in</h2>
+      <div class="field"><label for="login-org">Organization</label>
+        <select id="login-org"><option value="uclm">UCLM</option><option value="dost">DOST</option></select></div>
+      <div class="field"><label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="username" placeholder="name@organization.edu.ph"></div>
+      <div class="field"><label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password"></div>
+      <div id="login-message" class="error"></div>
+      <button class="btn-primary" type="submit">Log in</button>
+    </form>
+  </div></div>
+</div>
+<script src="app.js"></script>
+<script>
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("login-email").value.trim();
+  const pw = document.getElementById("login-password").value;
+  if (!email || !pw) { showMessage("login-message", "Enter your email and password."); return; }
+  try {
+    await login(document.getElementById("login-org").value, email, pw);
+    window.location.href = "programs.html";
+  } catch (err) { showError("login-message", err); }
+});
+</script>
+</body></html>
