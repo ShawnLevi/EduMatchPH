@@ -30,3 +30,13 @@ Change `const API` at the top of app.js. The backend CORS list must include the 
 organization isolation, create/edit program, grade-scale hint, add/import/delete applicants,
 screening, ranking, explanation, CSV export, compare, Closed disables Run Ranking.
 Re-run on your own machine before the demo.
+
+## What changed in the UI upgrade
+- Program cards with search and status filters; workflow stepper (Add applicants → Screening → Ranking → Shortlist) on every program page.
+- Applicants: one searchable, sortable, paginated table; expandable rows show the six checks; clickable stat tiles filter; "Add applicant" dialog with inline validation; drag-and-drop import with preview and a template download; "not screened yet" banner after new applicants are added.
+- Ranking: score bars, a visible cut-off line at the number of slots, a "Why?" side drawer (score gauge, plain-language top drivers, green/red contribution bars, next/previous), tick two rows to compare.
+- Compare: side-by-side cards with the leader highlighted and a mirrored contribution chart. The URL can be shared.
+- Program form: live rule summary, unsaved-changes guard, Ctrl+S, confirmation before rule changes.
+- Toasts instead of inline messages, styled confirm dialogs instead of confirm(), skeleton loading, button spinners, "/" focuses the search box, responsive layout, respects reduced-motion.
+
+The new optional backend route `GET /api/scholarships/<id>/applicants` (in `app.py`) lets the table show applicants before screening. The frontend still works without it (it falls back to the screening data).

@@ -4,101 +4,143 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css"></head>
 <body><div id="shell"></div><main class="wrap">
+<div id="prog-head"></div>
 <h1 id="form-title">New scholarship program</h1>
-<p class="lede">These are the rules the system uses. Every field is needed, also when editing.</p>
-<form id="program-form" class="card" novalidate>
-  <div class="grid2">
-    <div class="field"><label for="scholarship_name">Program name</label><input type="text" id="scholarship_name"></div>
-    <div class="field"><label for="provider">Provider</label><input type="text" id="provider"></div>
-    <div class="field"><label for="grade_scale">Grade scale</label><select id="grade_scale"></select>
-      <span class="hint" id="grade-scale-hint"></span></div>
-    <div class="field"><label for="gwa_limit">GWA limit (worst grade accepted)</label>
-      <input type="number" id="gwa_limit" step="any"></div>
-    <div class="field"><label for="income_cap">Household income cap (PHP)</label><input type="number" id="income_cap" min="0"></div>
-    <div class="field"><label for="min_entrance">Minimum entrance score (0-100)</label><input type="number" id="min_entrance" min="0" max="100"></div>
-    <div class="field"><label for="eligible_field">Eligible field</label><select id="eligible_field"></select></div>
-    <div class="field"><label for="location_req">Location requirement</label><select id="location_req"></select></div>
-    <div class="field"><label for="available_slots">Available slots</label><input type="number" id="available_slots" min="0"></div>
-    <div class="field"><label for="status">Status</label><select id="status"></select></div>
-    <div class="field"><label for="application_deadline">Application deadline (optional)</label><input type="date" id="application_deadline"></div>
+<p class="lede">These are the rules the system uses to screen applicants. Every field is needed, also when editing.</p>
+<div class="form-layout">
+<form id="program-form" novalidate>
+  <div class="card">
+    <h2 class="section-title">About the program</h2><p class="section-sub">What administrators and applicants will see.</p>
+    <div class="grid2">
+      <div class="field"><label for="scholarship_name">Program name</label><input type="text" id="scholarship_name"><span class="field-error" data-e="scholarship_name"></span></div>
+      <div class="field"><label for="provider">Provider</label><input type="text" id="provider"><span class="field-error" data-e="provider"></span></div>
+      <div class="field"><label for="available_slots">Available slots</label><input type="number" id="available_slots" min="0"><span class="field-error" data-e="available_slots"></span></div>
+      <div class="field"><label for="status">Status</label><select id="status"></select></div>
+      <div class="field"><label for="application_deadline">Application deadline (optional)</label><input type="date" id="application_deadline"></div>
+    </div>
   </div>
-  <div class="field" style="margin-top:1rem"><label>Eligible year levels</label>
-    <div class="years">
-      <label><input type="checkbox" name="eligible_years" value="1"> 1st</label>
-      <label><input type="checkbox" name="eligible_years" value="2"> 2nd</label>
-      <label><input type="checkbox" name="eligible_years" value="3"> 3rd</label>
-      <label><input type="checkbox" name="eligible_years" value="4"> 4th</label>
-    </div></div>
-  <div class="note">The grade scale is locked once the program has applicants. Changing a rule clears the earlier screening and ranking.</div>
-  <div class="toolbar" style="margin-top:1rem"><button class="btn-primary" type="submit">Save program</button>
-    <a class="btn-secondary small" href="programs.html">Back</a></div>
+  <div class="card">
+    <h2 class="section-title">Eligibility rules</h2><p class="section-sub">An applicant must meet all six to be eligible.</p>
+    <div class="grid2">
+      <div class="field"><label for="grade_scale">Grade scale</label><select id="grade_scale"></select><span class="hint" id="grade-scale-hint"></span><span class="field-error" data-e="grade_scale"></span></div>
+      <div class="field"><label for="gwa_limit">GWA limit (worst grade accepted)</label><input type="number" id="gwa_limit" step="any"><span class="field-error" data-e="gwa_limit"></span></div>
+      <div class="field"><label for="income_cap">Household income cap (PHP/year)</label><input type="number" id="income_cap" min="0"><span class="field-error" data-e="income_cap"></span></div>
+      <div class="field"><label for="min_entrance">Minimum entrance score (0-100)</label><input type="number" id="min_entrance" min="0" max="100"><span class="field-error" data-e="min_entrance"></span></div>
+      <div class="field"><label for="eligible_field">Eligible field</label><select id="eligible_field"></select><span class="field-error" data-e="eligible_field"></span></div>
+      <div class="field"><label for="location_req">Location requirement</label><select id="location_req"></select><span class="field-error" data-e="location_req"></span></div>
+    </div>
+    <div class="field" style="margin-top:1rem"><label>Eligible year levels</label>
+      <div class="year-chips">
+        <input type="checkbox" name="eligible_years" id="y1" value="1"><label for="y1">1st</label>
+        <input type="checkbox" name="eligible_years" id="y2" value="2"><label for="y2">2nd</label>
+        <input type="checkbox" name="eligible_years" id="y3" value="3"><label for="y3">3rd</label>
+        <input type="checkbox" name="eligible_years" id="y4" value="4"><label for="y4">4th</label>
+      </div><span class="field-error" data-e="eligible_years"></span></div>
+    <div class="note" style="margin-top:1rem">The grade scale is locked once the program has applicants. Changing a rule clears the earlier screening and ranking.</div>
+  </div>
+  <div class="toolbar"><button class="btn-primary" id="save-btn" type="submit">Save program</button>
+    <a class="btn-secondary small" id="back" href="programs.html">Back</a><span class="hint">Tip: press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save.</span></div>
   <div id="program-message" class="msg"></div>
 </form>
+<aside class="card side"><h2 class="section-title">Rule summary</h2><p class="section-sub">What the system will check.</p><ul class="summary-list" id="summary"></ul></aside>
+</div>
 </main>
 <script src="app.js"></script>
 <script>
 const editingId = getScholarshipIdFromUrl();
 renderShell(editingId ? "edit" : "new");
-const RULE_FIELDS = ["grade_scale", "gwa_limit", "income_cap", "eligible_field",
-                     "eligible_years", "location_req", "min_entrance"];
-let original = null;
+const RULE_FIELDS = ["grade_scale", "gwa_limit", "income_cap", "eligible_field", "eligible_years", "location_req", "min_entrance"];
+const TEXT = ["scholarship_name", "provider", "grade_scale", "gwa_limit", "income_cap", "eligible_field", "location_req", "min_entrance", "available_slots", "status", "application_deadline"];
+let original = null, dirty = false, saving = false;
+const $id = (i) => document.getElementById(i);
+const yearsPicked = () => $$('input[name="eligible_years"]:checked').map((c) => c.value);
 
 function showScaleHint() {
-  const scale = GRADE_SCALES[document.getElementById("grade_scale").value];
-  const limit = document.getElementById("gwa_limit");
-  document.getElementById("grade-scale-hint").textContent = scaleHintText(scale);
+  const scale = GRADE_SCALES[$id("grade_scale").value], limit = $id("gwa_limit");
+  $id("grade-scale-hint").textContent = scaleHintText(scale);
   if (scale) { limit.min = scale.min_value; limit.max = scale.max_value; limit.step = "any"; }
 }
+function updateSummary() {
+  const scale = GRADE_SCALES[$id("grade_scale").value], v = (i) => $id(i).value;
+  const row = (k, val) => `<li><span class="k">${k}</span><span class="v">${val ? escapeHtml(val) : '<span style="color:var(--ink-muted);font-weight:400">not set</span>'}</span></li>`;
+  const ys = yearsPicked().map(Number).sort();
+  $id("summary").innerHTML =
+    row("GWA", v("gwa_limit") ? (scale && !scale.higher_is_better ? "≤ " : "≥ ") + v("gwa_limit") + (scale ? " (" + scale.label.split(" (")[0] + ")" : "") : "") +
+    row("Entrance", v("min_entrance") ? "≥ " + v("min_entrance") : "") + row("Income", v("income_cap") ? "≤ " + peso(v("income_cap")) + "/yr" : "") +
+    row("Course", v("eligible_field") === "ANY" ? "Any course" : v("eligible_field")) + row("Year level", ys.length ? yearsLabel(ys.join(",")) : "") + row("Location", v("location_req")) +
+    row("Slots", v("available_slots"));
+}
+function clearErrs(e) { const f = e.target.closest(".field"); if (f) $$(".field-error", f).forEach((x) => (x.textContent = "")); }
+function markDirty(e) { dirty = true; if (e && e.target) clearErrs(e); updateSummary(); }
+$id("program-form").addEventListener("input", markDirty);
+$id("program-form").addEventListener("change", markDirty);
+window.addEventListener("beforeunload", (e) => { if (dirty && !saving) { e.preventDefault(); e.returnValue = ""; } });
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); $id("program-form").requestSubmit(); } });
+$id("back").addEventListener("click", async (e) => {
+  if (!dirty) return; e.preventDefault();
+  if (await confirmDialog({ title: "Discard changes?", message: "You have unsaved changes on this form.", confirmText: "Discard", danger: true })) { dirty = false; window.location.href = "programs.html"; }
+});
+
 async function loadProgramIntoForm() {
   try {
     const meta = await loadMeta();
-    document.getElementById("grade_scale").innerHTML = '<option value="">Choose...</option>' +
-      meta.grade_scales.map((s) => `<option value="${escapeHtml(s.scale_id)}">${escapeHtml(s.label)}</option>`).join("");
-    fillSelect("location_req", meta.location_req_choices);
-    fillSelect("eligible_field", meta.fields);
-    fillSelect("status", meta.statuses);
-    document.getElementById("status").value = "Open";
-    document.getElementById("grade_scale").addEventListener("change", showScaleHint);
-    if (!editingId) return;
-    document.getElementById("form-title").textContent = "Edit scholarship program";
-    original = await apiFetch(`/api/scholarships/${editingId}`);
-    for (const f of ["scholarship_name", "provider", "grade_scale", "gwa_limit", "income_cap",
-                     "eligible_field", "location_req", "min_entrance", "available_slots",
-                     "status", "application_deadline"]) {
-      document.getElementById(f).value = original[f] == null ? "" : original[f];
+    $id("grade_scale").innerHTML = '<option value="">Choose...</option>' + meta.grade_scales.map((s) => `<option value="${escapeHtml(s.scale_id)}">${escapeHtml(s.label)}</option>`).join("");
+    fillSelect("location_req", meta.location_req_choices); fillSelect("eligible_field", meta.fields); fillSelect("status", meta.statuses);
+    $id("status").value = "Open";
+    $id("grade_scale").addEventListener("change", showScaleHint);
+    if (editingId) {
+      $id("form-title").textContent = "Edit scholarship program";
+      original = await apiFetch(`/api/scholarships/${editingId}`);
+      TEXT.forEach((f) => { $id(f).value = original[f] == null ? "" : original[f]; });
+      showScaleHint();
+      const ys = String(original.eligible_years).split(",");
+      $$('input[name="eligible_years"]').forEach((c) => { c.checked = ys.includes(c.value); });
     }
-    showScaleHint();
-    const years = String(original.eligible_years).split(",");
-    document.querySelectorAll('input[name="eligible_years"]').forEach((c) => { c.checked = years.includes(c.value); });
+    updateSummary(); dirty = false;
   } catch (err) { showError("program-message", err); }
 }
-document.getElementById("program-form").addEventListener("submit", async (e) => {
+function setErr(k, t) { const el = document.querySelector(`[data-e="${k}"]`); if (el) el.textContent = t; return 1; }
+$id("program-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const val = (id) => document.getElementById(id).value.trim();
+  $$("[data-e]").forEach((x) => (x.textContent = ""));
+  const val = (id) => $id(id).value.trim();
   const payload = {
-    scholarship_name: val("scholarship_name"), provider: val("provider"),
-    grade_scale: val("grade_scale"), gwa_limit: parseFloat(val("gwa_limit")),
-    income_cap: parseFloat(val("income_cap")), eligible_field: val("eligible_field"),
-    eligible_years: [...document.querySelectorAll('input[name="eligible_years"]:checked')].map((c) => c.value),
-    location_req: val("location_req"), min_entrance: parseInt(val("min_entrance"), 10),
-    available_slots: parseInt(val("available_slots"), 10), status: val("status") || "Open",
+    scholarship_name: val("scholarship_name"), provider: val("provider"), grade_scale: val("grade_scale"), gwa_limit: parseFloat(val("gwa_limit")),
+    income_cap: parseFloat(val("income_cap")), eligible_field: val("eligible_field"), eligible_years: yearsPicked(), location_req: val("location_req"),
+    min_entrance: parseInt(val("min_entrance"), 10), available_slots: parseInt(val("available_slots"), 10), status: val("status") || "Open",
     application_deadline: val("application_deadline") || null,
   };
+  const scale = GRADE_SCALES[payload.grade_scale];
+  let bad = 0;
+  if (!payload.scholarship_name) bad += setErr("scholarship_name", "Enter a program name.");
+  if (!payload.provider) bad += setErr("provider", "Enter the provider.");
+  if (!payload.grade_scale) bad += setErr("grade_scale", "Choose a grade scale.");
+  if (isNaN(payload.gwa_limit) || (scale && (payload.gwa_limit < scale.min_value || payload.gwa_limit > scale.max_value))) bad += setErr("gwa_limit", scale ? `Enter a value from ${scale.min_value} to ${scale.max_value}.` : "Choose a grade scale first.");
+  if (isNaN(payload.income_cap) || payload.income_cap < 0) bad += setErr("income_cap", "Enter the yearly income cap.");
+  if (isNaN(payload.min_entrance) || payload.min_entrance < 0 || payload.min_entrance > 100) bad += setErr("min_entrance", "Enter a score from 0 to 100.");
+  if (!payload.eligible_field) bad += setErr("eligible_field", "Choose a field.");
+  if (!payload.location_req) bad += setErr("location_req", "Choose a location requirement.");
+  if (!payload.eligible_years.length) bad += setErr("eligible_years", "Pick at least one year level.");
+  if (isNaN(payload.available_slots) || payload.available_slots < 0) bad += setErr("available_slots", "Enter the number of slots.");
+  if (bad) { toast("Please fix the highlighted fields.", "error"); const f = document.querySelector(".field-error:not(:empty)"); if (f) { f.scrollIntoView({ block: "center", behavior: "smooth" }); const i = f.closest(".field").querySelector("input,select"); if (i) i.focus(); } return; }
   if (original && RULE_FIELDS.some((f) => String(payload[f]) !== String(original[f]) &&
       !(["gwa_limit", "income_cap"].includes(f) && parseFloat(payload[f]) === parseFloat(original[f])) &&
       !(f === "eligible_years" && payload[f].join(",") === String(original[f])))) {
-    if (!confirm("Changing the rules clears this program's screening and ranking. Save anyway?")) return;
+    if (!(await confirmDialog({ title: "Change the rules?", message: "Changing the rules clears this program's screening and ranking. Save anyway?", confirmText: "Save anyway", danger: true }))) return;
   }
-  try {
-    const r = await apiFetch(editingId ? `/api/scholarships/${editingId}` : "/api/scholarships", {
-      method: editingId ? "PUT" : "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) });
-    if (!editingId) { window.location.href = `applicants.html?scholarship=${r.scholarship_id}`; return; }
-    let msg = "Saved.";
-    if (r.screening_cleared) msg += " The rules changed, so the earlier screening and ranking were cleared. Run Screening again.";
-    else if (r.ranking_cleared) msg += " The number of slots changed, so the earlier ranking was cleared. Run Ranking again.";
-    showMessage("program-message", msg);
-    original = await apiFetch(`/api/scholarships/${editingId}`);
-  } catch (err) { showError("program-message", err); }
+  await withLoading($id("save-btn"), async () => {
+    try {
+      const r = await apiFetch(editingId ? `/api/scholarships/${editingId}` : "/api/scholarships", { method: editingId ? "PUT" : "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) });
+      saving = true; dirty = false;
+      if (!editingId) { toast("Program created. Now add applicants.", "success"); setTimeout(() => (window.location.href = `applicants.html?scholarship=${r.scholarship_id}`), 500); return; }
+      let m = "Program saved.";
+      if (r.screening_cleared) m += " The rules changed, so the earlier screening and ranking were cleared. Run screening again.";
+      else if (r.ranking_cleared) m += " The number of slots changed, so the earlier ranking was cleared. Run ranking again.";
+      toast(m, "success", { duration: 7000 });
+      original = await apiFetch(`/api/scholarships/${editingId}`); saving = false;
+      await refreshProgram();
+    } catch (err) { saving = false; toast(friendlyError(err), "error"); }
+  });
 });
 document.addEventListener("DOMContentLoaded", loadProgramIntoForm);
 </script></body></html>
