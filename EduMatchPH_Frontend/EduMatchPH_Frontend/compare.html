@@ -4,104 +4,85 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css"></head>
 <body><div id="shell"></div><main class="wrap">
-<h1>Compare applicants</h1>
+<div id="prog-head"></div>
+<h2 style="margin-bottom:.2rem">Compare applicants</h2>
 <p class="lede">Pick two ranked applicants and see what separates them.</p>
 <div class="card">
   <div class="grid2">
     <div class="field"><label for="compare-a">Applicant A</label><select id="compare-a"></select></div>
     <div class="field"><label for="compare-b">Applicant B</label><select id="compare-b"></select></div>
   </div>
-  <div class="toolbar" style="margin-top:1rem"><button class="btn-primary small" id="compare-btn" type="button">Compare</button></div>
+  <div class="toolbar" style="margin-top:.8rem"><button class="btn-secondary small" id="swap" type="button">⇄ Swap</button><span class="hint">Results update when you change a choice.</span></div>
   <div id="compare-message" class="msg"></div>
-  <div id="compare-box" class="table-scroll"></div>
 </div>
+<div id="compare-box"></div>
 </main>
 <script src="app.js"></script>
 <script>
 const scholarshipId = getScholarshipIdFromUrl();
 if (!scholarshipId) window.location.href = "programs.html";
-renderShell("compare");
-const CRITERION_ROWS = [
-  ["GWA", "GWA"], ["Entrance score", "Entrance Score"], ["Household income (PHP)", "Income"],
-  ["Course", "Field"], ["Year level", "Year Level"], ["Location", "Location"],
-];
+const CRITERION_ROWS = [["GWA", "GWA"], ["Entrance score", "Entrance Score"], ["Household income (PHP)", "Income"], ["Course", "Field"], ["Year level", "Year Level"], ["Location", "Location"]];
+const A = document.getElementById("compare-a"), B = document.getElementById("compare-b"), msg = document.getElementById("compare-message");
+let screeningCache = null, shortlist = [];
+const sign = (n) => (n > 0 ? "+" : "") + n;
+const valueOf = (s, name) => { const r = s.reasons.find((x) => x.criterion_name === name); return r ? r.applicant_value : ""; };
 
-async function loadCompareChoices() {
-  try {
-    const rows = await apiFetch(`/api/scholarships/${scholarshipId}/shortlist`);
-    if (rows.length < 2) {
-      document.getElementById("compare-message").textContent =
-        "Run screening and ranking first. You need at least 2 ranked applicants.";
-      return;
-    }
-    const options = rows.map((r) =>
-      `<option value="${r.applicant_id}">#${r.rank_position} ${escapeHtml(r.full_name)}</option>`).join("");
-    document.getElementById("compare-a").innerHTML = options;
-    document.getElementById("compare-b").innerHTML = options;
-    document.getElementById("compare-b").selectedIndex = 1;   // start with rank 1 vs rank 2
-  } catch (err) {
-    showError("compare-message", err);
-  }
+function card(p, other, lead) {
+  const win = (mine, theirs, lowerWins) => (lowerWins ? mine < theirs : mine > theirs) ? "win" : "";
+  return `<div class="cmp-card ${lead ? "lead" : ""}"><h3>${escapeHtml(p.name)}</h3>` +
+    `<span class="pill ${p.ex.status === "SHORTLIST" ? "ok" : "wait"}">${escapeHtml(STATUS_LABELS[p.ex.status])}</span>` +
+    `<div class="cmp-rows"><div class="cmp-row"><span>Rank</span><b class="${win(p.ex.rank_position, other.ex.rank_position, true)}">#${p.ex.rank_position}</b></div>` +
+    `<div class="cmp-row"><span>Priority score</span><b class="${win(p.ex.priority_score, other.ex.priority_score)}">${p.ex.priority_score}</b></div>` +
+    CRITERION_ROWS.map(([l, k]) => `<div class="cmp-row"><span>${l}</span><b>${escapeHtml(valueOf(p.sc, k))}</b></div>`).join("") + `</div></div>`;
 }
-
-function valueOf(screeningEntry, criterionName) {
-  const reason = screeningEntry.reasons.find((x) => x.criterion_name === criterionName);
-  return reason ? reason.applicant_value : "";
-}
-
 function renderComparison(a, b) {
-  // a, b = { name, explanation, screening }
-  const line = (label, va, vb) =>
-    `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(va)}</td><td>${escapeHtml(vb)}</td></tr>`;
-  const sign = (n) => (n > 0 ? "+" : "") + n;
-  let html = `<table><thead><tr><th></th><th>${escapeHtml(a.name)}</th><th>${escapeHtml(b.name)}</th></tr></thead><tbody>`;
-  html += line("Rank", a.explanation.rank_position, b.explanation.rank_position);
-  html += line("Status", STATUS_LABELS[a.explanation.status], STATUS_LABELS[b.explanation.status]);
-  html += line("Priority score", a.explanation.priority_score, b.explanation.priority_score);
-  CRITERION_ROWS.forEach(([label, key]) =>
-    { html += line(label, valueOf(a.screening, key), valueOf(b.screening, key)); });
-  html += `<tr><th colspan="3">What moved the score (priority points, compared with the average eligible applicant)</th></tr>`;
-  a.explanation.effects.forEach((ea, i) => {
-    const eb = b.explanation.effects[i];
-    html += line(ea.label, sign(ea.effect_points), sign(eb.effect_points));
-  });
-  html += `</tbody></table>`;
-  // The input that separates the two applicants the most:
+  const maxAbs = Math.max(...a.ex.effects.map((x) => Math.abs(x.effect_points)), ...b.ex.effects.map((x) => Math.abs(x.effect_points)), 1);
   let best = 0, gap = -1;
-  a.explanation.effects.forEach((ea, i) => {
-    const d = Math.abs(ea.effect_points - b.explanation.effects[i].effect_points);
-    if (d > gap) { gap = d; best = i; }
-  });
-  html += `<p>The biggest difference between them is <b>${escapeHtml(a.explanation.effects[best].label)}</b> ` +
-          `(${sign(a.explanation.effects[best].effect_points)} against ` +
-          `${sign(b.explanation.effects[best].effect_points)} points).</p>`;
-  html += `<p><i>${escapeHtml(a.explanation.note)}</i></p>`;
-  return html;
+  a.ex.effects.forEach((ea, i) => { const d = Math.abs(ea.effect_points - b.ex.effects[i].effect_points); if (d > gap) { gap = d; best = i; } });
+  const lead = a.ex.priority_score >= b.ex.priority_score ? a : b;
+  return `<div class="insight">The biggest difference is <b>${escapeHtml(a.ex.effects[best].label)}</b> (${sign(a.ex.effects[best].effect_points)} for ${escapeHtml(a.name)} vs ${sign(b.ex.effects[best].effect_points)} for ${escapeHtml(b.name)}). ` +
+    `${escapeHtml(lead.name)} leads by ${Math.abs(a.ex.priority_score - b.ex.priority_score).toFixed(2)} points.</div>` +
+    `<div class="compare-grid">${card(a, b, lead === a)}${card(b, a, lead === b)}</div>` +
+    `<div class="card" style="margin-top:1rem"><h3>What moved the score</h3><p class="hint">Priority points compared with the average eligible applicant. Bars grow outward from the middle.</p><div class="cmp-bars">` +
+    `<b style="text-align:right">${escapeHtml(a.name)}</b><span></span><b>${escapeHtml(b.name)}</b>` +
+    a.ex.effects.map((ea, i) => { const eb = b.ex.effects[i];
+      return `<div class="half left"><i style="width:${Math.abs(ea.effect_points) / maxAbs * 100}%;${ea.effect_points < 0 ? "background:var(--no)" : ""}"></i></div><div class="lab">${escapeHtml(ea.label)}<br><span class="pts">${sign(ea.effect_points)} / ${sign(eb.effect_points)}</span></div>` +
+        `<div class="half right"><i style="width:${Math.abs(eb.effect_points) / maxAbs * 100}%;${eb.effect_points < 0 ? "background:var(--no)" : ""}"></i></div>`; }).join("") +
+    `</div><p class="hint" style="margin-top:1rem"><i>${escapeHtml(a.ex.note)}</i></p></div>`;
 }
-
-document.getElementById("compare-btn").addEventListener("click", async () => {
-  const idA = document.getElementById("compare-a").value;
-  const idB = document.getElementById("compare-b").value;
-  const msg = document.getElementById("compare-message");
+async function compare() {
   msg.textContent = "";
-  if (!idA || !idB) { msg.textContent = "Choose two applicants."; return; }
-  if (idA === idB) { msg.textContent = "Choose two different applicants."; return; }
+  const box = document.getElementById("compare-box");
+  if (!A.value || !B.value) return;
+  if (A.value === B.value) { box.innerHTML = ""; msg.textContent = "Choose two different applicants."; return; }
+  box.innerHTML = '<div class="compare-grid"><div class="cmp-card"><div class="skeleton" style="height:220px"></div></div><div class="cmp-card"><div class="skeleton" style="height:220px"></div></div></div>';
+  history.replaceState(null, "", `?scholarship=${encodeURIComponent(scholarshipId)}&a=${A.value}&b=${B.value}`);
   try {
     const base = `/api/scholarships/${scholarshipId}`;
-    const [screening, expA, expB] = await Promise.all([
-      apiFetch(`${base}/screening`),
-      apiFetch(`${base}/applicants/${idA}/explanation`),
-      apiFetch(`${base}/applicants/${idB}/explanation`),
-    ]);
+    const [screening, ea, eb] = await Promise.all([screeningCache || apiFetch(`${base}/screening`), apiFetch(`${base}/applicants/${A.value}/explanation`), apiFetch(`${base}/applicants/${B.value}/explanation`)]);
+    screeningCache = screening;
     const pick = (id) => screening.find((s) => String(s.applicant_id) === String(id));
-    const sa = pick(idA), sb = pick(idB);
-    document.getElementById("compare-box").innerHTML = renderComparison(
-      { name: sa.full_name, explanation: expA, screening: sa },
-      { name: sb.full_name, explanation: expB, screening: sb });
-  } catch (err) {
-    showError("compare-message", err);        // e.g. "Run ranking first"
-  }
-});
+    const sa = pick(A.value), sb = pick(B.value);
+    box.innerHTML = renderComparison({ name: sa.full_name, ex: ea, sc: sa }, { name: sb.full_name, ex: eb, sc: sb });
+  } catch (err) { box.innerHTML = ""; showError("compare-message", err); }
+}
+[A, B].forEach((s) => s.addEventListener("change", compare));
+document.getElementById("swap").addEventListener("click", () => { const t = A.value; A.value = B.value; B.value = t; compare(); });
 
-document.addEventListener("DOMContentLoaded", loadCompareChoices);
+(async () => {
+  await renderShell("compare");
+  try {
+    shortlist = await apiFetch(`/api/scholarships/${scholarshipId}/shortlist`);
+    if (shortlist.length < 2) {
+      document.getElementById("compare-box").innerHTML = `<div class="card empty"><div class="ico">${ICON.inbox}</div><h3>Not enough ranked applicants</h3><p>You need at least 2 ranked applicants to compare. Run screening and ranking first.</p><a class="btn-primary" href="ranking.html?scholarship=${encodeURIComponent(scholarshipId)}">Go to ranking</a></div>`;
+      A.disabled = B.disabled = true; document.getElementById("swap").disabled = true; return;
+    }
+    const options = shortlist.map((r) => `<option value="${r.applicant_id}">#${r.rank_position} ${escapeHtml(r.full_name)}</option>`).join("");
+    A.innerHTML = B.innerHTML = options;
+    const qs = new URLSearchParams(location.search), has = (v) => shortlist.some((r) => String(r.applicant_id) === v);
+    A.value = has(qs.get("a")) ? qs.get("a") : String(shortlist[0].applicant_id);
+    B.value = has(qs.get("b")) ? qs.get("b") : String(shortlist[1].applicant_id);
+    compare();
+  } catch (err) { showError("compare-message", err); }
+})();
 </script></body></html>

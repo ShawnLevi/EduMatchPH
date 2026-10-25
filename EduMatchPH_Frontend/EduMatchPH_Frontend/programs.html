@@ -1,30 +1,57 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Programs — EduMatch PH</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"></head>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head>
 <body><div id="shell"></div><main class="wrap">
 <h1>Scholarship programs</h1>
 <p class="lede">Open a program to add applicants, run screening, rank and review the shortlist.</p>
-<div class="toolbar"><a class="btn-primary small" href="program-form.html">+ New program</a></div>
-<div class="card table-scroll"><table>
-<thead><tr><th>Program</th><th>Provider</th><th>Grade scale</th><th>Limit</th><th>Slots</th><th>Status</th><th></th></tr></thead>
-<tbody id="programs-body"><tr><td colspan="7">Loading...</td></tr></tbody></table>
-<div id="programs-message" class="msg"></div></div>
+<div class="toolbar">
+  <div class="input-icon grow" style="max-width:340px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="prog-search" data-search placeholder="Search programs  ( press / )" aria-label="Search programs"></div>
+  <div class="chips" id="status-chips"></div>
+  <span class="grow"></span>
+  <a class="btn-primary small" href="program-form.html">+ New program</a>
+</div>
+<div id="programs-message" class="msg"></div>
+<div class="cards" id="programs-grid"></div>
 </main>
 <script src="app.js"></script>
 <script>
 renderShell("programs");
+let ROWS = [], statusFilter = "all";
+const grid = document.getElementById("programs-grid");
+grid.innerHTML = Array.from({length: 3}, () => '<div class="pcard"><span class="skeleton" style="height:20px;width:70%"></span><span class="skeleton" style="height:14px;width:40%"></span><span class="skeleton" style="height:40px"></span></div>').join("");
+const PIPE = { Open: 0, Screening: 1, Ranking: 2, Closed: 3 };
+
+function render() {
+  const q = document.getElementById("prog-search").value.trim().toLowerCase();
+  const list = ROWS.filter((p) => (statusFilter === "all" || p.status === statusFilter) &&
+    (!q || (p.scholarship_name + " " + (p.provider || "")).toLowerCase().includes(q)));
+  if (!ROWS.length) {
+    grid.innerHTML = '<div class="card empty" style="grid-column:1/-1"><div class="ico">' + ICON.inbox + '</div><h3>No programs yet</h3>' +
+      '<p>A program holds the scholarship rules. Create one, then add applicants and run screening.</p><a class="btn-primary" href="program-form.html">Create your first program</a></div>';
+    return;
+  }
+  if (!list.length) { grid.innerHTML = '<div class="card empty" style="grid-column:1/-1"><h3>No matching programs</h3><p>Try a different search or status filter.</p></div>'; return; }
+  grid.innerHTML = list.map((p) => {
+    const lvl = PIPE[p.status] ?? 0;
+    return '<article class="pcard"><div class="top"><div><h3>' + escapeHtml(p.scholarship_name) + '</h3><div class="provider">' + escapeHtml(p.provider || "") + '</div></div>' + statusPill(p.status) + '</div>' +
+      '<div class="chips">' + ruleSummaryChips(p) + '</div>' +
+      '<div class="pipeline" title="Progress: add applicants, screening, ranking, closed">' + [0,1,2,3].map((i) => '<i class="' + (i <= lvl ? "on" : "") + '"></i>').join("") + '</div>' +
+      '<div class="foot"><span class="counts">' + p.available_slots + ' slots</span><a class="btn-secondary small" href="program-form.html?scholarship=' + p.scholarship_id + '">Edit</a>' +
+      '<a class="btn-primary small" href="applicants.html?scholarship=' + p.scholarship_id + '">Open</a></div></article>';
+  }).join("");
+}
+function renderChips() {
+  const counts = {}; ROWS.forEach((p) => { counts[p.status] = (counts[p.status] || 0) + 1; });
+  document.getElementById("status-chips").innerHTML = ["all", "Open", "Screening", "Ranking", "Closed"].filter((s) => s === "all" || counts[s])
+    .map((s) => '<button type="button" class="chip' + (statusFilter === s ? " active" : "") + '" data-s="' + s + '">' + (s === "all" ? "All" : s) + '<span class="count">' + (s === "all" ? ROWS.length : counts[s]) + '</span></button>').join("");
+}
+document.getElementById("status-chips").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-s]"); if (!b) return; statusFilter = b.dataset.s; renderChips(); render();
+});
+document.getElementById("prog-search").addEventListener("input", debounce(render, 120));
 (async () => {
-  try {
-    const rows = await apiFetch("/api/scholarships");
-    document.getElementById("programs-body").innerHTML = rows.length ? rows.map((p) =>
-      `<tr><td><b>${escapeHtml(p.scholarship_name)}</b></td><td>${escapeHtml(p.provider)}</td>` +
-      `<td>${escapeHtml(p.grade_scale_label || p.grade_scale)}</td><td>${p.gwa_limit}</td>` +
-      `<td>${p.available_slots}</td><td>${statusPill(p.status)}</td>` +
-      `<td><a class="btn-primary small" href="applicants.html?scholarship=${p.scholarship_id}">Open</a> ` +
-      `<a class="btn-secondary small" href="program-form.html?scholarship=${p.scholarship_id}">Edit</a></td></tr>`).join("")
-      : '<tr><td colspan="7">No programs yet. Create the first one.</td></tr>';
-  } catch (err) { showError("programs-message", err); }
+  try { ROWS = await apiFetch("/api/scholarships"); renderChips(); render(); }
+  catch (err) { grid.innerHTML = ""; showError("programs-message", err); }
 })();
 </script></body></html>
