@@ -2,197 +2,268 @@
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Applicants — EduMatch PH</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<style>
-  .stat { cursor: pointer; transition: background .15s, box-shadow .15s; }
-  .stat.stat-eligible { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.45); }
-  .stat.stat-eligible:hover, .stat.stat-eligible.active { background: rgba(34,197,94,.25); }
-  .stat.stat-eligible.active { box-shadow: 0 0 0 2px rgba(34,197,94,.6); }
-  .stat.stat-not-eligible { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.45); }
-  .stat.stat-not-eligible:hover, .stat.stat-not-eligible.active { background: rgba(239,68,68,.25); }
-  .stat.stat-not-eligible.active { box-shadow: 0 0 0 2px rgba(239,68,68,.6); }
-</style></head>
+<link rel="stylesheet" href="style.css"></head>
 <body><div id="shell"></div><main class="wrap">
-<h1 id="prog-title">Applicants &amp; Screening</h1>
-<p class="lede" id="prog-sub"></p>
+<div id="prog-head"></div>
 
-<div class="card">
-  <h2>1. Add applicants</h2>
-  <form id="add-applicant-form" novalidate>
-    <div class="grid3">
-      <div class="field"><label for="full_name">Full name</label><input type="text" id="full_name"></div>
-      <div class="field"><label for="gwa">GWA</label><input type="number" id="gwa" step="any"><span class="hint" id="gwa-hint"></span></div>
-      <div class="field"><label for="entrance_score">Entrance score (0-100)</label><input type="number" id="entrance_score" min="0" max="100"></div>
-      <div class="field"><label for="household_income">Household income (PHP/year)</label><input type="number" id="household_income" min="0"></div>
-      <div class="field"><label for="course">Course</label><select id="course"></select></div>
-      <div class="field"><label for="year_level">Year level</label>
-        <select id="year_level"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
-      <div class="field"><label for="location">Location</label><select id="location"></select></div>
-    </div>
-    <div class="toolbar" style="margin-top:1rem"><button class="btn-primary small" type="submit">Add applicant</button></div>
-    <div id="add-applicant-message" class="msg"></div>
-  </form>
-  <hr style="border:0;border-top:1px solid var(--line);margin:1rem 0">
-  <h2>Or import from a file</h2>
-  <p class="hint">A .csv or .xlsx with columns: full_name, gwa, entrance_score, household_income, course, year_level, location. Preview first, then import.</p>
-  <div class="toolbar">
-    <input type="file" id="import-file" accept=".csv,.xlsx" style="max-width:320px">
-    <button class="btn-secondary small" id="import-preview-btn" type="button">Preview</button>
-    <button class="btn-primary small" id="import-confirm-btn" type="button" hidden>Import</button>
-  </div>
-  <div id="import-summary" class="msg"></div>
-  <div class="table-scroll"><table><thead><tr><th>Row</th><th>Problem</th></tr></thead><tbody id="import-errors-body"></tbody></table></div>
-  <div class="table-scroll"><table><thead><tr><th>Name</th><th>GWA</th><th>Course</th><th>Location</th></tr></thead><tbody id="import-sample-body"></tbody></table></div>
+<div class="toolbar" style="margin-bottom:1rem">
+  <button class="btn-primary small" id="add-btn" type="button">+ Add applicant</button>
+  <button class="btn-secondary small" id="import-btn" type="button">Import CSV / Excel</button>
+  <span class="grow"></span>
+  <span class="hint" id="run-hint"></span>
+  <button class="btn-primary" id="run-screening-btn" type="button">Run screening</button>
 </div>
+<div id="screening-summary" class="msg"></div>
+<div id="stale"></div>
+<div class="stats" id="stats"></div>
 
 <div class="card">
-  <h2>2. Screening</h2>
-  <div class="toolbar">
-    <button class="btn-primary" id="run-screening-btn" type="button">Run Screening</button>
-    <span class="hint">Checks every applicant against the six rules.</span>
+  <div class="card-head">
+    <div class="input-icon grow" style="max-width:360px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" id="search" data-search placeholder="Search applicants  ( / )" aria-label="Search applicants"></div>
+    <span class="hint" id="count-hint"></span>
   </div>
-  <div id="screening-summary" class="msg"></div>
-  <div id="screening-details"></div>
+  <div class="table-scroll"><table>
+    <thead><tr id="thead"></tr></thead>
+    <tbody id="tbody"></tbody></table></div>
+  <div class="pager" id="pager"></div>
 </div>
 </main>
 <script src="app.js"></script>
 <script>
 const scholarshipId = getScholarshipIdFromUrl();
 if (!scholarshipId) window.location.href = "programs.html";
-renderShell("applicants");
-let program = null;
+const CRITERIA = [["GWA", "G"], ["Entrance Score", "E"], ["Income", "I"], ["Field", "C"], ["Year Level", "Y"], ["Location", "L"]];
+let program = null, apps = [], screening = [], screened = false;
+let filter = "all", sortKey = "name", sortDir = 1, page = 1, pageSize = +(store("edumatch_pagesize") || 10), expanded = new Set();
 
-async function loadProgram() {
-  program = await apiFetch(`/api/scholarships/${scholarshipId}`);
-  document.getElementById("prog-title").textContent = program.scholarship_name;
-  document.getElementById("prog-sub").innerHTML =
-    `${escapeHtml(program.provider)} · ${statusPill(program.status)} · ${program.available_slots} slots`;
-  const closed = program.status === "Closed";
-  const btn = document.getElementById("run-screening-btn");
-  btn.disabled = closed;
-  btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
+const COLS = [["name", "Applicant"], ["gwa", "GWA", "num"], ["entrance", "Entrance", "num"], ["income", "Income", "num"], ["course", "Course"], ["year", "Yr", "num"], ["status", "Status"], ["checks", "Checks"]];
+function buildHead() {
+  document.getElementById("thead").innerHTML = '<th style="width:28px"></th>' + COLS.map(([k, l, c]) =>
+    `<th class="sortable ${c || ""} ${sortKey === k ? "sorted" : ""}" data-k="${k}">${l}<span class="arrow">${sortKey === k && sortDir < 0 ? "▼" : "▲"}</span></th>`).join("") + "<th></th>";
 }
-async function setGwaScaleHint() {
-  const meta = await loadMeta();
-  const scale = GRADE_SCALES[program.grade_scale];
-  const gwa = document.getElementById("gwa");
-  gwa.min = scale.min_value; gwa.max = scale.max_value; gwa.step = "any";
-  document.getElementById("gwa-hint").textContent = scaleHintText(scale);
-  fillSelect("course", meta.courses);
-  fillSelect("location", meta.localities);
-}
-
-document.getElementById("add-applicant-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const payload = {
-    full_name: document.getElementById("full_name").value.trim(),
-    gwa: parseFloat(document.getElementById("gwa").value),
-    entrance_score: parseInt(document.getElementById("entrance_score").value, 10),
-    household_income: parseFloat(document.getElementById("household_income").value),
-    course: document.getElementById("course").value,
-    year_level: parseInt(document.getElementById("year_level").value, 10),
-    location: document.getElementById("location").value,
-  };
-  try {
-    const data = await apiFetch(`/api/scholarships/${scholarshipId}/applicants`,
-      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) });
-    showMessage("add-applicant-message", `Added applicant #${data.applicant_id}. Run Screening again to include them.`);
-    e.target.reset();
-  } catch (err) { showError("add-applicant-message", err); }
+document.getElementById("thead").addEventListener("click", (e) => {
+  const th = e.target.closest("th[data-k]"); if (!th) return;
+  sortDir = sortKey === th.dataset.k ? -sortDir : 1; sortKey = th.dataset.k; page = 1; buildHead(); render();
 });
 
-function uploadApplicants(file, save) {
-  const form = new FormData();
-  form.append("file", file);
-  form.append("preview", save ? "false" : "true");
-  return apiFetch(`/api/scholarships/${scholarshipId}/applicants/import`, { method: "POST", body: form });
-}
-document.getElementById("import-preview-btn").addEventListener("click", async () => {
-  const summary = document.getElementById("import-summary");
-  const confirmBtn = document.getElementById("import-confirm-btn");
-  confirmBtn.hidden = true;
-  const file = document.getElementById("import-file").files[0];
-  if (!file) { summary.textContent = "Choose a .csv or .xlsx file first."; return; }
-  try {
-    const r = await uploadApplicants(file, false);
-    summary.textContent = `${r.valid_rows} of ${r.total_rows} rows are valid. ` +
-      (r.errors.length ? `${r.errors.length} rows have problems and will be skipped.` : "");
-    document.getElementById("import-errors-body").innerHTML = r.errors
-      .map((x) => `<tr><td>${x.row}</td><td>${escapeHtml(x.error)}</td></tr>`).join("");
-    document.getElementById("import-sample-body").innerHTML = r.sample
-      .map((a) => `<tr><td>${escapeHtml(a.full_name)}</td><td>${a.gwa}</td><td>${escapeHtml(a.course)}</td><td>${escapeHtml(a.location)}</td></tr>`).join("");
-    if (r.valid_rows > 0) { confirmBtn.textContent = `Import ${r.valid_rows} valid rows`; confirmBtn.hidden = false; }
-  } catch (err) { showError("import-summary", err); }
-});
-document.getElementById("import-confirm-btn").addEventListener("click", async () => {
-  const file = document.getElementById("import-file").files[0];
-  try {
-    const r = await uploadApplicants(file, true);
-    showMessage("import-summary", `Imported ${r.imported} applicants. Run Screening again to include them.`);
-    document.getElementById("import-confirm-btn").hidden = true;
-  } catch (err) { showError("import-summary", err); }
-});
-
-let screeningFilter = "all";
-function applyScreeningFilter() {
-  document.querySelectorAll("#screening-details .stat[data-filter]").forEach((box) => {
-    box.classList.toggle("active", screeningFilter !== "all" && box.dataset.filter === screeningFilter);
+function buildRows() {
+  const byId = new Map(screening.map((s) => [s.applicant_id, s]));
+  const rows = apps.map((a) => {
+    const s = byId.get(a.applicant_id);
+    return { id: a.applicant_id, name: a.full_name, gwa: a.gwa, entrance: a.entrance_score, income: a.household_income,
+             course: a.course, year: a.year_level, location: a.location, s };
   });
-  document.querySelectorAll("#screening-details .applicant-card").forEach((card) => {
-    card.style.display = (screeningFilter === "all" || card.classList.contains(screeningFilter)) ? "" : "none";
+  if (!apps.length) screening.forEach((s) => { // backend without the list endpoint: use screening data only
+    const val = (n) => { const r = s.reasons.find((x) => x.criterion_name === n); return r ? r.applicant_value : ""; };
+    rows.push({ id: s.applicant_id, name: s.full_name, gwa: val("GWA"), entrance: val("Entrance Score"), income: val("Income"),
+                course: val("Field"), year: val("Year Level"), location: val("Location"), s });
   });
+  rows.forEach((r) => { r.status = !r.s ? "unscreened" : r.s.eligible ? "eligible" : "ineligible"; });
+  return rows;
 }
-document.getElementById("screening-details").addEventListener("click", (e) => {
-  const box = e.target.closest(".stat[data-filter]");
-  if (!box) return;
-  screeningFilter = (screeningFilter === box.dataset.filter) ? "all" : box.dataset.filter;
-  applyScreeningFilter();
+function statusCell(r) {
+  return r.status === "eligible" ? '<span class="pill ok">Eligible</span>' : r.status === "ineligible" ? '<span class="pill no">Not eligible</span>' : '<span class="pill">Not screened</span>';
+}
+function checksCell(r) {
+  return '<span class="mini-chips">' + CRITERIA.map(([n, ch]) => {
+    const x = r.s && r.s.reasons.find((q) => q.criterion_name === n);
+    return `<span class="mini ${x ? (x.met ? "met" : "notmet") : "na"}" title="${escapeHtml(n)}${x ? ": " + (x.met ? "met" : "not met") : ""}">${ch}</span>`;
+  }).join("") + "</span>";
+}
+function detailHtml(r) {
+  if (!r.s) return '<span class="hint">Not screened yet. Run screening to see the six checks.</span>';
+  return '<table><thead><tr><th>Criterion</th><th>Applicant</th><th>Required</th><th>Result</th></tr></thead><tbody>' +
+    r.s.reasons.map((x) => `<tr><td>${escapeHtml(x.criterion_name)}</td><td>${escapeHtml(x.applicant_value)}</td><td>${escapeHtml(x.threshold_value)}</td><td class="${x.met ? "met" : "notmet"}">${x.met ? "✓ Met" : "✗ Not met"}</td></tr>`).join("") + "</tbody></table>";
+}
+function render() {
+  const all = buildRows();
+  const counts = { all: all.length, eligible: 0, ineligible: 0, unscreened: 0 };
+  all.forEach((r) => counts[r.status]++);
+  // stats (also act as filters)
+  const stat = (k, label, cls) => `<button type="button" class="stat ${cls} ${filter === k ? "active" : ""}" data-f="${k}"><b data-n="${counts[k]}">${counts[k]}</b><span>${label}</span></button>`;
+  document.getElementById("stats").innerHTML = stat("all", "applicants", "") + stat("eligible", "eligible", "ok") + stat("ineligible", "not eligible", "no") + (counts.unscreened ? stat("unscreened", "not screened", "wait") : "");
+  // stale banner
+  const stale = document.getElementById("stale");
+  if (!all.length) stale.innerHTML = "";
+  else if (counts.unscreened && screened) stale.innerHTML = `<div class="insight">${counts.unscreened} applicant${counts.unscreened > 1 ? "s were" : " was"} added after the last screening. Run screening again to include them.</div>`;
+  else if (counts.unscreened) stale.innerHTML = `<div class="insight">${counts.unscreened} applicants are waiting. Press <b>Run screening</b> to check them against the six rules.</div>`;
+  else stale.innerHTML = "";
+  // filter + search
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  let rows = all.filter((r) => (filter === "all" || r.status === filter) && (!q || [r.name, r.course, r.location].join(" ").toLowerCase().includes(q)));
+  rows.sort((a, b) => {
+    const k = sortKey === "checks" ? null : sortKey;
+    let x = k ? a[k] : (a.s ? a.s.reasons.filter((z) => z.met).length : -1), y = k ? b[k] : (b.s ? b.s.reasons.filter((z) => z.met).length : -1);
+    const nx = parseFloat(String(x).replace(/[^\d.-]/g, "")), ny = parseFloat(String(y).replace(/[^\d.-]/g, ""));
+    if (["gwa", "entrance", "income", "year", "checks"].includes(sortKey) && !isNaN(nx) && !isNaN(ny)) return (nx - ny) * sortDir;
+    return String(x).localeCompare(String(y)) * sortDir;
+  });
+  const pages = Math.max(1, Math.ceil(rows.length / pageSize)); page = Math.min(page, pages);
+  const slice = rows.slice((page - 1) * pageSize, page * pageSize);
+  const tb = document.getElementById("tbody");
+  if (!all.length) {
+    tb.innerHTML = `<tr><td colspan="10"><div class="empty"><div class="ico">${ICON.upload}</div><h3>No applicants yet</h3><p>Add one by hand, or import a CSV or Excel file. Then run screening.</p>` +
+      '<button class="btn-primary" id="empty-import" type="button">Import applicants</button> <button class="btn-secondary" id="empty-add" type="button">Add one</button></div></td></tr>';
+  } else if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="10"><div class="empty"><h3>No matches</h3><p>No applicants match this search or filter.</p><button class="btn-secondary small" id="clear-f" type="button">Clear filters</button></div></td></tr>';
+  } else {
+    tb.innerHTML = slice.map((r) => `<tr class="clickable ${expanded.has(r.id) ? "open" : ""}" data-id="${r.id}"><td><span class="caret">▸</span></td>` +
+      `<td><b>${escapeHtml(r.name)}</b><div class="hint">${escapeHtml(r.location)}</div></td><td class="num">${escapeHtml(r.gwa)}</td><td class="num">${escapeHtml(r.entrance)}</td>` +
+      `<td class="num">${isNaN(+r.income) ? escapeHtml(r.income) : peso(r.income)}</td><td>${escapeHtml(r.course)}</td><td class="num">${escapeHtml(r.year)}</td><td>${statusCell(r)}</td><td>${checksCell(r)}</td>` +
+      `<td><button class="icon-btn" data-del="${r.id}" data-name="${escapeHtml(r.name)}" title="Delete applicant" aria-label="Delete ${escapeHtml(r.name)}">${ICON.trash}</button></td></tr>` +
+      (expanded.has(r.id) ? `<tr class="detail-row"><td colspan="10">${detailHtml(r)}</td></tr>` : "")).join("");
+  }
+  document.getElementById("count-hint").textContent = rows.length ? `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + slice.length} of ${rows.length}` : "";
+  document.getElementById("pager").innerHTML = rows.length > 10 || pages > 1 ?
+    `<span>Rows per page <select id="psize">${[10, 25, 50].map((n) => `<option ${n === pageSize ? "selected" : ""}>${n}</option>`).join("")}</select></span>` +
+    `<span class="btns"><button class="btn-secondary small" id="prev" ${page <= 1 ? "disabled" : ""}>Previous</button><span>Page ${page} of ${pages}</span><button class="btn-secondary small" id="next" ${page >= pages ? "disabled" : ""}>Next</button></span>` : "";
+}
+document.getElementById("stats").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (!b) return; filter = filter === b.dataset.f ? "all" : b.dataset.f; page = 1; render(); });
+document.getElementById("search").addEventListener("input", debounce(() => { page = 1; render(); }, 150));
+document.getElementById("pager").addEventListener("click", (e) => { if (e.target.id === "prev") { page--; render(); } if (e.target.id === "next") { page++; render(); } });
+document.getElementById("pager").addEventListener("change", (e) => { if (e.target.id === "psize") { pageSize = +e.target.value; store("edumatch_pagesize", pageSize); page = 1; render(); } });
+document.getElementById("tbody").addEventListener("click", async (e) => {
+  if (e.target.id === "empty-import") return openImport();
+  if (e.target.id === "empty-add") return openAdd();
+  if (e.target.id === "clear-f") { filter = "all"; document.getElementById("search").value = ""; return render(); }
+  const del = e.target.closest("[data-del]");
+  if (del) {
+    const ok = await confirmDialog({ title: "Delete " + del.dataset.name + "?", danger: true, confirmText: "Delete applicant",
+      message: "This removes everything stored about this applicant. It cannot be undone, and any ranking will be cleared." });
+    if (!ok) return;
+    try {
+      const r = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${del.dataset.del}`, { method: "DELETE" });
+      toast("Applicant deleted." + (r.ranking_cleared ? " Run ranking again." : ""), "success");
+      await reload();
+    } catch (err) { toast(friendlyError(err), "error"); }
+    return;
+  }
+  const tr = e.target.closest("tr.clickable"); if (!tr) return;
+  const id = +tr.dataset.id; expanded.has(id) ? expanded.delete(id) : expanded.add(id); render();
 });
 
-async function loadScreeningDetails() {
-  try {
-    const rows = await apiFetch(`/api/scholarships/${scholarshipId}/screening`);
-    const eligible = rows.filter((r) => r.eligible).length;
-    document.getElementById("screening-details").innerHTML = rows.length
-      ? `<div class="stats"><div class="stat" data-filter="all"><b>${rows.length}</b><span>screened</span></div>` +
-        `<div class="stat stat-eligible" data-filter="eligible"><b>${eligible}</b><span>eligible</span></div>` +
-        `<div class="stat stat-not-eligible" data-filter="ineligible"><b>${rows.length - eligible}</b><span>not eligible</span></div></div>` +
-        rows.map((r) => `<div class="applicant-card ${r.eligible ? "eligible" : "ineligible"}">` +
-          `<h4><span>${escapeHtml(r.full_name)} ` +
-          `<span class="pill ${r.eligible ? "ok" : "no"}">${r.eligible ? "Eligible" : "Not eligible"}</span></span>` +
-          `<button class="delete-btn" data-applicant="${r.applicant_id}" data-name="${escapeHtml(r.full_name)}">Delete</button></h4>` +
-          `<div class="table-scroll"><table><thead><tr><th>Criterion</th><th>Applicant</th><th>Required</th><th>Result</th></tr></thead><tbody>` +
-          r.reasons.map((x) => `<tr><td>${escapeHtml(x.criterion_name)}</td><td>${escapeHtml(x.applicant_value)}</td>` +
-            `<td>${escapeHtml(x.threshold_value)}</td><td class="${x.met ? "met" : "notmet"}">${x.met ? "Met" : "Not met"}</td></tr>`).join("") +
-          `</tbody></table></div></div>`).join("")
-      : '<p class="hint">No screening results yet. Add applicants, then press Run Screening.</p>';
-    applyScreeningFilter();
-  } catch (err) { showError("screening-summary", err); }
+// ---------- data ----------
+async function reload() {
+  const [scr, list] = await Promise.all([
+    apiFetch(`/api/scholarships/${scholarshipId}/screening`).catch(() => []),
+    apiFetch(`/api/scholarships/${scholarshipId}/applicants`).catch(() => null),
+  ]);
+  screening = scr; apps = list || []; screened = scr.length > 0;
+  await refreshProgram(); applyStatus(); render();
+  const total = buildRows().length, elig = screening.filter((s) => s.eligible).length;
+  setStepSub(0, total + " applicants"); if (screened) setStepSub(1, elig + " eligible");
 }
-document.getElementById("run-screening-btn").addEventListener("click", async () => {
-  if (program.status === "Ranking" &&
-      !confirm("Running screening again clears the existing ranking. Continue?")) return;
-  try {
-    const r = await apiFetch(`/api/scholarships/${scholarshipId}/screen`, { method: "POST" });
-    const n = r.filter((x) => x.eligible).length;
-    showMessage("screening-summary", `Screening done: ${n} of ${r.length} applicants are eligible. Next: Ranking & Shortlist.`);
-    await loadProgram();
-    loadScreeningDetails();
-  } catch (err) { showError("screening-summary", err); }
+function applyStatus() {
+  const closed = program.status === "Closed", btn = document.getElementById("run-screening-btn");
+  btn.disabled = closed; btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
+  document.getElementById("run-hint").textContent = closed ? "Program is closed" : "Checks every applicant against the six rules";
+}
+
+// ---------- run screening ----------
+document.getElementById("run-screening-btn").addEventListener("click", async (e) => {
+  if (program.status === "Ranking" && !(await confirmDialog({ title: "Run screening again?", confirmText: "Run screening",
+    message: "Running screening again clears the existing ranking. You will need to run ranking again." }))) return;
+  await withLoading(e.currentTarget, async () => {
+    try {
+      const r = await apiFetch(`/api/scholarships/${scholarshipId}/screen`, { method: "POST" });
+      const n = r.filter((x) => x.eligible).length;
+      filter = "all"; await reload();
+      toast(`Screening done: ${n} of ${r.length} applicants are eligible.`, "success",
+        { action: { label: "Go to ranking →", onClick: () => (window.location.href = "ranking.html?scholarship=" + scholarshipId) }, duration: 8000 });
+    } catch (err) { toast(friendlyError(err), "error"); }
+  });
 });
-document.getElementById("screening-details").addEventListener("click", async (e) => {
-  const btn = e.target.closest(".delete-btn");
-  if (!btn) return;
-  if (!confirm(`Delete ${btn.dataset.name}? This removes everything stored about this applicant. It cannot be undone, and any ranking will be cleared.`)) return;
-  try {
-    const r = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${btn.dataset.applicant}`, { method: "DELETE" });
-    showMessage("screening-summary", "Applicant deleted." + (r.ranking_cleared ? " Run Ranking again." : ""));
-    await loadProgram();
-    loadScreeningDetails();
-  } catch (err) { showError("screening-summary", err); }
-});
-document.addEventListener("DOMContentLoaded", async () => {
-  try { await loadProgram(); await setGwaScaleHint(); await loadScreeningDetails(); }
-  catch (err) { showError("screening-summary", err); }
-});
+
+// ---------- add applicant (modal) ----------
+async function openAdd() {
+  const meta = await loadMeta(), scale = GRADE_SCALES[program.grade_scale];
+  const opts = (arr) => '<option value="">Choose...</option>' + arr.map((v) => `<option>${escapeHtml(v)}</option>`).join("");
+  const layer = openModal(`<div class="modal-head"><h2>Add applicant</h2></div><form id="af" novalidate>
+    <div class="grid2">
+      <div class="field" style="grid-column:1/-1"><label for="f_name">Full name</label><input id="f_name" autocomplete="off"><span class="field-error" data-e="name"></span></div>
+      <div class="field"><label for="f_gwa">GWA</label><input type="number" id="f_gwa" step="any" min="${scale.min_value}" max="${scale.max_value}"><span class="hint">${escapeHtml(scaleHintText(scale))}</span><span class="field-error" data-e="gwa"></span></div>
+      <div class="field"><label for="f_ent">Entrance score (0-100)</label><input type="number" id="f_ent" min="0" max="100"><span class="field-error" data-e="ent"></span></div>
+      <div class="field"><label for="f_inc">Household income (PHP/year)</label><input type="number" id="f_inc" min="0"><span class="field-error" data-e="inc"></span></div>
+      <div class="field"><label for="f_yr">Year level</label><select id="f_yr"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+      <div class="field"><label for="f_course">Course</label><select id="f_course">${opts(meta.courses)}</select><span class="field-error" data-e="course"></span></div>
+      <div class="field"><label for="f_loc">Location</label><select id="f_loc">${opts(meta.localities)}</select><span class="field-error" data-e="loc"></span></div>
+    </div>
+    <div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button>
+      <button type="submit" class="btn-secondary" data-more>Save &amp; add another</button><button type="submit" class="btn-primary" data-one>Save applicant</button></div></form>`, { wide: true });
+  const f = $("#af", layer.el); let another = false;
+  $("[data-cancel]", layer.el).addEventListener("click", () => layer.close());
+  $("[data-more]", layer.el).addEventListener("click", () => { another = true; });
+  $("[data-one]", layer.el).addEventListener("click", () => { another = false; });
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $$("[data-e]", f).forEach((x) => (x.textContent = ""));
+    const err = (k, t) => { $(`[data-e=${k}]`, f).textContent = t; return 1; };
+    const v = (id) => $("#" + id, f).value.trim();
+    const gwa = parseFloat(v("f_gwa")), ent = parseInt(v("f_ent"), 10), inc = parseFloat(v("f_inc"));
+    let bad = 0;
+    if (!v("f_name")) bad += err("name", "Enter the applicant's name.");
+    if (isNaN(gwa) || gwa < scale.min_value || gwa > scale.max_value) bad += err("gwa", `GWA must be between ${scale.min_value} and ${scale.max_value}.`);
+    if (isNaN(ent) || ent < 0 || ent > 100) bad += err("ent", "Enter a score from 0 to 100.");
+    if (isNaN(inc) || inc < 0) bad += err("inc", "Enter the yearly household income.");
+    if (!v("f_course")) bad += err("course", "Choose a course.");
+    if (!v("f_loc")) bad += err("loc", "Choose a location.");
+    if (bad) { const first = $(".field-error:not(:empty)", f); if (first) first.closest(".field").querySelector("input,select").focus(); return; }
+    const payload = { full_name: v("f_name"), gwa, entrance_score: ent, household_income: inc, course: v("f_course"), year_level: +v("f_yr"), location: v("f_loc") };
+    try {
+      await apiFetch(`/api/scholarships/${scholarshipId}/applicants`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) });
+      toast(`Added ${payload.full_name}.`, "success"); await reload();
+      if (another) { f.reset(); $("#f_name", f).focus(); } else layer.close();
+    } catch (er) { err("name", friendlyError(er)); }
+  });
+}
+document.getElementById("add-btn").addEventListener("click", openAdd);
+
+// ---------- import (modal with drag and drop) ----------
+const TEMPLATE = "full_name,gwa,entrance_score,household_income,course,year_level,location\nJuan Dela Cruz,1.75,88,180000,BS Computer Science,2,Lapu-Lapu City\n";
+function openImport() {
+  const layer = openModal(`<div class="modal-head"><h2>Import applicants</h2></div>
+    <div class="dropzone" id="dz" tabindex="0"><div class="ico">${ICON.upload}</div><b>Drop a .csv or .xlsx file here</b><div class="hint">or click to choose a file (max 2 MB, 1000 rows)</div></div>
+    <input type="file" id="imp-file" accept=".csv,.xlsx" hidden>
+    <p class="hint" style="margin:.7rem 0 0">Columns: full_name, gwa, entrance_score, household_income, course, year_level, location. <a href="#" id="tpl">Download a template</a></p>
+    <div id="imp-out" style="margin-top:1rem"></div>
+    <div class="modal-actions"><button class="btn-secondary" data-cancel type="button">Close</button><button class="btn-primary" id="imp-go" type="button" hidden>Import</button></div>`, { wide: true });
+  const dz = $("#dz", layer.el), inp = $("#imp-file", layer.el), out = $("#imp-out", layer.el), go = $("#imp-go", layer.el);
+  let file = null;
+  $("[data-cancel]", layer.el).addEventListener("click", () => layer.close());
+  $("#tpl", layer.el).addEventListener("click", (e) => { e.preventDefault(); downloadBlob(new Blob([TEMPLATE], { type: "text/csv" }), "edumatch_applicants_template.csv"); });
+  dz.addEventListener("click", () => inp.click());
+  dz.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inp.click(); } });
+  ["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("drag"); }));
+  dz.addEventListener("drop", (e) => pick(e.dataTransfer.files[0]));
+  inp.addEventListener("change", () => pick(inp.files[0]));
+  const up = (save) => { const fd = new FormData(); fd.append("file", file); fd.append("preview", save ? "false" : "true");
+    return apiFetch(`/api/scholarships/${scholarshipId}/applicants/import`, { method: "POST", body: fd }); };
+  async function pick(fl) {
+    if (!fl) return;
+    if (!/\.(csv|xlsx)$/i.test(fl.name)) { out.innerHTML = '<div class="alert error">Please choose a .csv or .xlsx file.</div>'; return; }
+    file = fl; go.hidden = true;
+    out.innerHTML = '<div class="skeleton" style="height:60px"></div>';
+    try {
+      const r = await up(false);
+      out.innerHTML = `<p><b>${escapeHtml(fl.name)}</b>: ${r.valid_rows} of ${r.total_rows} rows are valid.` + (r.errors.length ? ` <span style="color:var(--no)">${r.errors.length} problem row${r.errors.length > 1 ? "s" : ""} will be skipped.</span>` : "") + "</p>" +
+        (r.errors.length ? `<div class="table-scroll" style="max-height:150px;overflow:auto"><table><thead><tr><th>Row</th><th>Problem</th></tr></thead><tbody>${r.errors.map((x) => `<tr><td>${x.row}</td><td>${escapeHtml(x.error)}</td></tr>`).join("")}</tbody></table></div>` : "") +
+        (r.sample.length ? `<p class="hint" style="margin-top:.8rem">Preview of valid rows</p><div class="table-scroll"><table><thead><tr><th>Name</th><th>GWA</th><th>Course</th><th>Location</th></tr></thead><tbody>${r.sample.map((a) => `<tr><td>${escapeHtml(a.full_name)}</td><td>${a.gwa}</td><td>${escapeHtml(a.course)}</td><td>${escapeHtml(a.location)}</td></tr>`).join("")}</tbody></table></div>` : "");
+      if (r.valid_rows > 0) { go.textContent = `Import ${r.valid_rows} valid rows`; go.hidden = false; }
+    } catch (err) { out.innerHTML = `<div class="alert error">${escapeHtml(friendlyError(err))}</div>`; }
+  }
+  go.addEventListener("click", () => withLoading(go, async () => {
+    try { const r = await up(true); layer.close(); toast(`Imported ${r.imported} applicants.`, "success"); await reload(); }
+    catch (err) { out.insertAdjacentHTML("afterbegin", `<div class="alert error">${escapeHtml(friendlyError(err))}</div>`); }
+  }));
+}
+document.getElementById("import-btn").addEventListener("click", openImport);
+
+(async () => {
+  buildHead();
+  document.getElementById("tbody").innerHTML = skeletonRows(10, 5);
+  try { program = await renderShell("applicants"); if (!program) return; await reload(); }
+  catch (err) { showError("screening-summary", err); document.getElementById("tbody").innerHTML = ""; }
+})();
 </script></body></html>

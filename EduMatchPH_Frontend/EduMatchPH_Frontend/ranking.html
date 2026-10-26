@@ -4,98 +4,167 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css"></head>
 <body><div id="shell"></div><main class="wrap">
-<h1 id="prog-title">Ranking &amp; Shortlist</h1>
-<p class="lede" id="prog-sub"></p>
+<div id="prog-head"></div>
+<div class="toolbar" style="margin-bottom:1rem">
+  <button class="btn-primary" id="run-ranking-btn" type="button">Run ranking</button>
+  <button class="btn-secondary small" id="export-btn" type="button">Download shortlist (CSV)</button>
+  <button class="btn-secondary small" id="compare-btn" type="button" disabled>Compare selected (0/2)</button>
+  <span class="grow"></span>
+  <span class="hint" id="run-hint">Ranks eligible applicants by priority score. Slots decide who is shortlisted.</span>
+</div>
+<div id="ranking-message" class="msg"></div>
+<div class="stats" id="stats"></div>
 <div class="card">
-  <div class="toolbar">
-    <button class="btn-primary" id="run-ranking-btn" type="button">Run Ranking</button>
-    <button class="btn-secondary small" id="export-btn" type="button">Download shortlist (CSV)</button>
-    <span class="hint">Ranks eligible applicants by priority score. Slots decide who is shortlisted.</span>
+  <div class="card-head">
+    <div class="chips" id="filter-chips"></div><span class="grow"></span>
+    <div class="input-icon" style="max-width:280px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" id="search" data-search placeholder="Search name  ( / )" aria-label="Search ranked applicants"></div>
   </div>
-  <div id="ranking-message" class="msg"></div>
-  <div id="export-message" class="msg"></div>
   <div class="table-scroll"><table>
-    <thead><tr><th>Rank</th><th>Applicant</th><th>Priority score</th><th>Status</th><th></th></tr></thead>
-    <tbody id="shortlist-body"><tr><td colspan="5">Loading...</td></tr></tbody></table></div>
+    <thead><tr><th style="width:34px"></th><th class="sortable num" data-k="rank">Rank<span class="arrow">▲</span></th><th class="sortable" data-k="name">Applicant<span class="arrow">▲</span></th><th class="sortable" data-k="score">Priority score<span class="arrow">▲</span></th><th>Status</th><th></th></tr></thead>
+    <tbody id="shortlist-body"></tbody></table></div>
   <div class="note">The system recommends; the administrator makes the final decision.</div>
 </div>
-<div class="card" id="explanation-card" hidden><h2>Why this score?</h2><div id="explanation-box"></div></div>
 </main>
 <script src="app.js"></script>
 <script>
 const scholarshipId = getScholarshipIdFromUrl();
 if (!scholarshipId) window.location.href = "programs.html";
-renderShell("ranking");
+let program = null, rows = [], filter = "all", sortKey = "rank", sortDir = 1, picked = [];
+const body = document.getElementById("shortlist-body");
 
-async function applyStatusRules() {
-  const program = await apiFetch(`/api/scholarships/${scholarshipId}`);
-  document.getElementById("prog-title").textContent = program.scholarship_name;
-  document.getElementById("prog-sub").innerHTML =
-    `${escapeHtml(program.provider)} · ${statusPill(program.status)} · ${program.available_slots} slots`;
-  const closed = program.status === "Closed";
-  const btn = document.getElementById("run-ranking-btn");
-  btn.disabled = closed;
-  btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
-}
-async function loadShortlist() {
-  try {
-    const rows = await apiFetch(`/api/scholarships/${scholarshipId}/shortlist`);
-    document.getElementById("shortlist-body").innerHTML = rows.length ? rows.map((r) =>
-      `<tr><td>${r.rank_position}</td><td>${escapeHtml(r.full_name)}</td><td>${r.priority_score}</td>` +
-      `<td><span class="pill ${r.status === "SHORTLIST" ? "ok" : "wait"}">${escapeHtml(STATUS_LABELS[r.status])}</span></td>` +
-      `<td><button class="why-btn" data-applicant="${r.applicant_id}">Why?</button></td></tr>`).join("")
-      : '<tr><td colspan="5">No ranking yet. Run screening, then press Run Ranking.</td></tr>';
-  } catch (err) { showError("ranking-message", err); }
-}
-document.getElementById("run-ranking-btn").addEventListener("click", async () => {
-  document.getElementById("explanation-card").hidden = true;
-  try {
-    const r = await apiFetch(`/api/scholarships/${scholarshipId}/rank`, { method: "POST" });
-    showMessage("ranking-message", `Ranked ${r.ranked_count} applicants: ${r.shortlisted} shortlisted, ${r.waitlisted} waitlisted.`);
-    await applyStatusRules();
-    loadShortlist();
-  } catch (err) { showError("ranking-message", err); }
-});
-
-function renderExplanation(e) {
-  const rows = e.effects.map((x) => {
-    const sign = x.effect_points > 0 ? "+" : "";
-    return `<tr><td>${escapeHtml(x.label)}</td><td>${x.applicant_value}</td><td>${x.pool_average}</td><td>${sign}${x.effect_points}</td></tr>`;
-  }).join("");
-  return `<p><b>Score ${e.priority_score}</b> (rank ${e.rank_position}, ${escapeHtml(STATUS_LABELS[e.status])}). ` +
-    `Compared with ${escapeHtml(e.compared_with)}.</p>` +
-    `<div class="table-scroll"><table><thead><tr><th>Input</th><th>This applicant</th><th>Average</th><th>Effect (points)</th></tr></thead><tbody>${rows}</tbody></table></div>` +
-    `<p class="hint"><i>${escapeHtml(e.note)}</i></p>`;
-}
-document.getElementById("shortlist-body").addEventListener("click", async (e) => {
-  const btn = e.target.closest(".why-btn");
-  if (!btn) return;
-  try {
-    const data = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${btn.dataset.applicant}/explanation`);
-    document.getElementById("explanation-card").hidden = false;
-    document.getElementById("explanation-box").innerHTML = renderExplanation(data);
-  } catch (err) {
-    document.getElementById("explanation-card").hidden = false;
-    showError("explanation-box", err);
+function render() {
+  const sl = rows.filter((r) => r.status === "SHORTLIST").length, wl = rows.length - sl;
+  const st = (n, l, c) => `<div class="stat ${c}"><b data-n="${n}">${n}</b><span>${l}</span></div>`;
+  const st1 = document.getElementById("stats");
+  const first = !st1.children.length;
+  st1.innerHTML = rows.length ? st(rows.length, "ranked", "") + st(sl, "shortlisted", "ok") + st(wl, "waitlisted", "wait") + st(program.available_slots, "slots", "") : "";
+  if (first) $$("b[data-n]", st1).forEach((b) => animateNumber(b, +b.dataset.n));
+  document.getElementById("filter-chips").innerHTML = rows.length ? [["all", "All", rows.length], ["SHORTLIST", "Shortlisted", sl], ["WAITLIST", "Waitlisted", wl]]
+    .map(([k, l, n]) => `<button type="button" class="chip ${filter === k ? "active" : ""}" data-f="${k}">${l}<span class="count">${n}</span></button>`).join("") : "";
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  let list = rows.filter((r) => (filter === "all" || r.status === filter) && (!q || r.full_name.toLowerCase().includes(q)));
+  list.sort((a, b) => {
+    const k = { rank: "rank_position", name: "full_name", score: "priority_score" }[sortKey];
+    return (typeof a[k] === "string" ? a[k].localeCompare(b[k]) : a[k] - b[k]) * sortDir;
+  });
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="ico">${ICON.inbox}</div><h3>No ranking yet</h3><p>Screening decides who is eligible. Ranking then orders the eligible applicants by priority score.</p>` +
+      `<button class="btn-primary" id="empty-run" type="button">Run ranking</button> <a class="btn-secondary" href="applicants.html?scholarship=${encodeURIComponent(scholarshipId)}">Go to screening</a></div></td></tr>`;
+    return;
   }
+  const max = Math.max(...rows.map((r) => r.priority_score), 1);
+  let html = "", cutDone = false;
+  list.forEach((r, i) => {
+    if (sortKey === "rank" && sortDir === 1 && filter === "all" && !q && !cutDone && r.status === "WAITLIST" && i > 0) {
+      html += `<tr class="cutoff"><td colspan="6"><div class="line">Cut-off: ${program.available_slots} slots filled</div></td></tr>`; cutDone = true;
+    }
+    const on = picked.includes(r.applicant_id);
+    html += `<tr data-id="${r.applicant_id}"><td><input type="checkbox" data-pick="${r.applicant_id}" ${on ? "checked" : ""} aria-label="Select ${escapeHtml(r.full_name)} to compare"></td>` +
+      `<td class="num"><b>${r.rank_position}</b></td><td><b>${escapeHtml(r.full_name)}</b></td>` +
+      `<td><div class="scorebar"><div class="track"><div class="fill ${r.status === "WAITLIST" ? "wait" : ""}" style="width:${(r.priority_score / max * 100).toFixed(1)}%"></div></div><b>${r.priority_score}</b></div></td>` +
+      `<td><span class="pill ${r.status === "SHORTLIST" ? "ok" : "wait"}">${escapeHtml(STATUS_LABELS[r.status] || r.status)}</span></td>` +
+      `<td><button class="btn-secondary small" data-why="${r.applicant_id}" type="button">Why?</button></td></tr>`;
+  });
+  body.innerHTML = html || '<tr><td colspan="6"><div class="empty"><h3>No matches</h3><p>No ranked applicant matches this search.</p></div></td></tr>';
+  const cb = document.getElementById("compare-btn");
+  cb.textContent = `Compare selected (${picked.length}/2)`; cb.disabled = picked.length !== 2;
+}
+document.getElementById("filter-chips").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (b) { filter = b.dataset.f; render(); } });
+document.getElementById("search").addEventListener("input", debounce(render, 120));
+document.querySelector("thead").addEventListener("click", (e) => {
+  const th = e.target.closest("th[data-k]"); if (!th) return;
+  sortDir = sortKey === th.dataset.k ? -sortDir : 1; sortKey = th.dataset.k;
+  $$("thead th.sortable").forEach((t) => { t.classList.toggle("sorted", t === th); $(".arrow", t).textContent = t === th && sortDir < 0 ? "▼" : "▲"; });
+  render();
+});
+document.getElementById("compare-btn").addEventListener("click", () => {
+  window.location.href = `compare.html?scholarship=${encodeURIComponent(scholarshipId)}&a=${picked[0]}&b=${picked[1]}`;
 });
 
-document.getElementById("export-btn").addEventListener("click", async () => {
-  showMessage("export-message", "");
+async function load() {
   try {
-    const res = await fetch(`${API}/api/scholarships/${scholarshipId}/shortlist.csv`, { credentials: "include" });
-    if (res.status === 401) { window.location.href = "index.html"; return; }
-    if (!res.ok) {
-      let data = null; try { data = await res.json(); } catch (e) {}
-      throw new Error((data && data.error) || "HTTP " + res.status);
-    }
-    const blob = await res.blob();
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `shortlist_program_${scholarshipId}.csv`;
-    document.body.appendChild(link); link.click(); link.remove();
-    URL.revokeObjectURL(link.href);
-  } catch (err) { showError("export-message", err); }
+    rows = await apiFetch(`/api/scholarships/${scholarshipId}/shortlist`);
+    picked = picked.filter((id) => rows.some((r) => r.applicant_id === id));
+    render();
+    setStepSub(2, rows.length ? rows.length + " ranked" : ""); setStepSub(3, rows.length ? rows.filter((r) => r.status === "SHORTLIST").length + " shortlisted" : "");
+  } catch (err) { showError("ranking-message", err); body.innerHTML = ""; }
+}
+function applyStatus() {
+  const closed = program.status === "Closed", btn = document.getElementById("run-ranking-btn");
+  btn.disabled = closed; btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
+}
+async function runRanking(btn) {
+  if (rows.length && !(await confirmDialog({ title: "Run ranking again?", confirmText: "Run ranking", message: "The earlier ranking will be replaced with a new one." }))) return;
+  await withLoading(btn, async () => {
+    try {
+      const r = await apiFetch(`/api/scholarships/${scholarshipId}/rank`, { method: "POST" });
+      document.getElementById("stats").innerHTML = "";
+      program = await refreshProgram(); applyStatus(); await load();
+      toast(`Ranked ${r.ranked_count} applicants: ${r.shortlisted} shortlisted, ${r.waitlisted} waitlisted.`, "success");
+    } catch (err) { toast(friendlyError(err), "error"); }
+  });
+}
+document.getElementById("run-ranking-btn").addEventListener("click", (e) => runRanking(e.currentTarget));
+
+// ---------- explanation drawer ----------
+function explanationHtml(e) {
+  const eff = e.effects, maxAbs = Math.max(...eff.map((x) => Math.abs(x.effect_points)), 1);
+  const sorted = [...eff].sort((a, b) => Math.abs(b.effect_points) - Math.abs(a.effect_points));
+  const pos = sorted.filter((x) => x.effect_points > 0).slice(0, 2), neg = sorted.filter((x) => x.effect_points < 0).slice(0, 1);
+  const sentence = (pos.length ? `Raised by <b>${pos.map((x) => escapeHtml(x.label)).join("</b> and <b>")}</b>` : "No input raised the score above average") +
+    (neg.length ? `; lowered by <b>${escapeHtml(neg[0].label)}</b>.` : ".");
+  const sign = (n) => (n > 0 ? "+" : "") + n;
+  return `<div class="gauge" style="--v:${Math.min(100, e.priority_score)}"><div>${e.priority_score}</div></div>` +
+    `<p style="text-align:center;margin:0 0 .4rem"><span class="pill ${e.status === "SHORTLIST" ? "ok" : "wait"}">${escapeHtml(STATUS_LABELS[e.status])}</span> Rank ${e.rank_position}</p>` +
+    `<div class="insight">${sentence}</div>` +
+    `<h3 style="margin:1rem 0 .3rem">What moved the score</h3><p class="hint" style="margin:0 0 .4rem">Compared with ${escapeHtml(e.compared_with)}. Green pushes the score up, red pulls it down.</p>` +
+    eff.map((x) => {
+      const w = (Math.abs(x.effect_points) / maxAbs * 50).toFixed(1), p = x.effect_points >= 0;
+      return `<div class="contrib"><div class="lab">${escapeHtml(x.label)}<small>This applicant ${escapeHtml(x.applicant_value)} · average ${escapeHtml(x.pool_average)}</small></div>` +
+        `<div class="diverge"><div class="bar ${p ? "pos" : "neg"}" style="width:0" data-w="${w}"></div></div><div class="pts ${p ? "pos" : "neg"}">${sign(x.effect_points)}</div></div>`;
+    }).join("") + `<p class="hint" style="margin-top:1rem"><i>${escapeHtml(e.note)}</i></p>`;
+}
+async function openWhy(id) {
+  const row = rows.find((r) => r.applicant_id === id);
+  const idx = () => rows.findIndex((r) => r.applicant_id === id);
+  const d = openDrawer({ title: row ? row.full_name : "Applicant", subtitle: "Why this score?", body: '<div class="skeleton" style="height:130px;width:130px;border-radius:50%;margin:0 auto 1rem"></div><div class="skeleton" style="height:16px;margin:.6rem 0"></div><div class="skeleton" style="height:16px;margin:.6rem 0"></div>' });
+  try {
+    const data = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${id}/explanation`);
+    d.set({ body: explanationHtml(data), footer: `<button class="btn-secondary small" data-prev type="button">← Previous</button><button class="btn-secondary small" data-next type="button">Next →</button>` });
+    requestAnimationFrame(() => $$(".bar[data-w]", d.el).forEach((b) => (b.style.width = b.dataset.w + "%")));
+    const go = (delta) => { const t = rows[idx() + delta]; if (t) { d.close(); openWhy(t.applicant_id); } };
+    $("[data-prev]", d.el).disabled = idx() <= 0; $("[data-next]", d.el).disabled = idx() >= rows.length - 1;
+    $("[data-prev]", d.el).addEventListener("click", () => go(-1)); $("[data-next]", d.el).addEventListener("click", () => go(1));
+  } catch (err) { d.set({ body: `<div class="alert error">${escapeHtml(friendlyError(err))}</div>` }); }
+}
+body.addEventListener("click", (e) => {
+  if (e.target.id === "empty-run") return runRanking(e.target);
+  const w = e.target.closest("[data-why]"); if (w) return openWhy(+w.dataset.why);
 });
-document.addEventListener("DOMContentLoaded", () => { applyStatusRules().catch((e) => showError("ranking-message", e)); loadShortlist(); });
+body.addEventListener("change", (e) => {
+  const c = e.target.closest("[data-pick]"); if (!c) return;
+  const id = +c.dataset.pick;
+  if (c.checked) { picked.push(id); if (picked.length > 2) picked.shift(); } else picked = picked.filter((x) => x !== id);
+  render();
+});
+
+// ---------- CSV export ----------
+document.getElementById("export-btn").addEventListener("click", async (e) => {
+  await withLoading(e.currentTarget, async () => {
+    try {
+      const res = await fetch(`${API}/api/scholarships/${scholarshipId}/shortlist.csv`, { credentials: "include" });
+      if (res.status === 401) { window.location.href = "index.html"; return; }
+      if (!res.ok) { let d = null; try { d = await res.json(); } catch (x) {} throw new Error((d && d.error) || "HTTP " + res.status); }
+      downloadBlob(await res.blob(), `shortlist_program_${scholarshipId}.csv`);
+      toast("Shortlist downloaded.", "success");
+    } catch (err) { toast(friendlyError(err), "error"); }
+  });
+});
+
+(async () => {
+  body.innerHTML = skeletonRows(6, 5);
+  try { program = await renderShell("ranking"); if (!program) return; applyStatus(); await load(); }
+  catch (err) { showError("ranking-message", err); }
+})();
 </script></body></html>
