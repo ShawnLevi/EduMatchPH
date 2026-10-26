@@ -6,21 +6,32 @@ from reference import (COURSES, FIELDS, LOCALITIES, LOCATION_REQ_CHOICES,
                        STATUSES)
 
 
+LABELS = {
+    "gwa": "GWA", "entrance_score": "Entrance score",
+    "household_income": "Household income", "year_level": "Year level",
+    "full_name": "Full name", "gwa_limit": "GWA limit",
+    "income_cap": "Income cap", "min_entrance": "Minimum entrance score",
+    "available_slots": "Available slots",
+    "scholarship_name": "Scholarship name",
+}
+
+
 def _number(data, key, low, high, whole=False):
+    label = LABELS.get(key, key)
     value = data.get(key)
     if value is None or value == "" or isinstance(value, bool):
-        return None, f"{key} is required"
+        return None, f"{label} is required"
     try:
         value = float(value)
     except (TypeError, ValueError):
-        return None, f"{key} must be a number"
+        return None, f"{label} must be a number"
     if value != value or value in (float("inf"), float("-inf")):
-        return None, f"{key} must be a real number"
+        return None, f"{label} must be a real number"
     if not low <= value <= high:
-        return None, f"{key} must be between {low:g} and {high:g}"
+        return None, f"{label} must be between {low:g} and {high:g}"
     if whole:
         if value != int(value):
-            return None, f"{key} must be a whole number"
+            return None, f"{label} must be a whole number"
         return int(value), None
     return value, None
 
@@ -28,12 +39,12 @@ def _number(data, key, low, high, whole=False):
 def clean_applicant(data, scale):
     """scale is the program's grade scale (min_value and max_value)."""
     if not isinstance(data, dict):
-        return None, "Send the applicant as a JSON object"
+        return None, "The applicant details were incomplete"
     name = str(data.get("full_name") or "").strip()
     if not name:
-        return None, "full_name is required"
+        return None, "Full name is required"
     if len(name) > 150:
-        return None, "full_name must be 150 characters or fewer"
+        return None, "Full name must be 150 characters or fewer"
 
     gwa, err = _number(data, "gwa", float(scale["min_value"]), float(scale["max_value"]))
     if err:
@@ -50,11 +61,11 @@ def clean_applicant(data, scale):
 
     course = str(data.get("course") or "").strip()
     if course not in COURSES:
-        return None, "course must be one of the listed courses (see /api/meta)"
+        return None, "Choose a course from the list"
     location = str(data.get("location") or "").strip()
     if location not in LOCALITIES:
-        return None, ("location must be a city or municipality of Cebu "
-                      "Province (see /api/meta)")
+        return None, ("Location must be a city or municipality of Cebu "
+                      "Province")
     return {
         "full_name": name, "gwa": gwa, "entrance_score": entrance,
         "household_income": income, "course": course,
@@ -80,16 +91,16 @@ def _years(value):
 def clean_program(data, scales):
     """scales maps scale_id to its row from the grade_scales table."""
     if not isinstance(data, dict):
-        return None, "Send the program as a JSON object"
+        return None, "The program details were incomplete"
     name = str(data.get("scholarship_name") or "").strip()
     if not name:
-        return None, "scholarship_name is required"
+        return None, "Scholarship name is required"
     provider = str(data.get("provider") or "").strip()
 
     scale_id = str(data.get("grade_scale") or "")
     scale = scales.get(scale_id)
     if scale is None:
-        return None, ("grade_scale must be one of: "
+        return None, ("Choose a grade scale: "
                       + ", ".join(sorted(scales)))
     gwa_limit, err = _number(data, "gwa_limit", float(scale["min_value"]),
                              float(scale["max_value"]))
@@ -107,24 +118,24 @@ def clean_program(data, scales):
 
     field = str(data.get("eligible_field") or "")
     if field not in FIELDS:
-        return None, "eligible_field must be ANY, STEM, or BUSINESS"
+        return None, "Eligible field must be Any, STEM or Business"
     years = _years(data.get("eligible_years"))
     if years is None:
-        return None, "eligible_years must list year levels 1 to 4, like 1,2,3,4"
+        return None, "Choose at least one year level from 1 to 4"
     location_req = str(data.get("location_req") or "").strip()
     if location_req not in LOCATION_REQ_CHOICES:
-        return None, ("location_req must be Nationwide, Cebu, or one Cebu "
-                      "city or municipality")
+        return None, ("Location requirement must be Nationwide, Cebu, or one "
+                      "Cebu city or municipality")
     status = str(data.get("status") or "Open")
     if status not in STATUSES:
-        return None, "status must be Open, Screening, Ranking, or Closed"
+        return None, "Status must be Open, Screening, Ranking or Closed"
 
     deadline = data.get("application_deadline") or None
     if deadline is not None:
         try:
             datetime.date.fromisoformat(str(deadline))
         except ValueError:
-            return None, "application_deadline must look like 2026-12-31"
+            return None, "Application deadline must be a date like 2026-12-31"
         deadline = str(deadline)
     return {
         "scholarship_name": name, "provider": provider or None,

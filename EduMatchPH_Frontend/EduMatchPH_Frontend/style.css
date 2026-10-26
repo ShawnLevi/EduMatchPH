@@ -299,3 +299,13 @@ tr.open .caret{transform:rotate(90deg)}
   .contrib{grid-template-columns:1fr 1fr 48px}
   .failbars .row{grid-template-columns:96px 1fr 36px}
 }
+
+.row-actions{white-space:nowrap;text-align:right}
+.icon-btn.edit:hover{background:var(--navy-100);color:var(--navy-800)}
+.choice-list{display:grid;gap:.6rem}
+.choice{display:block;text-align:left;width:100%;padding:.8rem 1rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card);cursor:pointer;font:inherit;color:inherit}
+.choice b{display:block;font-weight:600}
+.choice span{display:block;margin-top:.15rem;font-size:.86rem;color:var(--ink-muted)}
+.choice:hover:not(:disabled){border-color:var(--navy-600);box-shadow:var(--focus)}
+.choice:disabled{opacity:.6;cursor:wait}
+.choice.quiet{background:transparent}

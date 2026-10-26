@@ -33,7 +33,7 @@ EduMatchPH/
 └── README.md
 ```
 
-> **Current status:** the frontend exists as a static prototype using mock/seed data (no backend, database, or model are connected yet). See open issues below.
+> **Current status:** the frontend, backend, database and saved model are connected and working together. Run `RUN_EDUMATCH.bat` to start everything on Windows with XAMPP.
 
 ## Core entities
 

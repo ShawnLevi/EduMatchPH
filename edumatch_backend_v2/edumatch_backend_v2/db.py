@@ -11,6 +11,8 @@ def get_connection():
         user="root",
         password="",  # XAMPP's default MySQL has no password
         database="edumatch_db",
+        charset="utf8mb4",
+        collation="utf8mb4_unicode_ci",
     )
 
 

@@ -64,7 +64,7 @@ function render() {
       `<td class="num"><b>${r.rank_position}</b></td><td><b>${escapeHtml(r.full_name)}</b></td>` +
       `<td><div class="scorebar"><div class="track"><div class="fill ${r.status === "WAITLIST" ? "wait" : ""}" style="width:${(r.priority_score / max * 100).toFixed(1)}%"></div></div><b>${r.priority_score}</b></div></td>` +
       `<td><span class="pill ${r.status === "SHORTLIST" ? "ok" : "wait"}">${escapeHtml(STATUS_LABELS[r.status] || r.status)}</span></td>` +
-      `<td><button class="btn-secondary small" data-why="${r.applicant_id}" type="button">Why?</button></td></tr>`;
+      `<td class="row-actions"><button class="btn-secondary small" data-why="${r.applicant_id}" type="button">Why?</button> <a class="btn-secondary small" href="applicants.html?scholarship=${encodeURIComponent(scholarshipId)}&edit=${r.applicant_id}" title="Correct this applicant's details">Edit</a></td></tr>`;
   });
   body.innerHTML = html || '<tr><td colspan="6"><div class="empty"><h3>No matches</h3><p>No ranked applicant matches this search.</p></div></td></tr>';
   const cb = document.getElementById("compare-btn");

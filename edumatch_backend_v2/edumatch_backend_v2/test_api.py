@@ -407,6 +407,70 @@ try:
     csvtext = uclm.get(rurl + "/shortlist.csv").data.decode("utf-8-sig")
     check("CSV export has a grade_scale column", "grade_scale" in csvtext.splitlines()[0] and "SCALE_5_BEST" in csvtext)
 
+    print("--- Editing an applicant, then screening or ranking only that applicant")
+    pe2 = make_program(uclm, scholarship_name="TEST Edit Applicant", available_slots=2)
+    eu = f"/api/scholarships/{pe2}"
+    ids = {}
+    for nm, g, ent in [("Edit Ann", 1.6, 88), ("Edit Ben", 2.0, 80), ("Edit Cy", 2.5, 70), ("Edit Wrong", 3.9, 75)]:
+        ids[nm] = uclm.post(eu + "/applicants", json={**GOOD, "full_name": nm, "gwa": g, "entrance_score": ent}).get_json()["applicant_id"]
+    r = uclm.put(f"{eu}/applicants/{ids['Edit Wrong']}", json={**GOOD, "full_name": "Edit Wrong", "gwa": 3.8, "entrance_score": 75})
+    j = r.get_json()
+    check("Edit before screening: saved, nothing to re-screen", r.status_code == 200 and j["was_screened"] is False and j["program_ranked"] is False, j)
+    uclm.post(eu + "/screen")
+    elig = {d["full_name"]: d["eligible"] for d in uclm.get(eu + "/screening").get_json()}
+    check("Wrong GWA 3.8 made 'Edit Wrong' not eligible", elig == {"Edit Ann": True, "Edit Ben": True, "Edit Cy": True, "Edit Wrong": False}, elig)
+    r = uclm.put(f"{eu}/applicants/{ids['Edit Wrong']}", json={**GOOD, "full_name": "Edit Wrong", "gwa": 1.9, "entrance_score": 75})
+    j = r.get_json()
+    check("Edit after screening: saved, says the applicant was screened and the program is not ranked",
+          r.status_code == 200 and j["was_screened"] is True and j["program_ranked"] is False, j)
+    names_screened = {d["full_name"] for d in uclm.get(eu + "/screening").get_json()}
+    check("Edited applicant's old result is removed, the others keep theirs", names_screened == {"Edit Ann", "Edit Ben", "Edit Cy"}, names_screened)
+    r = uclm.post(f"{eu}/applicants/{ids['Edit Wrong']}/screen", json={})
+    check("Screen only the edited applicant: now eligible", r.status_code == 200 and r.get_json()["eligible"] is True and r.get_json()["ranked"] is False, r.get_json())
+    check("All four applicants are screened again", len(uclm.get(eu + "/screening").get_json()) == 4)
+    r = uclm.post(f"{eu}/applicants/{ids['Edit Wrong']}/screen", json={"rank": True})
+    check("Asking to rank before the program was ever ranked -> 400", error_ok(r, 400))
+
+    uclm.post(eu + "/rank")
+    before = {x["full_name"]: x["priority_score"] for x in uclm.get(eu + "/shortlist").get_json()}
+    r = uclm.put(f"{eu}/applicants/{ids['Edit Ben']}", json={**GOOD, "full_name": "Edit Ben", "gwa": 3.9, "entrance_score": 80})
+    j = r.get_json()
+    check("Edit after ranking: says the program was ranked", r.status_code == 200 and j["was_screened"] and j["program_ranked"], j)
+    r = uclm.post(f"{eu}/applicants/{ids['Edit Ben']}/screen", json={"rank": True})
+    j = r.get_json()
+    check("Screen and rank only the edited applicant: now not eligible, so not ranked", r.status_code == 200 and j["eligible"] is False and j["ranked"] is False, j)
+    after = {x["full_name"]: x["priority_score"] for x in uclm.get(eu + "/shortlist").get_json()}
+    check("The ineligible applicant has no ranking row", "Edit Ben" not in after and len(after) == len(before) - 1, after)
+    check("Everyone else kept the same score", all(after[n] == before[n] for n in after), (before, after))
+
+    r = uclm.put(f"{eu}/applicants/{ids['Edit Ben']}", json={**GOOD, "full_name": "Edit Ben", "gwa": 1.2, "entrance_score": 99})
+    r = uclm.post(f"{eu}/applicants/{ids['Edit Ben']}/screen", json={"rank": True})
+    j = r.get_json()
+    check("Corrected to a strong applicant: eligible, ranked, answer carries score and rank",
+          r.status_code == 200 and j["eligible"] and j["ranked"] and j["rank_position"] == 1 and j["status"] == "SHORTLIST", j)
+    single = uclm.get(eu + "/shortlist").get_json()
+    uclm.post(eu + "/screen"); uclm.post(eu + "/rank")
+    full = uclm.get(eu + "/shortlist").get_json()
+    check("Single-applicant update gives exactly the same ranking as screening and ranking everyone again",
+          [(x["full_name"], x["priority_score"], x["rank_position"], x["status"]) for x in single] ==
+          [(x["full_name"], x["priority_score"], x["rank_position"], x["status"]) for x in full])
+    check("Program status is Ranking", uclm.get(eu).get_json()["status"] == "Ranking")
+
+    check("Edit with an invalid GWA -> 400", error_ok(uclm.put(f"{eu}/applicants/{ids['Edit Cy']}", json={**GOOD, "full_name": "Edit Cy", "gwa": 9}), 400))
+    check("Edit with an empty name -> 400", error_ok(uclm.put(f"{eu}/applicants/{ids['Edit Cy']}", json={**GOOD, "full_name": ""}), 400))
+    check("Edit that would duplicate another applicant -> 409",
+          error_ok(uclm.put(f"{eu}/applicants/{ids['Edit Cy']}", json={**GOOD, "full_name": "edit ann"}), 409))
+    check("Saving an applicant with its own unchanged details is allowed",
+          uclm.put(f"{eu}/applicants/{ids['Edit Cy']}", json={**GOOD, "full_name": "Edit Cy", "gwa": 2.5, "entrance_score": 70}).status_code == 200)
+    check("Edit an unknown applicant -> 404", error_ok(uclm.put(f"{eu}/applicants/99999999", json=GOOD), 404))
+    check("Screen an unknown applicant -> 404", error_ok(uclm.post(f"{eu}/applicants/99999999/screen", json={}), 404))
+    check("Another organization cannot edit this applicant", error_ok(dost.put(f"{eu}/applicants/{ids['Edit Cy']}", json=GOOD), 404))
+    check("Another organization cannot screen this applicant", error_ok(dost.post(f"{eu}/applicants/{ids['Edit Cy']}/screen", json={}), 404))
+    check("Not logged in cannot edit", error_ok(anon.put(f"{eu}/applicants/{ids['Edit Cy']}", json=GOOD), 401))
+    uclm.put(eu, json={**PROGRAM, "scholarship_name": "TEST Edit Applicant", "available_slots": 2, "status": "Closed"})
+    check("Closed program: screening one applicant is refused",
+          error_ok(uclm.post(f"{eu}/applicants/{ids['Edit Cy']}/screen", json={}), 400))
+
     print("--- Model loads from any folder")
     code = f"import sys; sys.path.insert(0, r'{os.path.dirname(os.path.abspath(__file__))}'); import ranking; print('ok')"
     out = subprocess.run([sys.executable, "-c", code], cwd="/" if os.name != "nt" else "C:\\", capture_output=True, text=True)

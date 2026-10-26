@@ -54,6 +54,7 @@ const ICON = {
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 20h16"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"/><path d="m14 7 3 3"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 3h6l1-3h5"/></svg>',
   download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>',
@@ -133,16 +134,16 @@ function openDrawer({ title, subtitle = "", body = "", footer = "", onClose } = 
   return layer;
 }
 
-// ---------- backend calls ----------
+// ---------- server calls ----------
 function friendlyError(err) {
-  if (err instanceof TypeError) return "Cannot reach the server. Start the backend (python app.py) and refresh this page.";
-  return err && err.message ? err.message : "Something went wrong.";
+  if (err instanceof TypeError) return "EduMatch PH cannot connect to its server right now. Check your connection and try again. If the problem continues, contact your system administrator.";
+  return err && err.message ? err.message : "The request could not be completed. Please try again.";
 }
 function showBackendError(elementId) {
   const el = document.getElementById(elementId);
   if (el) el.innerHTML = '<span class="backend-error">' + escapeHtml(friendlyError(new TypeError())) + "</span>";
 }
-// Every call to the backend goes through this. credentials: "include" sends the login cookie.
+// Every call to the server goes through this. credentials: "include" sends the login cookie.
 async function apiFetch(path, options = {}) {
   const res = await fetch(API + path, { credentials: "include", ...options });
   let data = null;
@@ -151,7 +152,7 @@ async function apiFetch(path, options = {}) {
     window.location.href = "index.html";
     throw new Error("Please log in first");
   }
-  if (!res.ok) { const err = new Error((data && data.error) || "HTTP " + res.status); err.status = res.status; throw err; }
+  if (!res.ok) { const err = new Error((data && data.error) || `The request could not be completed (error ${res.status}). Please try again.`); err.status = res.status; throw err; }
   return data;
 }
 function showError(elementId, err) {

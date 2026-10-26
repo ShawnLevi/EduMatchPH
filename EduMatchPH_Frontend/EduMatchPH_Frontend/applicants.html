@@ -86,7 +86,7 @@ function render() {
   // stale banner
   const stale = document.getElementById("stale");
   if (!all.length) stale.innerHTML = "";
-  else if (counts.unscreened && screened) stale.innerHTML = `<div class="insight">${counts.unscreened} applicant${counts.unscreened > 1 ? "s were" : " was"} added after the last screening. Run screening again to include them.</div>`;
+  else if (counts.unscreened && screened) stale.innerHTML = `<div class="insight">${counts.unscreened} applicant${counts.unscreened > 1 ? "s were" : " was"} added or edited after the last screening. Run screening again to include them.</div>`;
   else if (counts.unscreened) stale.innerHTML = `<div class="insight">${counts.unscreened} applicants are waiting. Press <b>Run screening</b> to check them against the six rules.</div>`;
   else stale.innerHTML = "";
   // filter + search
@@ -111,7 +111,7 @@ function render() {
     tb.innerHTML = slice.map((r) => `<tr class="clickable ${expanded.has(r.id) ? "open" : ""}" data-id="${r.id}"><td><span class="caret">▸</span></td>` +
       `<td><b>${escapeHtml(r.name)}</b><div class="hint">${escapeHtml(r.location)}</div></td><td class="num">${escapeHtml(r.gwa)}</td><td class="num">${escapeHtml(r.entrance)}</td>` +
       `<td class="num">${isNaN(+r.income) ? escapeHtml(r.income) : peso(r.income)}</td><td>${escapeHtml(r.course)}</td><td class="num">${escapeHtml(r.year)}</td><td>${statusCell(r)}</td><td>${checksCell(r)}</td>` +
-      `<td><button class="icon-btn" data-del="${r.id}" data-name="${escapeHtml(r.name)}" title="Delete applicant" aria-label="Delete ${escapeHtml(r.name)}">${ICON.trash}</button></td></tr>` +
+      `<td class="row-actions"><button class="icon-btn edit" data-edit="${r.id}" title="Edit applicant" aria-label="Edit ${escapeHtml(r.name)}">${ICON.edit}</button><button class="icon-btn" data-del="${r.id}" data-name="${escapeHtml(r.name)}" title="Delete applicant" aria-label="Delete ${escapeHtml(r.name)}">${ICON.trash}</button></td></tr>` +
       (expanded.has(r.id) ? `<tr class="detail-row"><td colspan="10">${detailHtml(r)}</td></tr>` : "")).join("");
   }
   document.getElementById("count-hint").textContent = rows.length ? `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + slice.length} of ${rows.length}` : "";
@@ -127,6 +127,8 @@ document.getElementById("tbody").addEventListener("click", async (e) => {
   if (e.target.id === "empty-import") return openImport();
   if (e.target.id === "empty-add") return openAdd();
   if (e.target.id === "clear-f") { filter = "all"; document.getElementById("search").value = ""; return render(); }
+  const ed = e.target.closest("[data-edit]");
+  if (ed) { const a = apps.find((x) => x.applicant_id === +ed.dataset.edit); if (a) openApplicantForm(a); return; }
   const del = e.target.closest("[data-del]");
   if (del) {
     const ok = await confirmDialog({ title: "Delete " + del.dataset.name + "?", danger: true, confirmText: "Delete applicant",
@@ -176,10 +178,11 @@ document.getElementById("run-screening-btn").addEventListener("click", async (e)
 });
 
 // ---------- add applicant (modal) ----------
-async function openAdd() {
+async function openApplicantForm(existing) {
+  const editing = !!existing;
   const meta = await loadMeta(), scale = GRADE_SCALES[program.grade_scale];
   const opts = (arr) => '<option value="">Choose...</option>' + arr.map((v) => `<option>${escapeHtml(v)}</option>`).join("");
-  const layer = openModal(`<div class="modal-head"><h2>Add applicant</h2></div><form id="af" novalidate>
+  const layer = openModal(`<div class="modal-head"><h2>${editing ? "Edit applicant" : "Add applicant"}</h2></div><form id="af" novalidate>
     <div class="grid2">
       <div class="field" style="grid-column:1/-1"><label for="f_name">Full name</label><input id="f_name" autocomplete="off"><span class="field-error" data-e="name"></span></div>
       <div class="field"><label for="f_gwa">GWA</label><input type="number" id="f_gwa" step="any" min="${scale.min_value}" max="${scale.max_value}"><span class="hint">${escapeHtml(scaleHintText(scale))}</span><span class="field-error" data-e="gwa"></span></div>
@@ -190,10 +193,15 @@ async function openAdd() {
       <div class="field"><label for="f_loc">Location</label><select id="f_loc">${opts(meta.localities)}</select><span class="field-error" data-e="loc"></span></div>
     </div>
     <div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button>
-      <button type="submit" class="btn-secondary" data-more>Save &amp; add another</button><button type="submit" class="btn-primary" data-one>Save applicant</button></div></form>`, { wide: true });
+      ${editing ? "" : '<button type="submit" class="btn-secondary" data-more>Save &amp; add another</button>'}<button type="submit" class="btn-primary" data-one>${editing ? "Save changes" : "Save applicant"}</button></div></form>`, { wide: true });
   const f = $("#af", layer.el); let another = false;
+  if (editing) {
+    $("#f_name", f).value = existing.full_name; $("#f_gwa", f).value = existing.gwa; $("#f_ent", f).value = existing.entrance_score;
+    $("#f_inc", f).value = existing.household_income; $("#f_yr", f).value = existing.year_level;
+    $("#f_course", f).value = existing.course; $("#f_loc", f).value = existing.location;
+  }
   $("[data-cancel]", layer.el).addEventListener("click", () => layer.close());
-  $("[data-more]", layer.el).addEventListener("click", () => { another = true; });
+  const more = $("[data-more]", layer.el); if (more) more.addEventListener("click", () => { another = true; });
   $("[data-one]", layer.el).addEventListener("click", () => { another = false; });
   f.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -211,13 +219,57 @@ async function openAdd() {
     if (bad) { const first = $(".field-error:not(:empty)", f); if (first) first.closest(".field").querySelector("input,select").focus(); return; }
     const payload = { full_name: v("f_name"), gwa, entrance_score: ent, household_income: inc, course: v("f_course"), year_level: +v("f_yr"), location: v("f_loc") };
     try {
+      if (editing) {
+        const res = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${existing.applicant_id}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(payload) });
+        layer.close(); await reload(); expanded.add(existing.applicant_id); render();
+        await afterEdit(res, payload.full_name, existing.applicant_id);
+        return;
+      }
       await apiFetch(`/api/scholarships/${scholarshipId}/applicants`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) });
       toast(`Added ${payload.full_name}.`, "success"); await reload();
       if (another) { f.reset(); $("#f_name", f).focus(); } else layer.close();
     } catch (er) { err("name", friendlyError(er)); }
   });
 }
-document.getElementById("add-btn").addEventListener("click", openAdd);
+document.getElementById("add-btn").addEventListener("click", () => openApplicantForm());
+const openAdd = () => openApplicantForm();
+
+
+// ---------- after an applicant is edited: screen (and rank) only them, or everyone again ----------
+async function afterEdit(res, name, id) {
+  if (!res.was_screened) { toast(`${name} was updated.`, "success"); return; }
+  if (program.status === "Closed") {
+    toast(`${name} was updated. This program is closed, so reopen it before screening again.`, "info", { duration: 8000 }); return;
+  }
+  const ranked = res.program_ranked, verb = ranked ? "Screen and rank" : "Screen";
+  const layer = openModal(`<div class="modal-head"><h2>${escapeHtml(name)} was updated</h2></div>` +
+    `<p style="margin:0 0 1rem;color:var(--ink-muted)">The saved ${ranked ? "screening result and ranking" : "screening result"} for this applicant ${ranked ? "no longer match" : "no longer matches"} the new details. Choose how to update ${ranked ? "them" : "it"}.</p>` +
+    `<div class="choice-list">` +
+    `<button type="button" class="choice" data-one><b>${verb} this applicant only</b><span>${ranked ? "Everyone else keeps their score. Rank positions and shortlist places are re-ordered, so other applicants may move up or down." : "Everyone else keeps their screening result."}</span></button>` +
+    `<button type="button" class="choice" data-all><b>${verb} all applicants again</b><span>${ranked ? "Checks every applicant against the six rules again and replaces the whole ranking." : "Checks every applicant against the six rules again."}</span></button>` +
+    `<button type="button" class="choice quiet" data-later><b>Decide later</b><span>${escapeHtml(name)} will show as Not screened${ranked ? " and will not appear in the ranking" : ""} until you do.</span></button></div>`);
+  const busy = (b) => { $$(".choice", layer.el).forEach((x) => (x.disabled = true)); b.classList.add("loading"); };
+  $("[data-later]", layer.el).addEventListener("click", () => { layer.close(); toast(`${name} is not screened yet.`, "info"); });
+  $("[data-one]", layer.el).addEventListener("click", async (e) => {
+    busy(e.currentTarget);
+    try {
+      const r = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${id}/screen`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ rank: ranked }) });
+      layer.close(); await reload();
+      toast(!r.eligible ? `${name} is not eligible after the update.` :
+        r.ranked ? `${name} is eligible and now ranked #${r.rank_position} (${STATUS_LABELS[r.status] || r.status}). Rank positions were re-ordered.` :
+        `${name} is eligible.`, "success", { duration: 7000 });
+    } catch (err) { layer.close(); toast(friendlyError(err), "error"); }
+  });
+  $("[data-all]", layer.el).addEventListener("click", async (e) => {
+    busy(e.currentTarget);
+    try {
+      const s = await apiFetch(`/api/scholarships/${scholarshipId}/screen`, { method: "POST" });
+      let msg = `Screening done: ${s.filter((x) => x.eligible).length} of ${s.length} applicants are eligible.`;
+      if (ranked) { const k = await apiFetch(`/api/scholarships/${scholarshipId}/rank`, { method: "POST" }); msg += ` Ranked ${k.ranked_count}: ${k.shortlisted} shortlisted, ${k.waitlisted} waitlisted.`; }
+      layer.close(); await reload(); toast(msg, "success", { duration: 8000 });
+    } catch (err) { layer.close(); toast(friendlyError(err), "error"); }
+  });
+}
 
 // ---------- import (modal with drag and drop) ----------
 const TEMPLATE = "full_name,gwa,entrance_score,household_income,course,year_level,location\nJuan Dela Cruz,1.75,88,180000,BS Computer Science,2,Lapu-Lapu City\n";
@@ -263,7 +315,11 @@ document.getElementById("import-btn").addEventListener("click", openImport);
 (async () => {
   buildHead();
   document.getElementById("tbody").innerHTML = skeletonRows(10, 5);
-  try { program = await renderShell("applicants"); if (!program) return; await reload(); }
+  try {
+    program = await renderShell("applicants"); if (!program) return; await reload();
+    const editId = +new URLSearchParams(location.search).get("edit");
+    if (editId) { const a = apps.find((x) => x.applicant_id === editId); if (a) openApplicantForm(a); }
+  }
   catch (err) { showError("screening-summary", err); document.getElementById("tbody").innerHTML = ""; }
 })();
 </script></body></html>

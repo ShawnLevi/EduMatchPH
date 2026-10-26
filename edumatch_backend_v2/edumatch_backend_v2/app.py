@@ -16,7 +16,7 @@ from reference import (COURSES, FIELDS, LOCALITIES, LOCATION_REQ_CHOICES,
 from validation import clean_applicant, clean_program
 
 app = Flask(__name__)
-# Change this secret before any real use. It signs the login cookie.
+# Set EDUMATCH_SECRET in the environment. It signs the login cookie.
 app.secret_key = os.environ.get("EDUMATCH_SECRET", "dev-only-change-me")
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 # The frontend runs on another port (for example 5500) on localhost, so allow
@@ -35,8 +35,9 @@ def http_error(e):
 @app.errorhandler(Exception)
 def server_error(e):
     app.logger.exception("Unexpected error")
-    return jsonify({"error": "Something went wrong on the server. "
-                             "Check the backend terminal for details."}), 500
+    return jsonify({"error": "EduMatch PH could not complete this request. "
+                             "Please try again. If the problem continues, "
+                             "contact your system administrator."}), 500
 
 
 PUBLIC_ENDPOINTS = {"login", "logout", "me", "meta"}
@@ -79,7 +80,7 @@ def load_scholarship(cur, scholarship_id):
 def json_body():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
-        abort(400, "Send a JSON body")
+        abort(400, "The request was incomplete. Refresh the page and try again")
     return data
 
 
@@ -90,7 +91,7 @@ def login():
     email = str(data.get("email") or "").strip()
     password = str(data.get("password") or "")
     if not (org and email and password):
-        abort(400, "organization_id, email, and password are required")
+        abort(400, "Enter your organization, email and password")
     with db() as (conn, cur):
         cur.execute(
             "SELECT * FROM administrators"
@@ -160,13 +161,13 @@ def program_json(row):
     return out
 
 
-def applicant_exists(cur, scholarship_id, a):
+def applicant_exists(cur, scholarship_id, a, exclude_id=None):
     cur.execute(
         "SELECT 1 FROM applicants WHERE scholarship_id=%s"
         " AND LOWER(full_name)=LOWER(%s) AND course=%s AND year_level=%s"
-        " AND location=%s LIMIT 1",
+        " AND location=%s AND applicant_id<>%s LIMIT 1",
         (scholarship_id, a["full_name"], a["course"], a["year_level"],
-         a["location"]))
+         a["location"], exclude_id or 0))
     return cur.fetchone() is not None
 
 
@@ -197,6 +198,40 @@ def add_applicant(scholarship_id):
         return jsonify({"applicant_id": cur.lastrowid}), 201
 
 
+@app.route("/api/scholarships/<int:scholarship_id>/applicants",
+           methods=["GET"])
+def list_applicants(scholarship_id):
+    """All applicants of this program (lets the screen show them before screening)."""
+    with db() as (conn, cur):
+        load_scholarship(cur, scholarship_id)
+        cur.execute(
+            "SELECT applicant_id, full_name, gwa, entrance_score,"
+            " household_income, course, year_level, location"
+            " FROM applicants WHERE scholarship_id=%s ORDER BY applicant_id",
+            (scholarship_id,))
+        return jsonify([json_safe(r) for r in cur.fetchall()])
+
+
+def screen_one(cur, applicant, scholarship):
+    """Check one applicant against the six rules and store the result and the
+    reason for each criterion. Any earlier result for this applicant must be
+    removed first by the caller. Returns True when the applicant is eligible."""
+    is_eligible, checks = check_eligibility(applicant, scholarship)
+    cur.execute(
+        "INSERT INTO screening_results"
+        " (applicant_id, scholarship_id, eligible) VALUES (%s,%s,%s)",
+        (applicant["applicant_id"], scholarship["scholarship_id"],
+         is_eligible))
+    result_id = cur.lastrowid
+    for name, (met, aval, tval) in checks.items():
+        cur.execute(
+            "INSERT INTO screening_reasons (result_id, criterion_name,"
+            " applicant_value, threshold_value, met)"
+            " VALUES (%s,%s,%s,%s,%s)",
+            (result_id, name, str(aval), str(tval), met))
+    return is_eligible
+
+
 @app.route("/api/scholarships/<int:scholarship_id>/screen", methods=["POST"])
 def screen_scholarship(scholarship_id):
     with db() as (conn, cur):
@@ -213,18 +248,7 @@ def screen_scholarship(scholarship_id):
                     (scholarship_id,))
         results = []
         for a in cur.fetchall():
-            is_eligible, checks = check_eligibility(a, scholarship)
-            cur.execute(
-                "INSERT INTO screening_results"
-                " (applicant_id, scholarship_id, eligible) VALUES (%s,%s,%s)",
-                (a["applicant_id"], scholarship_id, is_eligible))
-            result_id = cur.lastrowid
-            for name, (met, aval, tval) in checks.items():
-                cur.execute(
-                    "INSERT INTO screening_reasons (result_id, criterion_name,"
-                    " applicant_value, threshold_value, met)"
-                    " VALUES (%s,%s,%s,%s,%s)",
-                    (result_id, name, str(aval), str(tval), met))
+            is_eligible = screen_one(cur, a, scholarship)
             results.append({"applicant_id": a["applicant_id"],
                             "eligible": bool(is_eligible)})
         cur.execute("UPDATE scholarship_programs SET status='Screening'"
@@ -335,6 +359,38 @@ def update_scholarship(scholarship_id):
 
 # ==================== SHAWN: ranking routes ====================
 
+def write_ranking(cur, scholarship):
+    """Score every eligible applicant of the program and store the ranking,
+    replacing any earlier one. Returns (ranked_count, shortlisted_count).
+    A score depends only on the applicant's own inputs and the program, so
+    applicants who were not edited keep the same score every time."""
+    scholarship_id = scholarship["scholarship_id"]
+    cur.execute(
+        "DELETE rr FROM ranking_results rr JOIN screening_results sr"
+        " ON sr.result_id = rr.result_id WHERE sr.scholarship_id=%s",
+        (scholarship_id,))
+    cur.execute(
+        "SELECT sr.result_id, a.* FROM screening_results sr"
+        " JOIN applicants a ON a.applicant_id = sr.applicant_id"
+        " WHERE sr.scholarship_id=%s AND sr.eligible=1", (scholarship_id,))
+    scored = [(a["result_id"], predict_priority(a, scholarship),
+               program_standing(a["gwa"], scholarship),
+               a["household_income"])
+              for a in cur.fetchall()]
+    # Highest priority first. Equal scores: better GWA first (a higher
+    # standing, whatever the program's scale), then lower household
+    # income, then result_id so the order is always the same.
+    scored.sort(key=lambda x: (-x[1], -x[2], float(x[3]), x[0]))
+    slots = scholarship["available_slots"] or 0
+    for rank, (result_id, score, _gwa, _income) in enumerate(scored, 1):
+        status = "SHORTLIST" if rank <= slots else "WAITLIST"
+        cur.execute(
+            "INSERT INTO ranking_results"
+            " (result_id, priority_score, rank_position, status)"
+            " VALUES (%s,%s,%s,%s)", (result_id, score, rank, status))
+    return len(scored), min(len(scored), slots)
+
+
 @app.route("/api/scholarships/<int:scholarship_id>/rank", methods=["POST"])
 def rank_scholarship(scholarship_id):
     with db() as (conn, cur):
@@ -346,38 +402,13 @@ def rank_scholarship(scholarship_id):
         if cur.fetchone()["n"] == 0:
             abort(400, "Run screening before ranking")
 
-        # Clear the previous ranking, so re-running is safe.
-        cur.execute(
-            "DELETE rr FROM ranking_results rr JOIN screening_results sr"
-            " ON sr.result_id = rr.result_id WHERE sr.scholarship_id=%s",
-            (scholarship_id,))
-        cur.execute(
-            "SELECT sr.result_id, a.* FROM screening_results sr"
-            " JOIN applicants a ON a.applicant_id = sr.applicant_id"
-            " WHERE sr.scholarship_id=%s AND sr.eligible=1", (scholarship_id,))
-        scored = [(a["result_id"], predict_priority(a, scholarship),
-                   program_standing(a["gwa"], scholarship),
-                   a["household_income"])
-                  for a in cur.fetchall()]
-        # Highest priority first. Equal scores: better GWA first (a higher
-        # standing, whatever the program's scale), then lower household
-        # income, then result_id so the order is always the same.
-        scored.sort(key=lambda x: (-x[1], -x[2], float(x[3]), x[0]))
-
-        slots = scholarship["available_slots"] or 0
-        for rank, (result_id, score, _gwa, _income) in enumerate(scored, 1):
-            status = "SHORTLIST" if rank <= slots else "WAITLIST"
-            cur.execute(
-                "INSERT INTO ranking_results"
-                " (result_id, priority_score, rank_position, status)"
-                " VALUES (%s,%s,%s,%s)", (result_id, score, rank, status))
+        scored_count, shortlisted = write_ranking(cur, scholarship)
         cur.execute("UPDATE scholarship_programs SET status='Ranking'"
                     " WHERE scholarship_id=%s", (scholarship_id,))
         conn.commit()
-        shortlisted = min(len(scored), slots)
-        return jsonify({"ranked_count": len(scored),
+        return jsonify({"ranked_count": scored_count,
                         "shortlisted": shortlisted,
-                        "waitlisted": len(scored) - shortlisted})
+                        "waitlisted": scored_count - shortlisted})
 
 
 @app.route("/api/scholarships/<int:scholarship_id>/shortlist",
@@ -434,6 +465,102 @@ def export_shortlist(scholarship_id):
     return Response("﻿" + out.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition":
                              "attachment; filename=" + filename})
+
+
+@app.route("/api/scholarships/<int:scholarship_id>/applicants/"
+           "<int:applicant_id>", methods=["PUT"])
+def update_applicant(scholarship_id, applicant_id):
+    """Correct an applicant's details. The saved screening result (and ranking
+    row) of this applicant no longer matches the new details, so it is removed
+    and the applicant shows as 'not screened'. Everyone else keeps their
+    results. The answer says what the administrator can do next."""
+    data = json_body()
+    with db() as (conn, cur):
+        program = load_scholarship(cur, scholarship_id)
+        cur.execute("SELECT 1 FROM applicants WHERE applicant_id=%s"
+                    " AND scholarship_id=%s", (applicant_id, scholarship_id))
+        if cur.fetchone() is None:
+            abort(404, "Applicant not found")
+        clean, error = clean_applicant(data, program_scale(program))
+        if error:
+            abort(400, error)
+        if applicant_exists(cur, scholarship_id, clean, applicant_id):
+            abort(409, "Another applicant in this program already has the "
+                       "same name, course, year level and location")
+        cur.execute(
+            "UPDATE applicants SET full_name=%s, gwa=%s, entrance_score=%s,"
+            " household_income=%s, course=%s, year_level=%s, location=%s"
+            " WHERE applicant_id=%s",
+            (clean["full_name"], clean["gwa"], clean["entrance_score"],
+             clean["household_income"], clean["course"], clean["year_level"],
+             clean["location"], applicant_id))
+        cur.execute("SELECT 1 FROM screening_results WHERE applicant_id=%s",
+                    (applicant_id,))
+        was_screened = cur.fetchone() is not None
+        cur.execute("DELETE FROM screening_results WHERE applicant_id=%s",
+                    (applicant_id,))
+        conn.commit()
+        return jsonify({"updated": applicant_id,
+                        "was_screened": was_screened,
+                        "program_ranked": has_ranking(cur, scholarship_id)})
+
+
+def has_ranking(cur, scholarship_id):
+    cur.execute(
+        "SELECT 1 FROM ranking_results rr JOIN screening_results sr"
+        " ON sr.result_id = rr.result_id WHERE sr.scholarship_id=%s LIMIT 1",
+        (scholarship_id,))
+    return cur.fetchone() is not None
+
+
+@app.route("/api/scholarships/<int:scholarship_id>/applicants/"
+           "<int:applicant_id>/screen", methods=["POST"])
+def screen_applicant(scholarship_id, applicant_id):
+    """Screen ONE applicant (for example after correcting their details).
+    Send {"rank": true} to also update the ranking when the program has
+    already been ranked: the applicant is scored and the positions are
+    re-ordered. Other applicants keep their scores, but their positions and
+    shortlist or waitlist status can move."""
+    data = request.get_json(silent=True) or {}
+    want_rank = bool(data.get("rank"))
+    with db() as (conn, cur):
+        scholarship = load_scholarship(cur, scholarship_id)
+        if scholarship["status"] == "Closed":
+            abort(400, "This program is closed. Reopen it to run screening")
+        cur.execute("SELECT * FROM applicants WHERE applicant_id=%s"
+                    " AND scholarship_id=%s", (applicant_id, scholarship_id))
+        applicant = cur.fetchone()
+        if applicant is None:
+            abort(404, "Applicant not found")
+        ranked_before = has_ranking(cur, scholarship_id)
+        if want_rank and not ranked_before:
+            abort(400, "This program has not been ranked yet. Run ranking "
+                       "for the whole program first")
+        cur.execute("DELETE FROM screening_results WHERE applicant_id=%s",
+                    (applicant_id,))
+        is_eligible = bool(screen_one(cur, applicant, scholarship))
+        out = {"applicant_id": applicant_id, "eligible": is_eligible,
+               "ranked": False}
+        if want_rank:
+            write_ranking(cur, scholarship)
+            cur.execute("UPDATE scholarship_programs SET status='Ranking'"
+                        " WHERE scholarship_id=%s", (scholarship_id,))
+            if is_eligible:
+                cur.execute(
+                    "SELECT rr.priority_score, rr.rank_position, rr.status"
+                    " FROM ranking_results rr JOIN screening_results sr"
+                    " ON sr.result_id = rr.result_id"
+                    " WHERE sr.applicant_id=%s", (applicant_id,))
+                row = cur.fetchone()
+                out.update(ranked=True,
+                           priority_score=float(row["priority_score"]),
+                           rank_position=row["rank_position"],
+                           status=row["status"])
+        elif scholarship["status"] == "Open":
+            cur.execute("UPDATE scholarship_programs SET status='Screening'"
+                        " WHERE scholarship_id=%s", (scholarship_id,))
+        conn.commit()
+        return jsonify(out)
 
 
 @app.route("/api/scholarships/<int:scholarship_id>/applicants/"
@@ -564,7 +691,7 @@ def import_applicants(scholarship_id):
     preview = request.form.get("preview", "true").lower() != "false"
     upload = request.files.get("file")
     if upload is None:
-        abort(400, "Attach a file in the 'file' field")
+        abort(400, "Choose a .csv or .xlsx file to import")
     rows = read_spreadsheet(upload)
     if not rows:
         abort(400, "The file is empty")
@@ -612,4 +739,4 @@ def import_applicants(scholarship_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=os.environ.get("EDUMATCH_DEBUG") == "1", port=5000)
