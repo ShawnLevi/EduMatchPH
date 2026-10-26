@@ -210,6 +210,51 @@ try:
     gw = [x["criterion_name"] for x in gd["Scale Worse"]["reasons"] if not x["met"]]
     check("GWA 2.0 fails a maximum of 1.5, on GWA only", not gd["Scale Worse"]["eligible"] and gw == ["GWA"], gd["Scale Worse"])
 
+    print("--- The six criteria: each one has a case that fails and a case that passes")
+    # GWA: tested above ("GWA scale"). Location: tested above ("Location rules").
+    # This block covers Income, Field, Year Level and Entrance Score. Each
+    # failing applicant breaks exactly ONE rule, so the reason must name only it.
+    p6 = make_program(uclm, scholarship_name="TEST Six Criteria", gwa_limit=2.0,
+                      income_cap=300000, eligible_field="STEM",
+                      eligible_years="1,2", min_entrance=85)
+    u6 = f"/api/scholarships/{p6}"
+    six = [
+        ("Six All Pass", {}),
+        ("Six Income Over", {"household_income": 350000}),
+        ("Six Income Equal", {"household_income": 300000}),
+        ("Six Field Wrong", {"course": "BS Business Administration"}),
+        ("Six Year Wrong", {"year_level": 3}),
+        ("Six Year Second", {"year_level": 2}),
+        ("Six Entrance Low", {"entrance_score": 84}),
+        ("Six Entrance Equal", {"entrance_score": 85}),
+    ]
+    for nm, change in six:
+        uclm.post(u6 + "/applicants", json={**GOOD, "full_name": nm, **change})
+    uclm.post(u6 + "/screen")
+    sx = {d["full_name"]: d for d in uclm.get(u6 + "/screening").get_json()}
+
+    def failed_on(name):
+        return [x["criterion_name"] for x in sx[name]["reasons"] if not x["met"]]
+
+    check("All six criteria met -> eligible, no reason failed",
+          sx["Six All Pass"]["eligible"] and failed_on("Six All Pass") == [], sx["Six All Pass"])
+    check("Income 350000 fails a cap of 300000, on Income only",
+          not sx["Six Income Over"]["eligible"] and failed_on("Six Income Over") == ["Income"], sx["Six Income Over"])
+    check("Income exactly at the cap (300000) passes",
+          sx["Six Income Equal"]["eligible"], sx["Six Income Equal"])
+    check("A business course fails a STEM program, on Field only",
+          not sx["Six Field Wrong"]["eligible"] and failed_on("Six Field Wrong") == ["Field"], sx["Six Field Wrong"])
+    check("Year 3 fails a program for years 1 and 2, on Year Level only",
+          not sx["Six Year Wrong"]["eligible"] and failed_on("Six Year Wrong") == ["Year Level"], sx["Six Year Wrong"])
+    check("Year 2 passes a program for years 1 and 2",
+          sx["Six Year Second"]["eligible"], sx["Six Year Second"])
+    check("Entrance 84 fails a minimum of 85, on Entrance Score only",
+          not sx["Six Entrance Low"]["eligible"] and failed_on("Six Entrance Low") == ["Entrance Score"], sx["Six Entrance Low"])
+    check("Entrance exactly at the minimum (85) passes",
+          sx["Six Entrance Equal"]["eligible"], sx["Six Entrance Equal"])
+    check("Every applicant has all six criteria recorded",
+          all(len(d["reasons"]) == 6 for d in sx.values()), sx)
+
     print("--- Programs: add, edit, closed")
     check("Invalid program -> 400",
           error_ok(uclm.post("/api/scholarships", json={**PROGRAM, "gwa_limit": 6}), 400))
