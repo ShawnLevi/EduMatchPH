@@ -309,3 +309,42 @@ tr.open .caret{transform:rotate(90deg)}
 .choice:hover:not(:disabled){border-color:var(--navy-600);box-shadow:var(--focus)}
 .choice:disabled{opacity:.6;cursor:wait}
 .choice.quiet{background:transparent}
+
+/* bulk selection */
+th.chk,td.chk{width:34px;padding-left:.7rem;padding-right:0}
+td.chk input,th.chk input{width:16px;height:16px;cursor:pointer;accent-color:var(--navy-700)}
+.bulkbar{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;padding:.65rem .9rem;margin:0 0 1rem;border-radius:var(--radius-sm);background:var(--navy-100);color:var(--navy-900);font-size:.9rem}
+.bulkbar[hidden]{display:none}
+.bulkbar .grow{flex:1}
+.bulkbar .linkish{border:0;background:none;color:var(--navy-600);font:inherit;text-decoration:underline;cursor:pointer;padding:0}
+.btn-danger.small{padding:.4rem .75rem;font-size:.85rem}
+.btn-danger-outline{background:#fff;color:var(--no);border:1px solid var(--no-bg)}
+.btn-danger-outline:hover:not(:disabled){background:var(--no-bg)}
+.btn-danger-outline:disabled{opacity:.5;cursor:not-allowed}
+.confirm-input{width:100%;margin-top:.6rem}
+/* why not eligible */
+.why-card summary{cursor:pointer;font-weight:600}
+.why-card .why-row{display:grid;grid-template-columns:150px 1fr 90px;gap:.7rem;align-items:center;margin:.45rem 0;font-size:.88rem}
+.why-card .track{height:10px;border-radius:99px;background:var(--line-soft);overflow:hidden}
+.why-card .fill{height:100%;background:var(--no);border-radius:99px}
+.why-card .num{text-align:right;color:var(--ink-muted)}
+/* print */
+.print-only{display:none}
+@media print{
+  .app-header,.crumbs,.subnav,#prog-head,.toolbar,.stats,.card-head,.noprint,.toasts,.pager,.overlay,.drawer,.drawer-overlay,#ranking-message{display:none!important}
+  .print-only{display:block!important}
+  body{background:#fff!important}
+  .wrap{padding:0!important;max-width:none!important}
+  .card{box-shadow:none!important;border:0!important;padding:0!important}
+  .table-scroll{overflow:visible!important}
+  table{font-size:11pt}
+  tr{break-inside:avoid}
+  .scorebar .fill,.pill,.cutoff .line{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print-head h1{font-size:18pt;margin:0 0 .2rem}
+  .print-head p{margin:.1rem 0;font-size:10.5pt;color:#333}
+  .print-head{margin-bottom:.8rem;padding-bottom:.5rem;border-bottom:1px solid #999}
+}
+
+/* next-step banner: tells the user what to do next, right above the table */
+.insight.nextstep{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.insight.nextstep button{flex:none}

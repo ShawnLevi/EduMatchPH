@@ -471,6 +471,115 @@ try:
     check("Closed program: screening one applicant is refused",
           error_ok(uclm.post(f"{eu}/applicants/{ids['Edit Cy']}/screen", json={}), 400))
 
+    print("--- Bulk delete, delete all, undo, screen selected, exports, summary")
+    pb = make_program(uclm, scholarship_name="TEST Bulk Tools", available_slots=2)
+    bu = f"/api/scholarships/{pb}"
+    bids = {}
+    for nm, g, ent in [("Bulk A", 1.5, 90), ("Bulk B", 1.8, 85), ("Bulk C", 2.2, 75), ("Bulk D", 3.9, 70), ("Bulk E", 2.4, 65), ("=Bulk F", 1.9, 80)]:
+        bids[nm] = uclm.post(bu + "/applicants", json={**GOOD, "full_name": nm, "gwa": g, "entrance_score": ent}).get_json()["applicant_id"]
+    check("Applicant list export before screening shows 'Not screened'",
+          "Not screened" in uclm.get(bu + "/applicants.csv").data.decode("utf-8-sig"))
+    check("Screening reasons export before screening -> 400", error_ok(uclm.get(bu + "/screening-reasons.csv"), 400))
+    sm = uclm.get(bu + "/screening-summary").get_json()
+    check("Summary before screening: 6 applicants, none screened", sm["total"] == 6 and sm["screened"] == 0 and sm["unscreened"] == 6, sm)
+    uclm.post(bu + "/screen")
+    sm = uclm.get(bu + "/screening-summary").get_json()
+    scr = uclm.get(bu + "/screening").get_json()
+    gwa_fail = sum(1 for d in scr for x in d["reasons"] if x["criterion_name"] == "GWA" and not x["met"])
+    check("Summary counts match the screening results",
+          sm["screened"] == 6 and sm["eligible"] == sum(d["eligible"] for d in scr) and
+          {f["criterion"]: f["failed"] for f in sm["failures"]}["GWA"] == gwa_fail and len(sm["failures"]) == 6, sm)
+    check("Summary: Bulk D failed only GWA, so 'missed by one rule' is 1", sm["missed_by_one_rule"] == 1, sm)
+
+    ac = uclm.get(bu + "/applicants.csv")
+    txt = ac.data.decode("utf-8-sig"); lines = txt.splitlines()
+    check("Applicant list export: header and 6 rows, a name starting with = is neutralized",
+          ac.status_code == 200 and lines[0].startswith("full_name,gwa") and len(lines) == 7 and "'=Bulk F" in txt, lines[:2])
+    check("Applicant list export carries the screening result", "Eligible" in txt and "Not eligible" in txt)
+    rc = uclm.get(bu + "/screening-reasons.csv")
+    rl = rc.data.decode("utf-8-sig").splitlines()
+    check("Screening reasons export: 6 rows, 2 + 18 columns, one Not met for Bulk D",
+          rc.status_code == 200 and len(rl) == 7 and len(rl[0].split(",")) == 20 and
+          [l for l in rl if l.startswith("Bulk D")][0].count("Not met") == 1, rl[0])
+    check("Exports of another organization's program -> 404",
+          error_ok(dost.get(bu + "/applicants.csv"), 404) and error_ok(dost.get(bu + "/screening-reasons.csv"), 404) and
+          error_ok(dost.get(bu + "/screening-summary"), 404))
+    check("Exports need login", error_ok(anon.get(bu + "/applicants.csv"), 401))
+
+    # screen selected
+    uclm.post(bu + "/rank")
+    r = uclm.post(bu + "/applicants/screen-selected", json={"ids": [bids["Bulk A"], bids["Bulk B"]], "rank": True})
+    j = r.get_json()
+    check("Screen and rank two selected applicants", r.status_code == 200 and j["screened"] == 2 and j["ranked"] is True, j)
+    single = [(x["full_name"], x["priority_score"], x["rank_position"], x["status"]) for x in uclm.get(bu + "/shortlist").get_json()]
+    uclm.post(bu + "/screen"); uclm.post(bu + "/rank")
+    full = [(x["full_name"], x["priority_score"], x["rank_position"], x["status"]) for x in uclm.get(bu + "/shortlist").get_json()]
+    check("Selected-only update gives the same ranking as running everything again", single == full)
+    r = uclm.post(bu + "/applicants/screen-selected", json={"ids": [bids["Bulk C"]]})
+    check("Screen selected without ranking: ok and counts add up", r.status_code == 200 and r.get_json()["screened"] == 1 and r.get_json()["eligible"] in (0, 1), r.get_json())
+    check("Screen selected: nothing selected -> 400", error_ok(uclm.post(bu + "/applicants/screen-selected", json={"ids": []}), 400))
+    check("Screen selected: unknown applicant -> 404", error_ok(uclm.post(bu + "/applicants/screen-selected", json={"ids": [99999999]}), 404))
+    check("Screen selected: another organization -> 404", error_ok(dost.post(bu + "/applicants/screen-selected", json={"ids": [bids["Bulk A"]]}), 404))
+    check("Screen selected: bad ids -> 400", error_ok(uclm.post(bu + "/applicants/screen-selected", json={"ids": ["x"]}), 400))
+
+    # bulk delete selected, with undo
+    uclm.post(bu + "/screen"); uclm.post(bu + "/rank")
+    r = uclm.post(bu + "/applicants/bulk-delete", json={"ids": [bids["Bulk D"], bids["Bulk E"]]})
+    j = r.get_json()
+    check("Bulk delete two selected applicants: count, undo details, ranking cleared",
+          r.status_code == 200 and j["deleted"] == 2 and len(j["restore"]) == 2 and j["ranking_cleared"] is True and
+          {x["full_name"] for x in j["restore"]} == {"Bulk D", "Bulk E"}, j)
+    left = {a["full_name"] for a in uclm.get(bu + "/applicants").get_json()}
+    check("Only the selected applicants were deleted", left == {"Bulk A", "Bulk B", "Bulk C", "=Bulk F"}, left)
+    check("The old ranking is gone and the program is back to Screening",
+          uclm.get(bu + "/shortlist").get_json() == [] and uclm.get(bu).get_json()["status"] == "Screening")
+    check("Other applicants keep their screening results", len(uclm.get(bu + "/screening").get_json()) == 4)
+    r = uclm.post(bu + "/applicants/restore", json={"applicants": j["restore"]})
+    check("Undo: both applicants are added back", r.status_code == 200 and r.get_json() == {"restored": 2, "skipped": 0}, r.get_json())
+    r = uclm.post(bu + "/applicants/restore", json={"applicants": j["restore"]})
+    check("Undo twice does not create duplicates", r.get_json() == {"restored": 0, "skipped": 2}, r.get_json())
+    r = uclm.post(bu + "/applicants/restore", json={"applicants": [{**GOOD, "full_name": "Bad Back", "gwa": 99}]})
+    check("Undo skips an invalid record", r.get_json() == {"restored": 0, "skipped": 1}, r.get_json())
+    back = {a["full_name"]: a for a in uclm.get(bu + "/applicants").get_json()}
+    check("Restored applicants have the same details and show as not screened",
+          back["Bulk D"]["gwa"] == 3.9 and back["Bulk E"]["entrance_score"] == 65 and len(uclm.get(bu + "/screening").get_json()) == 4)
+    check("Bulk delete: nothing selected -> 400", error_ok(uclm.post(bu + "/applicants/bulk-delete", json={"ids": []}), 400))
+    check("Bulk delete: unknown applicant -> 404 and nothing deleted",
+          error_ok(uclm.post(bu + "/applicants/bulk-delete", json={"ids": [bids["Bulk A"], 99999999]}), 404) and len(uclm.get(bu + "/applicants").get_json()) == 6)
+    check("Bulk delete: another organization -> 404", error_ok(dost.post(bu + "/applicants/bulk-delete", json={"ids": [bids["Bulk A"]]}), 404))
+    check("Bulk delete: not logged in -> 401", error_ok(anon.post(bu + "/applicants/bulk-delete", json={"ids": [1]}), 401))
+    check("Restore: another organization -> 404", error_ok(dost.post(bu + "/applicants/restore", json={"applicants": [GOOD]}), 404))
+
+    # delete all
+    uclm.post(bu + "/screen"); uclm.post(bu + "/rank")
+    check("Delete all without the program name -> 400",
+          error_ok(uclm.post(bu + "/applicants/bulk-delete", json={"all": True}), 400) and
+          error_ok(uclm.post(bu + "/applicants/bulk-delete", json={"all": True, "confirm_name": "wrong"}), 400) and
+          len(uclm.get(bu + "/applicants").get_json()) == 6)
+    r = uclm.post(bu + "/applicants/bulk-delete", json={"all": True, "confirm_name": "TEST Bulk Tools"})
+    j = r.get_json()
+    check("Delete all with the right name: every applicant and result removed",
+          r.status_code == 200 and j["deleted"] == 6 and len(j["restore"]) == 6 and uclm.get(bu + "/applicants").get_json() == [] and
+          uclm.get(bu + "/screening").get_json() == [] and uclm.get(bu + "/shortlist").get_json() == [], j)
+    check("Delete all sets the program back to Open", uclm.get(bu).get_json()["status"] == "Open")
+    check("Delete all on an empty program -> 400",
+          error_ok(uclm.post(bu + "/applicants/bulk-delete", json={"all": True, "confirm_name": "TEST Bulk Tools"}), 400))
+    check("Another organization cannot delete all", error_ok(dost.post(bu + "/applicants/bulk-delete", json={"all": True, "confirm_name": "TEST Bulk Tools"}), 404))
+    r = uclm.post(bu + "/applicants/restore", json={"applicants": j["restore"]})
+    check("Undo of delete all brings all 6 back", r.get_json() == {"restored": 6, "skipped": 0}, r.get_json())
+    closed = uclm.put(bu, json={**PROGRAM, "scholarship_name": "TEST Bulk Tools", "available_slots": 2, "status": "Closed"})
+    check("Closed program: screen selected is refused",
+          closed.status_code == 200 and error_ok(uclm.post(bu + "/applicants/screen-selected", json={"ids": [bids["Bulk A"]]}), 400))
+
+    print("--- Import preview: problem rows come back with their original values")
+    csvbad = "full_name,gwa,entrance_score,household_income,course,year_level,location\nGood One,1.7,88,200000,BS Computer Science,1,Cebu City\nBad GWA,9,88,200000,BS Computer Science,1,Cebu City\n"
+    pbi = make_program(uclm, scholarship_name="TEST Import Errors")
+    r = uclm.post(f"/api/scholarships/{pbi}/applicants/import", data={"file": (io.BytesIO(csvbad.encode()), "x.csv"), "preview": "true"}, content_type="multipart/form-data")
+    j = r.get_json()
+    check("A problem row carries its row number, message and original values",
+          r.status_code == 200 and j["valid_rows"] == 1 and len(j["errors"]) == 1 and j["errors"][0]["row"] == 3 and
+          j["errors"][0]["record"]["full_name"] == "Bad GWA" and j["errors"][0]["record"]["gwa"] == "9", j)
+
     print("--- Model loads from any folder")
     code = f"import sys; sys.path.insert(0, r'{os.path.dirname(os.path.abspath(__file__))}'); import ranking; print('ok')"
     out = subprocess.run([sys.executable, "-c", code], cwd="/" if os.name != "nt" else "C:\\", capture_output=True, text=True)

@@ -8,8 +8,8 @@ Plain HTML, CSS and JavaScript. No build step. Talks to backend v2.
 | index.html | Login (choose UCLM or DOST) |
 | programs.html | List of your organization's programs |
 | program-form.html | Create / edit a program (grade scale, GWA limit, rules, slots, status) |
-| applicants.html | Add or edit an applicant, import .csv/.xlsx (preview then save), Run Screening, per-criterion reasons, delete applicant |
-| ranking.html | Run Ranking, shortlist/waitlist table, "Why?" explanation, download CSV |
+| applicants.html | Add or edit an applicant, import .csv/.xlsx (preview then save, download problem rows), tick applicants to screen or delete them, Delete all, Undo, export applicants and screening reasons, "why not eligible" summary, Run Screening, per-criterion reasons |
+| ranking.html | Run Ranking, shortlist/waitlist table, "Why?" explanation, Edit applicant, download CSV, print the shortlist |
 | compare.html | Compare two ranked applicants side by side |
 | app.js | Shared code: apiFetch, login/logout, header, dropdowns |
 | style.css | Team colors and styles |
@@ -27,6 +27,14 @@ Change `const API` at the top of app.js. The backend CORS list must include the 
 
 ## Editing applicants after screening or ranking
 The pencil icon on an applicant row (or the Edit button on the ranking page) opens the same form with the saved details. After saving, if the applicant had already been screened, the system asks whether to screen that applicant only, or screen everyone again. If the program had already been ranked, the choice is to screen and rank that applicant only, or screen and rank everyone again. Choosing "Decide later" leaves the applicant marked Not screened.
+
+## Selecting, deleting and exporting applicants
+- Tick applicants (or the box in the table header for the whole page, then "Select all N matching" to include every applicant that matches the current filter). A bar appears with **Screen selected**, **Delete selected** and **Clear selection**.
+- **Delete all** asks you to type the program name. Every delete (one, selected or all) shows an **Undo** button for about 8 seconds; restored applicants come back as Not screened.
+- **Export applicants** and **Export reasons** download CSV files (applicant list with screening and ranking results; the six criteria for each screened applicant).
+- After screening, **Why applicants were not eligible** shows how many applicants failed each rule and how many missed by one rule only.
+- Import: when rows have problems, **Download problem rows (CSV)** gives a file with the original values, ready to fix and upload again.
+- Ranking page: **Print shortlist** prints a clean page with the program name, slots and date.
 
 ## What changed in the UI upgrade
 - Program cards with search and status filters; workflow stepper (Add applicants → Screening → Ranking → Shortlist) on every program page.

@@ -590,6 +590,269 @@ def delete_applicant(scholarship_id, applicant_id):
                         "ranking_cleared": ranking_cleared})
 
 
+# ==================== bulk actions: delete, undo, screen selected ====================
+
+APPLICANT_RESTORE_COLS = ("full_name, gwa, entrance_score, household_income,"
+                          " course, year_level, location")
+MAX_BULK_IDS = 5000
+
+
+def selected_ids(data, cur, scholarship_id):
+    """The applicant ids sent as {"ids": [...]}, checked to be in this program."""
+    ids = data.get("ids")
+    if not isinstance(ids, list) or not ids:
+        abort(400, "Select at least one applicant")
+    if len(ids) > MAX_BULK_IDS:
+        abort(400, f"Select at most {MAX_BULK_IDS} applicants at a time")
+    try:
+        ids = sorted({int(i) for i in ids})
+    except (TypeError, ValueError):
+        abort(400, "The selection was not valid. Refresh the page and try again")
+    marks = ",".join(["%s"] * len(ids))
+    cur.execute("SELECT applicant_id FROM applicants WHERE scholarship_id=%s"
+                f" AND applicant_id IN ({marks})", (scholarship_id, *ids))
+    if len(cur.fetchall()) != len(ids):
+        abort(404, "One or more selected applicants were not found in this "
+                   "program")
+    return ids
+
+
+@app.route("/api/scholarships/<int:scholarship_id>/applicants/bulk-delete",
+           methods=["POST"])
+def bulk_delete_applicants(scholarship_id):
+    """Delete the selected applicants ({"ids": [...]}) or every applicant of
+    the program ({"all": true, "confirm_name": "<program name>"}). Their
+    results go with them. The old ranking no longer matches the remaining
+    applicants, so it is cleared. The answer carries the deleted details, so
+    the page can offer Undo."""
+    data = json_body()
+    with db() as (conn, cur):
+        scholarship = load_scholarship(cur, scholarship_id)
+        delete_all = bool(data.get("all"))
+        if delete_all:
+            if str(data.get("confirm_name") or "").strip() != \
+                    scholarship["scholarship_name"]:
+                abort(400, "Type the program name exactly to delete all "
+                           "applicants")
+            cur.execute(f"SELECT {APPLICANT_RESTORE_COLS} FROM applicants"
+                        " WHERE scholarship_id=%s ORDER BY applicant_id",
+                        (scholarship_id,))
+        else:
+            ids = selected_ids(data, cur, scholarship_id)
+            marks = ",".join(["%s"] * len(ids))
+            cur.execute(f"SELECT {APPLICANT_RESTORE_COLS} FROM applicants"
+                        f" WHERE applicant_id IN ({marks})"
+                        " ORDER BY applicant_id", tuple(ids))
+        rows = cur.fetchall()
+        if not rows:
+            abort(400, "This program has no applicants to delete")
+        restore = [json_safe(r) for r in rows]
+        if delete_all:
+            cur.execute("DELETE FROM applicants WHERE scholarship_id=%s",
+                        (scholarship_id,))
+        else:
+            cur.execute(f"DELETE FROM applicants WHERE applicant_id IN ({marks})",
+                        tuple(ids))
+        cur.execute(
+            "DELETE rr FROM ranking_results rr JOIN screening_results sr"
+            " ON sr.result_id = rr.result_id WHERE sr.scholarship_id=%s",
+            (scholarship_id,))
+        ranking_cleared = scholarship["status"] == "Ranking"
+        if delete_all and scholarship["status"] in ("Screening", "Ranking"):
+            cur.execute("UPDATE scholarship_programs SET status='Open'"
+                        " WHERE scholarship_id=%s", (scholarship_id,))
+        elif ranking_cleared:
+            cur.execute("UPDATE scholarship_programs SET status='Screening'"
+                        " WHERE scholarship_id=%s", (scholarship_id,))
+        conn.commit()
+        return jsonify({"deleted": len(restore),
+                        "ranking_cleared": ranking_cleared,
+                        "restore": restore})
+
+
+@app.route("/api/scholarships/<int:scholarship_id>/applicants/restore",
+           methods=["POST"])
+def restore_applicants(scholarship_id):
+    """Undo a delete: add the sent applicant details back (each one is
+    checked like a new applicant). They come back as 'not screened'."""
+    data = json_body()
+    items = data.get("applicants")
+    if not isinstance(items, list) or not items:
+        abort(400, "There is nothing to restore")
+    if len(items) > MAX_BULK_IDS:
+        abort(400, f"Restore at most {MAX_BULK_IDS} applicants at a time")
+    with db() as (conn, cur):
+        program = load_scholarship(cur, scholarship_id)
+        scale = program_scale(program)
+        restored = skipped = 0
+        for item in items:
+            clean, error = clean_applicant(item, scale)
+            if error or applicant_exists(cur, scholarship_id, clean):
+                skipped += 1
+                continue
+            cur.execute(INSERT_APPLICANT, applicant_values(scholarship_id, clean))
+            restored += 1
+        conn.commit()
+        return jsonify({"restored": restored, "skipped": skipped})
+
+
+@app.route("/api/scholarships/<int:scholarship_id>/applicants/screen-selected",
+           methods=["POST"])
+def screen_selected_applicants(scholarship_id):
+    """Screen only the selected applicants ({"ids": [...]}). Send "rank": true
+    to also update the ranking when the program was already ranked (the
+    positions are re-ordered; other applicants keep their scores)."""
+    data = json_body()
+    want_rank = bool(data.get("rank"))
+    with db() as (conn, cur):
+        scholarship = load_scholarship(cur, scholarship_id)
+        if scholarship["status"] == "Closed":
+            abort(400, "This program is closed. Reopen it to run screening")
+        ids = selected_ids(data, cur, scholarship_id)
+        if want_rank and not has_ranking(cur, scholarship_id):
+            abort(400, "This program has not been ranked yet. Run ranking "
+                       "for the whole program first")
+        marks = ",".join(["%s"] * len(ids))
+        cur.execute(f"DELETE FROM screening_results WHERE applicant_id IN ({marks})",
+                    tuple(ids))
+        cur.execute(f"SELECT * FROM applicants WHERE applicant_id IN ({marks})",
+                    tuple(ids))
+        eligible = sum(1 for a in cur.fetchall()
+                       if screen_one(cur, a, scholarship))
+        if want_rank:
+            write_ranking(cur, scholarship)
+            cur.execute("UPDATE scholarship_programs SET status='Ranking'"
+                        " WHERE scholarship_id=%s", (scholarship_id,))
+        elif scholarship["status"] == "Open":
+            cur.execute("UPDATE scholarship_programs SET status='Screening'"
+                        " WHERE scholarship_id=%s", (scholarship_id,))
+        conn.commit()
+        return jsonify({"screened": len(ids), "eligible": eligible,
+                        "ineligible": len(ids) - eligible, "ranked": want_rank})
+
+
+# ==================== exports and the screening summary ====================
+
+CRITERIA_ORDER = ["GWA", "Entrance Score", "Income", "Field", "Year Level",
+                  "Location"]
+
+
+def csv_response(rows, filename):
+    out = io.StringIO()
+    csv.writer(out).writerows(rows)
+    return Response("\ufeff" + out.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition":
+                             "attachment; filename=" + filename})
+
+
+@app.route("/api/scholarships/<int:scholarship_id>/applicants.csv",
+           methods=["GET"])
+def export_applicants(scholarship_id):
+    """Every applicant of the program with the screening and ranking result."""
+    with db() as (conn, cur):
+        load_scholarship(cur, scholarship_id)
+        cur.execute(
+            "SELECT a.full_name, a.gwa, a.entrance_score, a.household_income,"
+            " a.course, a.year_level, a.location, sr.eligible,"
+            " rr.rank_position, rr.priority_score, rr.status"
+            " FROM applicants a"
+            " LEFT JOIN screening_results sr ON sr.applicant_id = a.applicant_id"
+            " LEFT JOIN ranking_results rr ON rr.result_id = sr.result_id"
+            " WHERE a.scholarship_id=%s ORDER BY a.applicant_id",
+            (scholarship_id,))
+        rows = cur.fetchall()
+    if not rows:
+        abort(400, "This program has no applicants to export")
+    table = [["full_name", "gwa", "entrance_score", "household_income",
+              "course", "year_level", "location", "screening", "rank",
+              "priority_score", "shortlist_status"]]
+    for r in rows:
+        screening = ("Not screened" if r["eligible"] is None
+                     else "Eligible" if r["eligible"] else "Not eligible")
+        table.append([csv_safe(r["full_name"]), r["gwa"], r["entrance_score"],
+                      r["household_income"], csv_safe(r["course"]),
+                      r["year_level"], csv_safe(r["location"]), screening,
+                      r["rank_position"] if r["rank_position"] is not None else "",
+                      r["priority_score"] if r["priority_score"] is not None else "",
+                      r["status"] or ""])
+    return csv_response(table, "applicants_program_%d.csv" % scholarship_id)
+
+
+@app.route("/api/scholarships/<int:scholarship_id>/screening-reasons.csv",
+           methods=["GET"])
+def export_screening_reasons(scholarship_id):
+    """One row per screened applicant with the six criteria: the applicant's
+    value, the requirement and met or not met."""
+    with db() as (conn, cur):
+        load_scholarship(cur, scholarship_id)
+        cur.execute(
+            "SELECT sr.result_id, sr.eligible, a.full_name,"
+            " rs.criterion_name, rs.applicant_value, rs.threshold_value, rs.met"
+            " FROM screening_results sr"
+            " JOIN applicants a ON a.applicant_id = sr.applicant_id"
+            " JOIN screening_reasons rs ON rs.result_id = sr.result_id"
+            " WHERE sr.scholarship_id=%s ORDER BY a.applicant_id, rs.reason_id",
+            (scholarship_id,))
+        rows = cur.fetchall()
+    if not rows:
+        abort(400, "Run screening first. There are no results to export yet")
+    people = {}
+    for r in rows:
+        person = people.setdefault(r["result_id"], {
+            "name": r["full_name"], "eligible": r["eligible"], "c": {}})
+        person["c"][r["criterion_name"]] = r
+    header = ["full_name", "screening"]
+    for c in CRITERIA_ORDER:
+        header += [f"{c} - applicant", f"{c} - required", f"{c} - result"]
+    table = [header]
+    for person in people.values():
+        line = [csv_safe(person["name"]),
+                "Eligible" if person["eligible"] else "Not eligible"]
+        for c in CRITERIA_ORDER:
+            x = person["c"].get(c)
+            line += ([csv_safe(x["applicant_value"]), csv_safe(x["threshold_value"]),
+                      "Met" if x["met"] else "Not met"] if x else ["", "", ""])
+        table.append(line)
+    return csv_response(table, "screening_reasons_program_%d.csv" % scholarship_id)
+
+
+@app.route("/api/scholarships/<int:scholarship_id>/screening-summary",
+           methods=["GET"])
+def screening_summary(scholarship_id):
+    """How many applicants failed each criterion (an applicant who fails
+    several counts once under each) and how many missed by one rule only."""
+    with db() as (conn, cur):
+        load_scholarship(cur, scholarship_id)
+        cur.execute("SELECT COUNT(*) AS n FROM applicants WHERE scholarship_id=%s",
+                    (scholarship_id,))
+        total = cur.fetchone()["n"]
+        cur.execute("SELECT COUNT(*) AS n, COALESCE(SUM(eligible),0) AS ok"
+                    " FROM screening_results WHERE scholarship_id=%s",
+                    (scholarship_id,))
+        row = cur.fetchone()
+        screened, eligible = row["n"], int(row["ok"])
+        cur.execute(
+            "SELECT rs.criterion_name, COUNT(*) AS n FROM screening_reasons rs"
+            " JOIN screening_results sr ON sr.result_id = rs.result_id"
+            " WHERE sr.scholarship_id=%s AND rs.met=0"
+            " GROUP BY rs.criterion_name", (scholarship_id,))
+        failed = {r["criterion_name"]: r["n"] for r in cur.fetchall()}
+        cur.execute(
+            "SELECT COUNT(*) AS n FROM (SELECT sr.result_id"
+            " FROM screening_results sr JOIN screening_reasons rs"
+            " ON rs.result_id = sr.result_id"
+            " WHERE sr.scholarship_id=%s AND rs.met=0"
+            " GROUP BY sr.result_id HAVING COUNT(*)=1) t", (scholarship_id,))
+        near = cur.fetchone()["n"]
+    return jsonify({
+        "total": total, "screened": screened, "unscreened": total - screened,
+        "eligible": eligible, "ineligible": screened - eligible,
+        "failures": [{"criterion": c, "failed": failed.get(c, 0)}
+                     for c in CRITERIA_ORDER],
+        "missed_by_one_rule": near,
+    })
+
+
 @app.route("/api/scholarships/<int:scholarship_id>/applicants/"
            "<int:applicant_id>/explanation", methods=["GET"])
 def explain_applicant(scholarship_id, applicant_id):
@@ -721,7 +984,9 @@ def import_applicants(scholarship_id):
                     error = "Duplicate applicant"
                 seen.add(key)
             if error:
-                errors.append({"row": i, "error": error})
+                errors.append({"row": i, "error": error, "record": {
+                    c: ("" if record.get(c) is None else str(record.get(c)))
+                    for c in IMPORT_COLUMNS}})
             else:
                 valid.append(clean)
         if not preview and valid:

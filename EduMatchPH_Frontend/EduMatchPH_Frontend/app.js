@@ -50,6 +50,23 @@ function downloadBlob(blob, filename) {
   document.body.appendChild(link); link.click(); link.remove();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
+// Download a file from the server (for example a CSV export). Shows the server's message when it refuses.
+async function downloadFile(path, filename) {
+  const res = await fetch(API + path, { credentials: "include" });
+  if (res.status === 401) { window.location.href = "index.html"; throw new Error("Please log in first"); }
+  if (!res.ok) {
+    let msg = null; try { msg = (await res.json()).error; } catch (e) { /* no JSON body */ }
+    throw new Error(msg || `The file could not be downloaded (error ${res.status}). Please try again.`);
+  }
+  downloadBlob(await res.blob(), filename);
+}
+// Turn rows (arrays of text) into CSV text. Cells that a spreadsheet could run as a formula are neutralized.
+function csvCell(v) {
+  let s = v == null ? "" : String(v);
+  if (/^[=+@]/.test(s) || /^-(?!\d)/.test(s)) s = "'" + s;
+  return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function toCsv(rows) { return "\ufeff" + rows.map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n"; }
 const ICON = {
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',

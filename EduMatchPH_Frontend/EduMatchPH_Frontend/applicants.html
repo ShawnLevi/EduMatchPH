@@ -9,6 +9,9 @@
 <div class="toolbar" style="margin-bottom:1rem">
   <button class="btn-primary small" id="add-btn" type="button">+ Add applicant</button>
   <button class="btn-secondary small" id="import-btn" type="button">Import CSV / Excel</button>
+  <button class="btn-secondary small" id="export-apps-btn" type="button" title="Download the applicant list as a CSV file">Export applicants</button>
+  <button class="btn-secondary small" id="export-reasons-btn" type="button" title="Download the six criteria for every screened applicant as a CSV file">Export reasons</button>
+  <button class="btn-danger-outline btn-secondary small" id="delete-all-btn" type="button">Delete all</button>
   <span class="grow"></span>
   <span class="hint" id="run-hint"></span>
   <button class="btn-primary" id="run-screening-btn" type="button">Run screening</button>
@@ -16,6 +19,8 @@
 <div id="screening-summary" class="msg"></div>
 <div id="stale"></div>
 <div class="stats" id="stats"></div>
+<div id="reasons-summary"></div>
+<div class="bulkbar" id="bulkbar" hidden></div>
 
 <div class="card">
   <div class="card-head">
@@ -35,11 +40,12 @@ const scholarshipId = getScholarshipIdFromUrl();
 if (!scholarshipId) window.location.href = "programs.html";
 const CRITERIA = [["GWA", "G"], ["Entrance Score", "E"], ["Income", "I"], ["Field", "C"], ["Year Level", "Y"], ["Location", "L"]];
 let program = null, apps = [], screening = [], screened = false;
+let selected = new Set(), filteredIds = [], summary = null;
 let filter = "all", sortKey = "name", sortDir = 1, page = 1, pageSize = +(store("edumatch_pagesize") || 10), expanded = new Set();
 
 const COLS = [["name", "Applicant"], ["gwa", "GWA", "num"], ["entrance", "Entrance", "num"], ["income", "Income", "num"], ["course", "Course"], ["year", "Yr", "num"], ["status", "Status"], ["checks", "Checks"]];
 function buildHead() {
-  document.getElementById("thead").innerHTML = '<th style="width:28px"></th>' + COLS.map(([k, l, c]) =>
+  document.getElementById("thead").innerHTML = '<th class="chk"><input type="checkbox" id="selall" aria-label="Select all applicants on this page"></th><th style="width:28px"></th>' + COLS.map(([k, l, c]) =>
     `<th class="sortable ${c || ""} ${sortKey === k ? "sorted" : ""}" data-k="${k}">${l}<span class="arrow">${sortKey === k && sortDir < 0 ? "▼" : "▲"}</span></th>`).join("") + "<th></th>";
 }
 document.getElementById("thead").addEventListener("click", (e) => {
@@ -85,9 +91,12 @@ function render() {
   document.getElementById("stats").innerHTML = stat("all", "applicants", "") + stat("eligible", "eligible", "ok") + stat("ineligible", "not eligible", "no") + (counts.unscreened ? stat("unscreened", "not screened", "wait") : "");
   // stale banner
   const stale = document.getElementById("stale");
+  const nextBtn = (id, label) => `<button type="button" class="btn-primary small" id="${id}">${label}</button>`;
+  const ranked = program && program.status === "Ranking", closed = program && program.status === "Closed";
   if (!all.length) stale.innerHTML = "";
-  else if (counts.unscreened && screened) stale.innerHTML = `<div class="insight">${counts.unscreened} applicant${counts.unscreened > 1 ? "s were" : " was"} added or edited after the last screening. Run screening again to include them.</div>`;
-  else if (counts.unscreened) stale.innerHTML = `<div class="insight">${counts.unscreened} applicants are waiting. Press <b>Run screening</b> to check them against the six rules.</div>`;
+  else if (counts.unscreened && screened) stale.innerHTML = `<div class="insight nextstep"><span>${counts.unscreened} applicant${counts.unscreened > 1 ? "s were" : " was"} added or edited after the last screening. Run screening again to include them.</span>${closed ? "" : nextBtn("next-screen", "Next step: Run screening")}</div>`;
+  else if (counts.unscreened) stale.innerHTML = `<div class="insight nextstep"><span>${counts.unscreened} applicant${counts.unscreened > 1 ? "s are" : " is"} waiting. Run screening to check them against the six rules.</span>${closed ? "" : nextBtn("next-screen", "Next step: Run screening")}</div>`;
+  else if (screened && counts.eligible && !closed) stale.innerHTML = `<div class="insight nextstep"><span>${ranked ? "Screening and ranking are up to date." : `Screening is complete: ${counts.eligible} of ${counts.all} applicants are eligible. Rank them to see the shortlist.`}</span>${nextBtn("next-rank", ranked ? "View ranking" : "Next step: Go to ranking")}</div>`;
   else stale.innerHTML = "";
   // filter + search
   const q = document.getElementById("search").value.trim().toLowerCase();
@@ -103,17 +112,23 @@ function render() {
   const slice = rows.slice((page - 1) * pageSize, page * pageSize);
   const tb = document.getElementById("tbody");
   if (!all.length) {
-    tb.innerHTML = `<tr><td colspan="10"><div class="empty"><div class="ico">${ICON.upload}</div><h3>No applicants yet</h3><p>Add one by hand, or import a CSV or Excel file. Then run screening.</p>` +
+    tb.innerHTML = `<tr><td colspan="11"><div class="empty"><div class="ico">${ICON.upload}</div><h3>No applicants yet</h3><p>Add one by hand, or import a CSV or Excel file. Then run screening.</p>` +
       '<button class="btn-primary" id="empty-import" type="button">Import applicants</button> <button class="btn-secondary" id="empty-add" type="button">Add one</button></div></td></tr>';
   } else if (!rows.length) {
-    tb.innerHTML = '<tr><td colspan="10"><div class="empty"><h3>No matches</h3><p>No applicants match this search or filter.</p><button class="btn-secondary small" id="clear-f" type="button">Clear filters</button></div></td></tr>';
+    tb.innerHTML = '<tr><td colspan="11"><div class="empty"><h3>No matches</h3><p>No applicants match this search or filter.</p><button class="btn-secondary small" id="clear-f" type="button">Clear filters</button></div></td></tr>';
   } else {
-    tb.innerHTML = slice.map((r) => `<tr class="clickable ${expanded.has(r.id) ? "open" : ""}" data-id="${r.id}"><td><span class="caret">▸</span></td>` +
+    tb.innerHTML = slice.map((r) => `<tr class="clickable ${expanded.has(r.id) ? "open" : ""}" data-id="${r.id}"><td class="chk"><input type="checkbox" data-sel="${r.id}" ${selected.has(r.id) ? "checked" : ""} aria-label="Select ${escapeHtml(r.name)}"></td><td><span class="caret">▸</span></td>` +
       `<td><b>${escapeHtml(r.name)}</b><div class="hint">${escapeHtml(r.location)}</div></td><td class="num">${escapeHtml(r.gwa)}</td><td class="num">${escapeHtml(r.entrance)}</td>` +
       `<td class="num">${isNaN(+r.income) ? escapeHtml(r.income) : peso(r.income)}</td><td>${escapeHtml(r.course)}</td><td class="num">${escapeHtml(r.year)}</td><td>${statusCell(r)}</td><td>${checksCell(r)}</td>` +
       `<td class="row-actions"><button class="icon-btn edit" data-edit="${r.id}" title="Edit applicant" aria-label="Edit ${escapeHtml(r.name)}">${ICON.edit}</button><button class="icon-btn" data-del="${r.id}" data-name="${escapeHtml(r.name)}" title="Delete applicant" aria-label="Delete ${escapeHtml(r.name)}">${ICON.trash}</button></td></tr>` +
-      (expanded.has(r.id) ? `<tr class="detail-row"><td colspan="10">${detailHtml(r)}</td></tr>` : "")).join("");
+      (expanded.has(r.id) ? `<tr class="detail-row"><td colspan="11">${detailHtml(r)}</td></tr>` : "")).join("");
   }
+  filteredIds = rows.map((r) => r.id);
+  const known = new Set(all.map((r) => r.id)); [...selected].forEach((id) => { if (!known.has(id)) selected.delete(id); });
+  renderSelection(slice.map((r) => r.id));
+  document.getElementById("delete-all-btn").disabled = !all.length;
+  document.getElementById("export-apps-btn").disabled = !all.length;
+  document.getElementById("export-reasons-btn").disabled = !screened;
   document.getElementById("count-hint").textContent = rows.length ? `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + slice.length} of ${rows.length}` : "";
   document.getElementById("pager").innerHTML = rows.length > 10 || pages > 1 ?
     `<span>Rows per page <select id="psize">${[10, 25, 50].map((n) => `<option ${n === pageSize ? "selected" : ""}>${n}</option>`).join("")}</select></span>` +
@@ -132,27 +147,25 @@ document.getElementById("tbody").addEventListener("click", async (e) => {
   const del = e.target.closest("[data-del]");
   if (del) {
     const ok = await confirmDialog({ title: "Delete " + del.dataset.name + "?", danger: true, confirmText: "Delete applicant",
-      message: "This removes everything stored about this applicant. It cannot be undone, and any ranking will be cleared." });
+      message: "This removes everything stored about this applicant, and any ranking will be cleared. You can undo for a few seconds after deleting." });
     if (!ok) return;
-    try {
-      const r = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${del.dataset.del}`, { method: "DELETE" });
-      toast("Applicant deleted." + (r.ranking_cleared ? " Run ranking again." : ""), "success");
-      await reload();
-    } catch (err) { toast(friendlyError(err), "error"); }
+    await deleteApplicants({ ids: [+del.dataset.del] });
     return;
   }
+  if (e.target.closest(".chk")) return;
   const tr = e.target.closest("tr.clickable"); if (!tr) return;
   const id = +tr.dataset.id; expanded.has(id) ? expanded.delete(id) : expanded.add(id); render();
 });
 
 // ---------- data ----------
 async function reload() {
-  const [scr, list] = await Promise.all([
+  const [scr, list, sum] = await Promise.all([
     apiFetch(`/api/scholarships/${scholarshipId}/screening`).catch(() => []),
     apiFetch(`/api/scholarships/${scholarshipId}/applicants`).catch(() => null),
+    apiFetch(`/api/scholarships/${scholarshipId}/screening-summary`).catch(() => null),
   ]);
-  screening = scr; apps = list || []; screened = scr.length > 0;
-  await refreshProgram(); applyStatus(); render();
+  screening = scr; apps = list || []; screened = scr.length > 0; summary = sum;
+  await refreshProgram(); applyStatus(); render(); renderSummary();
   const total = buildRows().length, elig = screening.filter((s) => s.eligible).length;
   setStepSub(0, total + " applicants"); if (screened) setStepSub(1, elig + " eligible");
 }
@@ -161,6 +174,12 @@ function applyStatus() {
   btn.disabled = closed; btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
   document.getElementById("run-hint").textContent = closed ? "Program is closed" : "Checks every applicant against the six rules";
 }
+
+// ---------- next-step buttons ----------
+document.getElementById("stale").addEventListener("click", (e) => {
+  if (e.target.closest("#next-screen")) document.getElementById("run-screening-btn").click();
+  else if (e.target.closest("#next-rank")) window.location.href = "ranking.html?scholarship=" + scholarshipId;
+});
 
 // ---------- run screening ----------
 document.getElementById("run-screening-btn").addEventListener("click", async (e) => {
@@ -271,6 +290,130 @@ async function afterEdit(res, name, id) {
   });
 }
 
+// ---------- select applicants, bulk actions ----------
+function renderSelection(pageIds) {
+  const n = selected.size, bar = document.getElementById("bulkbar"), box = document.getElementById("selall");
+  const onPage = pageIds.filter((id) => selected.has(id)).length;
+  if (box) { box.checked = pageIds.length > 0 && onPage === pageIds.length; box.indeterminate = onPage > 0 && onPage < pageIds.length; }
+  if (!n) { bar.hidden = true; bar.innerHTML = ""; return; }
+  const allMatching = filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
+  let note = "";
+  if (allMatching && filteredIds.length > pageIds.length) note = `All ${filteredIds.length} matching applicants are selected.`;
+  else if (!allMatching && pageIds.length && onPage === pageIds.length && filteredIds.length > pageIds.length)
+    note = `All ${pageIds.length} on this page are selected. <button type="button" class="linkish" data-bulk="all-matching">Select all ${filteredIds.length} matching ${filter === "all" && !document.getElementById("search").value.trim() ? "applicants" : "this filter"}</button>`;
+  bar.hidden = false;
+  bar.innerHTML = `<b>${n} selected</b><span>${note}</span><span class="grow"></span>` +
+    `<button type="button" class="btn-secondary small" data-bulk="screen">Screen selected</button>` +
+    `<button type="button" class="btn-danger small" data-bulk="delete">Delete selected</button>` +
+    `<button type="button" class="linkish" data-bulk="clear">Clear selection</button>`;
+}
+document.getElementById("thead").addEventListener("change", (e) => {
+  if (e.target.id !== "selall") return;
+  const pageIds = $$("[data-sel]", document.getElementById("tbody")).map((x) => +x.dataset.sel);
+  pageIds.forEach((id) => (e.target.checked ? selected.add(id) : selected.delete(id)));
+  render();
+});
+document.getElementById("tbody").addEventListener("change", (e) => {
+  const c = e.target.closest("[data-sel]"); if (!c) return;
+  c.checked ? selected.add(+c.dataset.sel) : selected.delete(+c.dataset.sel);
+  render();
+});
+document.getElementById("bulkbar").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-bulk]"); if (!b) return;
+  const what = b.dataset.bulk;
+  if (what === "clear") { selected.clear(); render(); }
+  else if (what === "all-matching") { filteredIds.forEach((id) => selected.add(id)); render(); }
+  else if (what === "delete") deleteSelected();
+  else if (what === "screen") screenSelected();
+});
+
+// ---------- delete (selected, one, or all) with Undo ----------
+async function deleteApplicants(payload) {
+  try {
+    const r = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/bulk-delete`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) });
+    selected.clear(); await reload();
+    const n = r.deleted;
+    toast(`${n} applicant${n > 1 ? "s" : ""} deleted.` + (r.ranking_cleared ? " Run ranking again." : ""), "success",
+      { duration: 8000, action: { label: "Undo", onClick: () => undoDelete(r.restore) } });
+  } catch (err) { toast(friendlyError(err), "error"); }
+}
+async function undoDelete(records) {
+  try {
+    const r = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/restore`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ applicants: records }) });
+    await reload();
+    toast(`${r.restored} applicant${r.restored === 1 ? "" : "s"} restored` + (r.skipped ? ` (${r.skipped} skipped because they already exist or are not valid)` : "") +
+      ". They are marked Not screened, so run screening again.", "success", { duration: 8000 });
+  } catch (err) { toast(friendlyError(err), "error"); }
+}
+async function deleteSelected() {
+  const n = selected.size;
+  const ok = await confirmDialog({ title: `Delete ${n} applicant${n > 1 ? "s" : ""}?`, danger: true, confirmText: `Delete ${n} applicant${n > 1 ? "s" : ""}`,
+    message: "This removes everything stored about them, including screening results. The ranking will be cleared. You can undo for a few seconds after deleting." });
+  if (ok) await deleteApplicants({ ids: [...selected] });
+}
+document.getElementById("delete-all-btn").addEventListener("click", () => {
+  const n = apps.length || buildRows().length, name = program.scholarship_name;
+  const layer = openModal(`<div class="modal-head"><h2>Delete all applicants?</h2></div>` +
+    `<p style="margin:0;color:var(--ink-muted)">This removes all <b>${n}</b> applicant${n > 1 ? "s" : ""} of <b>${escapeHtml(name)}</b>, with every screening result and the ranking. You can undo for a few seconds after deleting.</p>` +
+    `<p style="margin:.9rem 0 0">Type <b>${escapeHtml(name)}</b> to confirm.</p><input class="confirm-input" id="confirm-name" autocomplete="off" aria-label="Type the program name to confirm">` +
+    `<div class="modal-actions"><button class="btn-secondary" data-no type="button">Cancel</button><button class="btn-danger" id="confirm-delete-all" type="button" disabled>Delete all applicants</button></div>`);
+  const inp = $("#confirm-name", layer.el), go = $("#confirm-delete-all", layer.el);
+  inp.addEventListener("input", () => { go.disabled = inp.value.trim() !== name; });
+  $("[data-no]", layer.el).addEventListener("click", () => layer.close());
+  go.addEventListener("click", () => withLoading(go, async () => { layer.close(); await deleteApplicants({ all: true, confirm_name: inp.value.trim() }); }));
+});
+
+// ---------- screen only the selected applicants, or everyone again ----------
+function screenSelected() {
+  if (program.status === "Closed") { toast("This program is closed. Reopen it by editing the program before screening.", "error"); return; }
+  const ids = [...selected], n = ids.length, ranked = program.status === "Ranking", verb = ranked ? "Screen and rank" : "Screen";
+  const layer = openModal(`<div class="modal-head"><h2>${verb} ${n} selected applicant${n > 1 ? "s" : ""}?</h2></div>` +
+    `<div class="choice-list">` +
+    `<button type="button" class="choice" data-one><b>${verb} the ${n} selected only</b><span>${ranked ? "Everyone else keeps their score. Rank positions and shortlist places are re-ordered, so other applicants may move up or down." : "Everyone else keeps their screening result."}</span></button>` +
+    `<button type="button" class="choice" data-all><b>${verb} all applicants again</b><span>${ranked ? "Checks every applicant against the six rules again and replaces the whole ranking." : "Checks every applicant against the six rules again."}</span></button>` +
+    `<button type="button" class="choice quiet" data-no><b>Cancel</b><span>Nothing changes.</span></button></div>`);
+  const busy = (b) => { $$(".choice", layer.el).forEach((x) => (x.disabled = true)); b.classList.add("loading"); };
+  $("[data-no]", layer.el).addEventListener("click", () => layer.close());
+  $("[data-one]", layer.el).addEventListener("click", async (e) => {
+    busy(e.currentTarget);
+    try {
+      const r = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/screen-selected`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ ids, rank: ranked }) });
+      layer.close(); selected.clear(); await reload();
+      toast(`Screened ${r.screened}: ${r.eligible} eligible, ${r.ineligible} not eligible.` + (r.ranked ? " Rank positions were re-ordered." : ""), "success", { duration: 7000 });
+    } catch (err) { layer.close(); toast(friendlyError(err), "error"); }
+  });
+  $("[data-all]", layer.el).addEventListener("click", async (e) => {
+    busy(e.currentTarget);
+    try {
+      const s = await apiFetch(`/api/scholarships/${scholarshipId}/screen`, { method: "POST" });
+      let msg = `Screening done: ${s.filter((x) => x.eligible).length} of ${s.length} applicants are eligible.`;
+      if (ranked) { const k = await apiFetch(`/api/scholarships/${scholarshipId}/rank`, { method: "POST" }); msg += ` Ranked ${k.ranked_count}: ${k.shortlisted} shortlisted, ${k.waitlisted} waitlisted.`; }
+      layer.close(); selected.clear(); await reload(); toast(msg, "success", { duration: 8000 });
+    } catch (err) { layer.close(); toast(friendlyError(err), "error"); }
+  });
+}
+
+// ---------- downloads ----------
+document.getElementById("export-apps-btn").addEventListener("click", (e) => withLoading(e.currentTarget, async () => {
+  try { await downloadFile(`/api/scholarships/${scholarshipId}/applicants.csv`, `applicants_program_${scholarshipId}.csv`); toast("Applicant list downloaded.", "success"); }
+  catch (err) { toast(friendlyError(err), "error"); }
+}));
+document.getElementById("export-reasons-btn").addEventListener("click", (e) => withLoading(e.currentTarget, async () => {
+  try { await downloadFile(`/api/scholarships/${scholarshipId}/screening-reasons.csv`, `screening_reasons_program_${scholarshipId}.csv`); toast("Screening reasons downloaded.", "success"); }
+  catch (err) { toast(friendlyError(err), "error"); }
+}));
+
+// ---------- why applicants were not eligible ----------
+function renderSummary() {
+  const box = document.getElementById("reasons-summary");
+  if (!summary || !summary.screened || !summary.ineligible) { box.innerHTML = ""; return; }
+  const rows = [...summary.failures].sort((a, b) => b.failed - a.failed);
+  box.innerHTML = `<details class="card why-card" open><summary>Why applicants were not eligible</summary>` +
+    `<p class="hint" style="margin:.4rem 0 .6rem">${summary.ineligible} of ${summary.screened} screened applicants are not eligible. An applicant who fails several rules counts under each one.` +
+    (summary.missed_by_one_rule ? ` <b>${summary.missed_by_one_rule}</b> missed by one rule only.` : "") + `</p>` +
+    rows.map((x) => `<div class="why-row"><span>${escapeHtml(x.criterion)}</span><div class="track"><div class="fill" style="width:${(x.failed / summary.ineligible * 100).toFixed(1)}%"></div></div><span class="num">${x.failed} failed</span></div>`).join("") + `</details>`;
+}
+
 // ---------- import (modal with drag and drop) ----------
 const TEMPLATE = "full_name,gwa,entrance_score,household_income,course,year_level,location\nJuan Dela Cruz,1.75,88,180000,BS Computer Science,2,Lapu-Lapu City\n";
 function openImport() {
@@ -300,8 +443,14 @@ function openImport() {
     try {
       const r = await up(false);
       out.innerHTML = `<p><b>${escapeHtml(fl.name)}</b>: ${r.valid_rows} of ${r.total_rows} rows are valid.` + (r.errors.length ? ` <span style="color:var(--no)">${r.errors.length} problem row${r.errors.length > 1 ? "s" : ""} will be skipped.</span>` : "") + "</p>" +
-        (r.errors.length ? `<div class="table-scroll" style="max-height:150px;overflow:auto"><table><thead><tr><th>Row</th><th>Problem</th></tr></thead><tbody>${r.errors.map((x) => `<tr><td>${x.row}</td><td>${escapeHtml(x.error)}</td></tr>`).join("")}</tbody></table></div>` : "") +
+        (r.errors.length ? `<div class="table-scroll" style="max-height:150px;overflow:auto"><table><thead><tr><th>Row</th><th>Problem</th></tr></thead><tbody>${r.errors.map((x) => `<tr><td>${x.row}</td><td>${escapeHtml(x.error)}</td></tr>`).join("")}</tbody></table></div>` +
+          `<p style="margin:.6rem 0 0"><button class="btn-secondary small" id="dl-errors" type="button">Download problem rows (CSV)</button> <span class="hint">Fix them and import the file again. The last two columns are ignored.</span></p>` : "") +
         (r.sample.length ? `<p class="hint" style="margin-top:.8rem">Preview of valid rows</p><div class="table-scroll"><table><thead><tr><th>Name</th><th>GWA</th><th>Course</th><th>Location</th></tr></thead><tbody>${r.sample.map((a) => `<tr><td>${escapeHtml(a.full_name)}</td><td>${a.gwa}</td><td>${escapeHtml(a.course)}</td><td>${escapeHtml(a.location)}</td></tr>`).join("")}</tbody></table></div>` : "");
+      const dl = $("#dl-errors", layer.el);
+      if (dl) dl.addEventListener("click", () => {
+        const cols = ["full_name", "gwa", "entrance_score", "household_income", "course", "year_level", "location"];
+        downloadBlob(new Blob([toCsv([[...cols, "row_number", "problem"], ...r.errors.map((x) => [...cols.map((c) => (x.record || {})[c] || ""), x.row, x.error])])], { type: "text/csv" }), "import_problem_rows.csv");
+      });
       if (r.valid_rows > 0) { go.textContent = `Import ${r.valid_rows} valid rows`; go.hidden = false; }
     } catch (err) { out.innerHTML = `<div class="alert error">${escapeHtml(friendlyError(err))}</div>`; }
   }

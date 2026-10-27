@@ -8,12 +8,14 @@
 <div class="toolbar" style="margin-bottom:1rem">
   <button class="btn-primary" id="run-ranking-btn" type="button">Run ranking</button>
   <button class="btn-secondary small" id="export-btn" type="button">Download shortlist (CSV)</button>
+  <button class="btn-secondary small" id="print-btn" type="button">Print shortlist</button>
   <button class="btn-secondary small" id="compare-btn" type="button" disabled>Compare selected (0/2)</button>
   <span class="grow"></span>
   <span class="hint" id="run-hint">Ranks eligible applicants by priority score. Slots decide who is shortlisted.</span>
 </div>
 <div id="ranking-message" class="msg"></div>
 <div class="stats" id="stats"></div>
+<div class="print-only print-head" id="print-head"></div>
 <div class="card">
   <div class="card-head">
     <div class="chips" id="filter-chips"></div><span class="grow"></span>
@@ -21,7 +23,7 @@
       <input type="search" id="search" data-search placeholder="Search name  ( / )" aria-label="Search ranked applicants"></div>
   </div>
   <div class="table-scroll"><table>
-    <thead><tr><th style="width:34px"></th><th class="sortable num" data-k="rank">Rank<span class="arrow">▲</span></th><th class="sortable" data-k="name">Applicant<span class="arrow">▲</span></th><th class="sortable" data-k="score">Priority score<span class="arrow">▲</span></th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th class="noprint" style="width:34px"></th><th class="sortable num" data-k="rank">Rank<span class="arrow">▲</span></th><th class="sortable" data-k="name">Applicant<span class="arrow">▲</span></th><th class="sortable" data-k="score">Priority score<span class="arrow">▲</span></th><th>Status</th><th class="noprint"></th></tr></thead>
     <tbody id="shortlist-body"></tbody></table></div>
   <div class="note">The system recommends; the administrator makes the final decision.</div>
 </div>
@@ -60,11 +62,11 @@ function render() {
       html += `<tr class="cutoff"><td colspan="6"><div class="line">Cut-off: ${program.available_slots} slots filled</div></td></tr>`; cutDone = true;
     }
     const on = picked.includes(r.applicant_id);
-    html += `<tr data-id="${r.applicant_id}"><td><input type="checkbox" data-pick="${r.applicant_id}" ${on ? "checked" : ""} aria-label="Select ${escapeHtml(r.full_name)} to compare"></td>` +
+    html += `<tr data-id="${r.applicant_id}"><td class="noprint"><input type="checkbox" data-pick="${r.applicant_id}" ${on ? "checked" : ""} aria-label="Select ${escapeHtml(r.full_name)} to compare"></td>` +
       `<td class="num"><b>${r.rank_position}</b></td><td><b>${escapeHtml(r.full_name)}</b></td>` +
       `<td><div class="scorebar"><div class="track"><div class="fill ${r.status === "WAITLIST" ? "wait" : ""}" style="width:${(r.priority_score / max * 100).toFixed(1)}%"></div></div><b>${r.priority_score}</b></div></td>` +
       `<td><span class="pill ${r.status === "SHORTLIST" ? "ok" : "wait"}">${escapeHtml(STATUS_LABELS[r.status] || r.status)}</span></td>` +
-      `<td class="row-actions"><button class="btn-secondary small" data-why="${r.applicant_id}" type="button">Why?</button> <a class="btn-secondary small" href="applicants.html?scholarship=${encodeURIComponent(scholarshipId)}&edit=${r.applicant_id}" title="Correct this applicant's details">Edit</a></td></tr>`;
+      `<td class="row-actions noprint"><button class="btn-secondary small" data-why="${r.applicant_id}" type="button">Why?</button> <a class="btn-secondary small" href="applicants.html?scholarship=${encodeURIComponent(scholarshipId)}&edit=${r.applicant_id}" title="Correct this applicant's details">Edit</a></td></tr>`;
   });
   body.innerHTML = html || '<tr><td colspan="6"><div class="empty"><h3>No matches</h3><p>No ranked applicant matches this search.</p></div></td></tr>';
   const cb = document.getElementById("compare-btn");
@@ -155,11 +157,22 @@ document.getElementById("export-btn").addEventListener("click", async (e) => {
     try {
       const res = await fetch(`${API}/api/scholarships/${scholarshipId}/shortlist.csv`, { credentials: "include" });
       if (res.status === 401) { window.location.href = "index.html"; return; }
-      if (!res.ok) { let d = null; try { d = await res.json(); } catch (x) {} throw new Error((d && d.error) || "HTTP " + res.status); }
+      if (!res.ok) { let d = null; try { d = await res.json(); } catch (x) {} throw new Error((d && d.error) || `The file could not be downloaded (error ${res.status}). Please try again.`); }
       downloadBlob(await res.blob(), `shortlist_program_${scholarshipId}.csv`);
       toast("Shortlist downloaded.", "success");
     } catch (err) { toast(friendlyError(err), "error"); }
   });
+});
+
+// ---------- print ----------
+document.getElementById("print-btn").addEventListener("click", () => {
+  if (!rows.length) { toast("Run ranking first. There is nothing to print yet.", "error"); return; }
+  const sl = rows.filter((r) => r.status === "SHORTLIST").length;
+  const shown = filter === "all" ? "All ranked applicants" : filter === "SHORTLIST" ? "Shortlisted applicants only" : "Waitlisted applicants only";
+  document.getElementById("print-head").innerHTML = `<h1>${escapeHtml(program.scholarship_name)} — ranked shortlist</h1>` +
+    `<p>${escapeHtml(program.provider || "")}${program.provider ? " · " : ""}${program.available_slots} slots · ${rows.length} ranked · ${sl} shortlisted · ${rows.length - sl} waitlisted</p>` +
+    `<p>${escapeHtml(shown)} · Printed ${new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}</p>`;
+  window.print();
 });
 
 (async () => {
