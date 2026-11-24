@@ -148,7 +148,10 @@ def write_ranking(cur, scholarship):
         "SELECT sr.result_id, a.* FROM screening_results sr"
         " JOIN applicants a ON a.applicant_id = sr.applicant_id"
         " WHERE sr.scholarship_id=%s AND sr.eligible=1", (scholarship_id,))
-    scored = [(a["result_id"], predict_priority(a, scholarship),
+    import sys
+    _predict = getattr(sys.modules.get("app"), "predict_priority",
+                       predict_priority)
+    scored = [(a["result_id"], _predict(a, scholarship),
                program_standing(a["gwa"], scholarship),
                a["household_income"])
               for a in cur.fetchall()]

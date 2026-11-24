@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
+from ranking import predict_priority  # noqa: F401 - exposed on app for test_api.py
 from routes.admin import admin_bp
 from routes.applicants import applicants_bp
 from routes.auth import auth_bp
