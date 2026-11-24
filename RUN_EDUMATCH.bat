@@ -4,8 +4,8 @@ title EduMatch PH Launcher
 cd /d "%~dp0"
 
 REM ===== EDIT THESE ONLY IF SOMETHING IS NOT FOUND =====
-set "BACKEND=%~dp0edumatch_backend_v2"
-set "FRONTEND=%~dp0EduMatchPH_Frontend"
+set "BACKEND=%~dp0backend"
+set "FRONTEND=%~dp0frontend"
 set "XAMPP=C:\xampp"
 REM =====================================================
 
