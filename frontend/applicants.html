@@ -5,16 +5,17 @@
 <link rel="stylesheet" href="style.css"></head>
 <body><div id="shell"></div><main class="wrap">
 <div id="prog-head"></div>
+<div id="deadline-warning"></div>
 
 <div class="toolbar" style="margin-bottom:1rem">
-  <button class="btn-primary small" id="add-btn" type="button">+ Add applicant</button>
-  <button class="btn-secondary small" id="import-btn" type="button">Import CSV / Excel</button>
-  <button class="btn-secondary small" id="export-apps-btn" type="button" title="Download the applicant list as a CSV file">Export applicants</button>
-  <button class="btn-secondary small" id="export-reasons-btn" type="button" title="Download the six criteria for every screened applicant as a CSV file">Export reasons</button>
-  <button class="btn-danger-outline btn-secondary small" id="delete-all-btn" type="button">Delete all</button>
+  <button class="btn-primary" id="add-btn" type="button" title="Add one applicant manually"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add applicant</button>
+  <button class="btn-secondary" id="import-btn" type="button" title="Upload a .csv or .xlsx spreadsheet of applicants"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 20h16"/></svg>Import CSV / Excel</button>
+  <button class="btn-secondary" id="export-apps-btn" type="button" title="Download the applicant list as a CSV file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>Export applicants</button>
+  <button class="btn-secondary" id="export-reasons-btn" type="button" title="Download the six criteria for every screened applicant as a CSV file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>Export reasons</button>
+  <button class="btn-danger-outline btn-secondary" id="delete-all-btn" type="button" title="Remove all applicants from this program"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete all</button>
   <span class="grow"></span>
   <span class="hint" id="run-hint"></span>
-  <button class="btn-primary" id="run-screening-btn" type="button">Run screening</button>
+  <button class="btn-primary" id="run-screening-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4"/></svg>Run screening</button>
 </div>
 <div id="screening-summary" class="msg"></div>
 <div id="stale"></div>
@@ -173,6 +174,12 @@ function applyStatus() {
   const closed = program.status === "Closed", btn = document.getElementById("run-screening-btn");
   btn.disabled = closed; btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
   document.getElementById("run-hint").textContent = closed ? "Program is closed" : "Checks every applicant against the six rules";
+  const dw = document.getElementById("deadline-warning");
+  if (program.application_deadline && new Date(program.application_deadline + "T23:59:59") < new Date()) {
+    dw.innerHTML = `<div class="alert warn" role="status"><span><strong>Past deadline:</strong> The application deadline (${escapeHtml(program.application_deadline)}) has passed.</span><a class="btn-secondary small" href="program-form.html?scholarship=${encodeURIComponent(scholarshipId)}">Update deadline</a></div>`;
+  } else {
+    dw.innerHTML = "";
+  }
 }
 
 // ---------- next-step buttons ----------
@@ -197,19 +204,33 @@ document.getElementById("run-screening-btn").addEventListener("click", async (e)
 });
 
 // ---------- add applicant (modal) ----------
+function programReqs() {
+  const raw = program && program.additional_requirements;
+  if (Array.isArray(raw)) return raw.map((x) => String(x).trim()).filter(Boolean);
+  if (typeof raw === "string" && raw.trim()) {
+    try { const p = JSON.parse(raw); if (Array.isArray(p)) return p.map((x) => String(x).trim()).filter(Boolean); } catch (e) {}
+    return raw.split(",").map((x) => x.trim()).filter(Boolean);
+  }
+  return [];
+}
 async function openApplicantForm(existing) {
   const editing = !!existing;
-  const meta = await loadMeta(), scale = GRADE_SCALES[program.grade_scale];
+  const meta = await loadMeta(), scale = GRADE_SCALES[program.grade_scale], reqs = programReqs();
+  const existingReqs = editing ? (Array.isArray(existing.submitted_requirements) ? existing.submitted_requirements : (Array.isArray(existing.requirements_met) ? existing.requirements_met : [])) : [];
   const opts = (arr) => '<option value="">Choose...</option>' + arr.map((v) => `<option>${escapeHtml(v)}</option>`).join("");
+  const reqHtml = reqs.length ? `<div class="field" style="grid-column:1/-1"><label>Submitted requirements</label><div class="req-checks">` +
+    reqs.map((r) => `<label class="req-check"><input type="checkbox" name="req_item" value="${escapeHtml(r)}" ${existingReqs.includes(r) ? "checked" : ""}><span>${escapeHtml(r)}</span></label>`).join("") +
+    `</div></div>` : "";
   const layer = openModal(`<div class="modal-head"><h2>${editing ? "Edit applicant" : "Add applicant"}</h2></div><form id="af" novalidate>
     <div class="grid2">
       <div class="field" style="grid-column:1/-1"><label for="f_name">Full name</label><input id="f_name" autocomplete="off"><span class="field-error" data-e="name"></span></div>
       <div class="field"><label for="f_gwa">GWA</label><input type="number" id="f_gwa" step="any" min="${scale.min_value}" max="${scale.max_value}"><span class="hint">${escapeHtml(scaleHintText(scale))}</span><span class="field-error" data-e="gwa"></span></div>
       <div class="field"><label for="f_ent">Entrance score (0-100)</label><input type="number" id="f_ent" min="0" max="100"><span class="field-error" data-e="ent"></span></div>
       <div class="field"><label for="f_inc">Household income (PHP/year)</label><input type="number" id="f_inc" min="0"><span class="field-error" data-e="inc"></span></div>
-      <div class="field"><label for="f_yr">Year level</label><select id="f_yr"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+      <div class="field"><label for="f_yr">Year level</label><select id="f_yr"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
       <div class="field"><label for="f_course">Course</label><select id="f_course">${opts(meta.courses)}</select><span class="field-error" data-e="course"></span></div>
       <div class="field"><label for="f_loc">Location</label><select id="f_loc">${opts(meta.localities)}</select><span class="field-error" data-e="loc"></span></div>
+      ${reqHtml}
     </div>
     <div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button>
       ${editing ? "" : '<button type="submit" class="btn-secondary" data-more>Save &amp; add another</button>'}<button type="submit" class="btn-primary" data-one>${editing ? "Save changes" : "Save applicant"}</button></div></form>`, { wide: true });
@@ -236,7 +257,8 @@ async function openApplicantForm(existing) {
     if (!v("f_course")) bad += err("course", "Choose a course.");
     if (!v("f_loc")) bad += err("loc", "Choose a location.");
     if (bad) { const first = $(".field-error:not(:empty)", f); if (first) first.closest(".field").querySelector("input,select").focus(); return; }
-    const payload = { full_name: v("f_name"), gwa, entrance_score: ent, household_income: inc, course: v("f_course"), year_level: +v("f_yr"), location: v("f_loc") };
+    const submitted_requirements = $$('input[name="req_item"]:checked', f).map((c) => c.value);
+    const payload = { full_name: v("f_name"), gwa, entrance_score: ent, household_income: inc, course: v("f_course"), year_level: +v("f_yr"), location: v("f_loc"), submitted_requirements };
     try {
       if (editing) {
         const res = await apiFetch(`/api/scholarships/${scholarshipId}/applicants/${existing.applicant_id}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(payload) });

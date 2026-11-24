@@ -1,66 +1,62 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EduMatch PH — Administrator login</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head>
+<title>EduMatch PH — Scholarship Screening &amp; Priority Ranking</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
 <body>
-  <script>
-  try {
-    if (!sessionStorage.getItem('seenLanding')) { location.replace('landing.html'); }
-  } catch (e) {}
-</script>
-<div class="page">
-  <div class="brand-panel">
-    <div class="brand-mark"><span class="brand-mark-dot"></span><span class="brand-mark-dot"></span></div>
-    <h1>EduMatch PH</h1>
-    <p class="tagline">Scholarship applicant screening and priority ranking for administrators.</p>
-    <ul class="brand-points">
-      <li>Six eligibility criteria checked with clear reasons</li>
-      <li>Eligible applicants ranked by a priority score</li>
-      <li>You make the final decision</li>
-    </ul>
+<header class="app-header">
+  <a class="brand" href="index.html"><img src="EduMatchPH_logo.jpg" alt="EduMatch PH">EduMatch PH</a>
+  <div class="who">
+    <a class="btn-primary" href="login.html">Log In as Administrator</a>
   </div>
-  <div class="auth-panel"><div class="auth-card">
-    <img class="login-logo" src="EduMatchPH_logo.jpg" alt="EduMatch PH">
-    <form id="login-form" class="panel" novalidate>
-      <h2 class="card-title">Administrator log in</h2>
-      <div class="field"><label>Organization</label>
-        <div class="org-pick">
-          <input type="radio" name="org" id="org-uclm" value="uclm" checked><label for="org-uclm">UCLM<small>University of Cebu Lapu-Lapu and Mandaue</small></label>
-          <input type="radio" name="org" id="org-dost" value="dost"><label for="org-dost">DOST<small>Dept. of Science and Technology</small></label>
-        </div></div>
-      <div class="field"><label for="login-email">Email</label>
-        <input type="email" id="login-email" autocomplete="username" placeholder="name@organization.edu.ph" required></div>
-      <div class="field"><label for="login-password">Password</label>
-        <div class="pw-wrap"><input type="password" id="login-password" autocomplete="current-password" required>
-          <button class="pw-toggle" id="pw-toggle" type="button" aria-label="Show password">Show</button></div>
-        <span class="caps" id="caps" hidden>Caps Lock is on</span></div>
-      <div id="login-message" class="alert error" role="alert" hidden></div>
-      <button class="btn-primary" id="login-btn" type="submit">Log in</button>
-    </form>
-  </div></div>
-</div>
-<script src="app.js"></script>
-<script>
-const last = store("edumatch_org");
-if (last) { const r = document.querySelector('input[name=org][value="' + last + '"]'); if (r) r.checked = true; }
-const pw = document.getElementById("login-password"), form = document.getElementById("login-form");
-document.getElementById("pw-toggle").addEventListener("click", (e) => {
-  const show = pw.type === "password"; pw.type = show ? "text" : "password"; e.target.textContent = show ? "Hide" : "Show";
-});
-pw.addEventListener("keyup", (e) => { document.getElementById("caps").hidden = !(e.getModifierState && e.getModifierState("CapsLock")); });
-function fail(text) {
-  const m = document.getElementById("login-message"); m.textContent = text; m.hidden = false;
-  form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
-}
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  document.getElementById("login-message").hidden = true;
-  const email = document.getElementById("login-email").value.trim(), org = document.querySelector("input[name=org]:checked").value;
-  if (!email || !pw.value) { fail("Enter your email and password."); return; }
-  await withLoading(document.getElementById("login-btn"), async () => {
-    try { await login(org, email, pw.value); store("edumatch_org", org); window.location.href = "programs.html"; }
-    catch (err) { fail(friendlyError(err)); }
-  });
-});
-</script>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="pill neutral" style="margin-bottom:.75rem">Scholarship Decision Support System</span>
+      <h1>Fair, transparent scholarship screening and priority ranking.</h1>
+      <p class="lede">EduMatch PH helps scholarship administrators screen applicants against program rules, rank eligible candidates by priority score, and review every decision with clear explanations.</p>
+      <div class="toolbar" style="margin-top:1.25rem">
+        <a class="btn-primary btn-lg" href="login.html">Log In as Administrator →</a>
+        <a class="btn-secondary btn-lg" href="#how-it-works">See how it works</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <img src="EduMatchPH_logo.jpg" alt="EduMatch PH">
+    </div>
+  </section>
+
+  <section id="how-it-works" style="margin-top:2.25rem">
+    <h2 style="font-size:1.45rem;margin-bottom:.35rem">Two-stage scholarship workflow</h2>
+    <p class="lede" style="margin-bottom:1.1rem">Designed so every eligibility check is auditable and administrators always make the final decision.</p>
+    <div class="stages">
+      <article class="card stage-card">
+        <span class="stage-num">Stage 1</span>
+        <h3>Rule-Based Eligibility Screening</h3>
+        <p>Every applicant is checked against six transparent criteria: GWA, entrance exam score, household income cap, eligible course/field, year level, and location—plus any custom program requirements.</p>
+        <ul class="stage-list">
+          <li>Import applicants individually or in bulk via CSV / Excel</li>
+          <li>Instant pass/fail breakdown for every single criterion</li>
+        </ul>
+      </article>
+      <article class="card stage-card">
+        <span class="stage-num">Stage 2</span>
+        <h3>Priority Ranking &amp; Shortlist</h3>
+        <p>Eligible applicants are scored and ordered into a Shortlist and Waitlist based on available scholarship slots, with visual factor explanations for every score.</p>
+        <ul class="stage-list">
+          <li>Side-by-side applicant comparison</li>
+          <li>Exportable CSV reports and print-ready shortlists</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer class="landing-foot">
+  <div class="wrap" style="padding-top:1.25rem;padding-bottom:1.5rem;display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem;align-items:center">
+    <span class="hint">EduMatch PH — Built for transparent scholarship administration.</span>
+    <a class="btn-secondary small" href="login.html">Administrator Log In</a>
+  </div>
+</footer>
 </body></html>

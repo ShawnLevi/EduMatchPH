@@ -5,11 +5,16 @@
 <body><div id="shell"></div><main class="wrap">
 <h1>Scholarship programs</h1>
 <p class="lede">Open a program to add applicants, run screening, rank and review the shortlist.</p>
+<div class="guide-banner" aria-label="Quick guide">
+  <span class="guide-step"><span class="guide-num">1</span> Open or create a program</span>
+  <span class="guide-step"><span class="guide-num">2</span> Add or import applicants &amp; run screening</span>
+  <span class="guide-step"><span class="guide-num">3</span> Rank eligible applicants &amp; review shortlist</span>
+</div>
 <div class="toolbar">
   <div class="input-icon grow" style="max-width:340px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="prog-search" data-search placeholder="Search programs  ( press / )" aria-label="Search programs"></div>
   <div class="chips" id="status-chips"></div>
   <span class="grow"></span>
-  <a class="btn-primary small" href="program-form.html">+ New program</a>
+  <a class="btn-primary" href="program-form.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New program</a>
 </div>
 <div id="programs-message" class="msg"></div>
 <div class="cards" id="programs-grid"></div>
@@ -37,8 +42,11 @@ function render() {
     return '<article class="pcard"><div class="top"><div><h3>' + escapeHtml(p.scholarship_name) + '</h3><div class="provider">' + escapeHtml(p.provider || "") + '</div></div>' + statusPill(p.status) + '</div>' +
       '<div class="chips">' + ruleSummaryChips(p) + '</div>' +
       '<div class="pipeline" title="Progress: add applicants, screening, ranking, closed">' + [0,1,2,3].map((i) => '<i class="' + (i <= lvl ? "on" : "") + '"></i>').join("") + '</div>' +
-      '<div class="foot"><span class="counts">' + p.available_slots + ' slots</span><a class="btn-secondary small" href="program-form.html?scholarship=' + p.scholarship_id + '">Edit</a>' +
-      '<a class="btn-primary small" href="applicants.html?scholarship=' + p.scholarship_id + '">Open</a></div></article>';
+      '<div class="foot"><span class="counts">' + p.available_slots + ' slots</span>' +
+      (p.status !== "Closed" ? '<button class="icon-btn" data-archive="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" title="Archive (close) program" aria-label="Archive ' + escapeHtml(p.scholarship_name) + '">' + ICON.archive + '</button>' : '') +
+      '<button class="icon-btn" data-del-prog="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" title="Delete program" aria-label="Delete ' + escapeHtml(p.scholarship_name) + '">' + ICON.trash + '</button>' +
+      '<a class="btn-secondary" href="program-form.html?scholarship=' + p.scholarship_id + '">' + ICON.edit + 'Edit</a>' +
+      '<a class="btn-primary" href="applicants.html?scholarship=' + p.scholarship_id + '">Open →</a></div></article>';
   }).join("");
 }
 function renderChips() {
@@ -50,6 +58,29 @@ document.getElementById("status-chips").addEventListener("click", (e) => {
   const b = e.target.closest("[data-s]"); if (!b) return; statusFilter = b.dataset.s; renderChips(); render();
 });
 document.getElementById("prog-search").addEventListener("input", debounce(render, 120));
+grid.addEventListener("click", async (e) => {
+  const ar = e.target.closest("[data-archive]");
+  if (ar) {
+    const id = ar.dataset.archive, name = ar.dataset.name;
+    if (!(await confirmDialog({ title: `Archive "${name}"?`, message: "Archiving closes this program so no new screening or ranking can run. You can reopen it later by editing.", confirmText: "Archive program" }))) return;
+    try {
+      await apiFetch(`/api/scholarships/${id}/archive`, { method: "POST" });
+      toast(`Archived ${name}.`, "success");
+      ROWS = await apiFetch("/api/scholarships"); renderChips(); render();
+    } catch (err) { toast(friendlyError(err), "error"); }
+    return;
+  }
+  const dl = e.target.closest("[data-del-prog]");
+  if (dl) {
+    const id = dl.dataset.delProg, name = dl.dataset.name;
+    if (!(await confirmDialog({ title: `Delete "${name}"?`, danger: true, message: "This permanently deletes the program and all of its applicants, screening results, and rankings.", confirmText: "Delete program" }))) return;
+    try {
+      await apiFetch(`/api/scholarships/${id}`, { method: "DELETE" });
+      toast(`Deleted ${name}.`, "success");
+      ROWS = await apiFetch("/api/scholarships"); renderChips(); render();
+    } catch (err) { toast(friendlyError(err), "error"); }
+  }
+});
 (async () => {
   try { ROWS = await apiFetch("/api/scholarships"); renderChips(); render(); }
   catch (err) { grid.innerHTML = ""; showError("programs-message", err); }

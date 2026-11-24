@@ -22,8 +22,8 @@ function pesoShort(n) {
   return "₱" + n;
 }
 function yearsLabel(csv) {
-  const ys = String(csv).split(",").map(Number).sort();
-  if (ys.length === 4) return "All years";
+  const ys = String(csv).split(",").map(Number).filter(Boolean).sort((a, b) => a - b);
+  if (ys.length >= 5) return "All years";
   const contiguous = ys.every((y, i) => i === 0 || y === ys[i - 1] + 1);
   return ys.length > 1 && contiguous ? `Year ${ys[0]}–${ys[ys.length - 1]}` : "Year " + ys.join(", ");
 }
@@ -53,7 +53,7 @@ function downloadBlob(blob, filename) {
 // Download a file from the server (for example a CSV export). Shows the server's message when it refuses.
 async function downloadFile(path, filename) {
   const res = await fetch(API + path, { credentials: "include" });
-  if (res.status === 401) { window.location.href = "index.html"; throw new Error("Please log in first"); }
+  if (res.status === 401) { window.location.href = "login.html"; throw new Error("Please log in first"); }
   if (!res.ok) {
     let msg = null; try { msg = (await res.json()).error; } catch (e) { /* no JSON body */ }
     throw new Error(msg || `The file could not be downloaded (error ${res.status}). Please try again.`);
@@ -75,6 +75,18 @@ const ICON = {
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 3h6l1-3h5"/></svg>',
   download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>',
+  play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4"/></svg>',
+  print: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',
+  compare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="16" rx="1.5"/><rect x="14" y="4" width="7" height="16" rx="1.5"/></svg>',
+  sliders: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4a2 2 0 0 1-2-2V5h4M18 9h2a2 2 0 0 0 2-2V5h-4M6 4h12v6a6 6 0 0 1-12 0zM12 16v4M8 20h8"/></svg>',
+  grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+  logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 3"/></svg>',
+  key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3"/></svg>',
+  archive: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9M10 13h4"/></svg>',
 };
 
 // ---------- toasts ----------
@@ -166,7 +178,7 @@ async function apiFetch(path, options = {}) {
   let data = null;
   try { data = await res.json(); } catch (e) { /* no JSON body */ }
   if (res.status === 401 && !path.startsWith("/api/login")) {
-    window.location.href = "index.html";
+    window.location.href = "login.html";
     throw new Error("Please log in first");
   }
   if (!res.ok) { const err = new Error((data && data.error) || `The request could not be completed (error ${res.status}). Please try again.`); err.status = res.status; throw err; }
@@ -188,7 +200,15 @@ function login(organizationId, email, password) {
   return apiFetch("/api/login", { method: "POST", headers: JSON_HEADERS,
     body: JSON.stringify({ organization_id: organizationId, email, password }) });
 }
-function logout() { return apiFetch("/api/logout", { method: "POST" }).then(() => { window.location.href = "index.html"; }); }
+async function logout() {
+  try {
+    await apiFetch("/api/logout", { method: "POST" });
+  } catch (err) {
+    if (err && err.status !== 401) toast(friendlyError(err), "error");
+  }
+  try { sessionStorage.setItem("edumatch_logged_out", "1"); } catch (e) {}
+  window.location.href = "login.html?logged_out=1";
+}
 function getMe() { return apiFetch("/api/me"); }
 
 // ---------- dropdowns ----------
@@ -240,28 +260,110 @@ function stepperHtml(program, sid, active) {
 }
 function setStepSub(i, text) { const el = document.getElementById("step-sub-" + i); if (el) el.textContent = text; }
 
+function applyOrgTheme(me) {
+  if (!me) return;
+  const org = me.organization || me;
+  const root = document.documentElement.style;
+  if (org.theme_primary_color) {
+    root.setProperty("--navy-900", org.theme_primary_color);
+    root.setProperty("--navy-800", org.theme_primary_color);
+  }
+  if (org.theme_accent_color) {
+    root.setProperty("--amber-500", org.theme_accent_color);
+    root.setProperty("--amber-600", org.theme_accent_color);
+  }
+  if (org.theme_bg_color) {
+    root.setProperty("--cream", org.theme_bg_color);
+    document.body.style.background = org.theme_bg_color;
+  }
+  if (org.logo_path) {
+    const img = $(".brand img");
+    if (img) {
+      img.src = org.logo_path;
+      img.onerror = () => { img.src = "EduMatchPH_logo.jpg"; };
+    }
+  }
+}
+
+function openChangePasswordModal({ forced = false } = {}) {
+  const layer = openModal(
+    `<div class="modal-head"><h2>${forced ? "Password change required" : "Change password"}</h2></div>` +
+    (forced ? `<div class="alert warn" style="margin-bottom:.9rem">For your security, please set a new password before continuing.</div>` : "") +
+    `<form id="cp-form" novalidate><div class="grid2" style="grid-template-columns:1fr">` +
+    `<div class="field"><label for="cp-cur">Current password</label><input type="password" id="cp-cur" autocomplete="current-password" required><span class="field-error" data-e="cur"></span></div>` +
+    `<div class="field"><label for="cp-new">New password</label><input type="password" id="cp-new" autocomplete="new-password" required><span class="hint">At least 8 characters.</span><span class="field-error" data-e="new"></span></div>` +
+    `<div class="field"><label for="cp-con">Confirm new password</label><input type="password" id="cp-con" autocomplete="new-password" required><span class="field-error" data-e="con"></span></div>` +
+    `</div><div class="modal-actions">${forced ? "" : '<button type="button" class="btn-secondary" data-cancel>Cancel</button>'}<button type="submit" class="btn-primary" id="cp-save">Update password</button></div></form>`
+  );
+  const f = $("#cp-form", layer.el);
+  const cancel = $("[data-cancel]", layer.el);
+  if (cancel) cancel.addEventListener("click", () => layer.close());
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $$("[data-e]", f).forEach((x) => (x.textContent = ""));
+    const cur = $("#cp-cur", f).value, nw = $("#cp-new", f).value, con = $("#cp-con", f).value;
+    const err = (k, t) => { $(`[data-e=${k}]`, f).textContent = t; return 1; };
+    let bad = 0;
+    if (!cur) bad += err("cur", "Enter your current password.");
+    if (nw.length < 8) bad += err("new", "New password must be at least 8 characters.");
+    if (nw !== con) bad += err("con", "Passwords do not match.");
+    if (bad) return;
+    await withLoading($("#cp-save", f), async () => {
+      try {
+        await apiFetch("/api/change-password", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ current_password: cur, new_password: nw }) });
+        layer.close();
+        toast("Password updated successfully.", "success");
+      } catch (er) { err("cur", friendlyError(er)); }
+    });
+  });
+}
+
 async function renderShell(active) {
   const sid = getScholarshipIdFromUrl();
-  let nav = '<a href="programs.html" class="' + (active === "programs" ? "active" : "") + '">All programs</a>';
+  let nav = `<a href="programs.html" class="${active === "programs" ? "active" : ""}">${ICON.grid}All programs</a>`;
   if (sid) {
     const q = "?scholarship=" + encodeURIComponent(sid);
-    const tab = (key, file, label) => `<a href="${file}${q}" class="${active === key ? "active" : ""}">${label}</a>`;
-    nav += tab("applicants", "applicants.html", "Applicants &amp; Screening") + tab("ranking", "ranking.html", "Ranking &amp; Shortlist") +
-           tab("compare", "compare.html", "Compare") + tab("edit", "program-form.html", "Edit program");
+    const tab = (key, file, label, icon) => `<a href="${file}${q}" class="${active === key ? "active" : ""}">${icon}${label}</a>`;
+    nav += tab("applicants", "applicants.html", "Applicants &amp; Screening", ICON.users) +
+           tab("ranking", "ranking.html", "Ranking &amp; Shortlist", ICON.trophy) +
+           tab("compare", "compare.html", "Compare", ICON.compare) +
+           tab("edit", "program-form.html", "Edit program", ICON.sliders);
   }
+  nav += `<a href="audit-logs.html" class="${active === "audit" ? "active" : ""}" id="nav-audit">${ICON.history}Audit logs</a>`;
+  nav += `<a href="super-admin.html" class="${active === "super" ? "active" : ""}" id="nav-super" hidden>${ICON.shield}Super Admin</a>`;
   document.getElementById("shell").innerHTML =
     '<header class="app-header"><a class="brand" href="programs.html"><img src="EduMatchPH_logo.jpg" alt="">EduMatch PH</a>' +
     '<div class="who"><span class="org-badge" id="org-name"></span><span class="avatar" id="avatar" aria-hidden="true"></span>' +
-    '<span class="name" id="admin-name"></span><button class="btn-secondary small" id="logout-btn" type="button">Log out</button></div></header>' +
+    '<span class="name" id="admin-name"></span><button class="btn-secondary" id="chpwd-btn" type="button" title="Change your password">' + ICON.key + 'Password</button>' +
+    '<button class="btn-secondary" id="logout-btn" type="button">' + ICON.logout + 'Log out</button></div></header>' +
     '<div class="crumbs" id="crumbs"></div><nav class="subnav" aria-label="Sections">' + nav + "</nav>";
-  document.getElementById("logout-btn").addEventListener("click", logout);
+  document.getElementById("chpwd-btn").addEventListener("click", () => openChangePasswordModal());
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    const ok = await confirmDialog({
+      title: "Log out?",
+      message: "Are you sure you want to log out of EduMatch PH?",
+      confirmText: "Log out",
+      cancelText: "Cancel",
+    });
+    if (ok) await logout();
+  });
   const crumbs = (last) => `<a href="programs.html">Programs</a>` + (last ? `<span class="sep">›</span>${last}` : "");
   document.getElementById("crumbs").innerHTML = crumbs(sid ? '<span class="skeleton" style="display:inline-block;width:140px;height:12px;vertical-align:middle"></span>' :
-    active === "new" ? "New program" : "");
+    active === "new" ? "New program" : active === "audit" ? "Audit logs" : active === "super" ? "Super Admin" : "");
   getMe().then((me) => {
     document.getElementById("admin-name").textContent = me.full_name;
     document.getElementById("avatar").textContent = me.full_name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
     document.getElementById("org-name").textContent = String(me.organization_id).toUpperCase();
+    document.body.dataset.org = String(me.organization_id).toLowerCase();
+    applyOrgTheme(me);
+    const role = String(me.role || "").toLowerCase();
+    if (me.is_super_admin || role === "owner" || role === "super_admin" || role === "superadmin") {
+      const sLink = document.getElementById("nav-super");
+      if (sLink) sLink.hidden = false;
+    }
+    if (me.must_change_password || me.force_password_change) {
+      openChangePasswordModal({ forced: true });
+    }
   }).catch(() => {});
   if (!sid) return null;
   try {

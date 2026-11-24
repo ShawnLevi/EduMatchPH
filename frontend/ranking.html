@@ -6,10 +6,10 @@
 <body><div id="shell"></div><main class="wrap">
 <div id="prog-head"></div>
 <div class="toolbar" style="margin-bottom:1rem">
-  <button class="btn-primary" id="run-ranking-btn" type="button">Run ranking</button>
-  <button class="btn-secondary small" id="export-btn" type="button">Download shortlist (CSV)</button>
-  <button class="btn-secondary small" id="print-btn" type="button">Print shortlist</button>
-  <button class="btn-secondary small" id="compare-btn" type="button" disabled>Compare selected (0/2)</button>
+  <button class="btn-primary" id="run-ranking-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4"/></svg>Run ranking</button>
+  <button class="btn-secondary" id="export-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>Download shortlist (CSV)</button>
+  <button class="btn-secondary" id="print-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>Print / Save PDF Report</button>
+  <button class="btn-secondary" id="compare-btn" type="button" disabled>Compare selected (0/2)</button>
   <span class="grow"></span>
   <span class="hint" id="run-hint">Ranks eligible applicants by priority score. Slots decide who is shortlisted.</span>
 </div>
@@ -156,7 +156,7 @@ document.getElementById("export-btn").addEventListener("click", async (e) => {
   await withLoading(e.currentTarget, async () => {
     try {
       const res = await fetch(`${API}/api/scholarships/${scholarshipId}/shortlist.csv`, { credentials: "include" });
-      if (res.status === 401) { window.location.href = "index.html"; return; }
+      if (res.status === 401) { window.location.href = "login.html"; return; }
       if (!res.ok) { let d = null; try { d = await res.json(); } catch (x) {} throw new Error((d && d.error) || `The file could not be downloaded (error ${res.status}). Please try again.`); }
       downloadBlob(await res.blob(), `shortlist_program_${scholarshipId}.csv`);
       toast("Shortlist downloaded.", "success");
@@ -164,14 +164,24 @@ document.getElementById("export-btn").addEventListener("click", async (e) => {
   });
 });
 
-// ---------- print ----------
-document.getElementById("print-btn").addEventListener("click", () => {
+// ---------- print / save PDF report ----------
+document.getElementById("print-btn").addEventListener("click", async () => {
   if (!rows.length) { toast("Run ranking first. There is nothing to print yet.", "error"); return; }
-  const sl = rows.filter((r) => r.status === "SHORTLIST").length;
+  const sl = rows.filter((r) => r.status === "SHORTLIST").length, wl = rows.length - sl;
   const shown = filter === "all" ? "All ranked applicants" : filter === "SHORTLIST" ? "Shortlisted applicants only" : "Waitlisted applicants only";
-  document.getElementById("print-head").innerHTML = `<h1>${escapeHtml(program.scholarship_name)} — ranked shortlist</h1>` +
-    `<p>${escapeHtml(program.provider || "")}${program.provider ? " · " : ""}${program.available_slots} slots · ${rows.length} ranked · ${sl} shortlisted · ${rows.length - sl} waitlisted</p>` +
-    `<p>${escapeHtml(shown)} · Printed ${new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}</p>`;
+  const sum = await apiFetch(`/api/scholarships/${scholarshipId}/screening-summary`).catch(() => null);
+  const failHtml = sum && Array.isArray(sum.failures) && sum.failures.length
+    ? `<div class="print-failures"><strong>Criteria failure breakdown (${sum.ineligible} of ${sum.screened} ineligible)</strong>` +
+      `<table><thead><tr><th>Criterion</th><th>Failed</th></tr></thead><tbody>` +
+      [...sum.failures].sort((a, b) => b.failed - a.failed).map((x) => `<tr><td>${escapeHtml(x.criterion)}</td><td>${x.failed}</td></tr>`).join("") +
+      `</tbody></table></div>` : "";
+  document.getElementById("print-head").innerHTML = `<h1>${escapeHtml(program.scholarship_name)} — Scholarship Report</h1>` +
+    `<p>${escapeHtml(program.provider || "")}${program.provider ? " · " : ""}${escapeHtml(shown)} · Printed ${new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })}</p>` +
+    `<div class="print-summary-grid">` +
+    `<div class="print-stat"><b>${program.available_slots}</b><span>Available slots</span></div>` +
+    `<div class="print-stat"><b>${rows.length}</b><span>Eligible &amp; ranked</span></div>` +
+    `<div class="print-stat"><b>${sl}</b><span>Shortlisted</span></div>` +
+    `<div class="print-stat"><b>${wl}</b><span>Waitlisted</span></div></div>` + failHtml;
   window.print();
 });
 
