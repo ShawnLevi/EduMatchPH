@@ -1,12 +1,14 @@
 import csv
+import datetime
 import io
 import os
+import re
 
 import openpyxl
 from flask import Flask, Response, abort, jsonify, request, session
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import db, json_safe
 from eligibility import check_eligibility
@@ -18,7 +20,9 @@ from validation import clean_applicant, clean_program
 app = Flask(__name__)
 # Set EDUMATCH_SECRET in the environment. It signs the login cookie.
 app.secret_key = os.environ.get("EDUMATCH_SECRET", "dev-only-change-me")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.permanent_session_lifetime = datetime.timedelta(hours=2)
 # The frontend runs on another port (for example 5500) on localhost, so allow
 # localhost / 127.0.0.1 on any port, WITH cookies (the login).
 CORS(app, supports_credentials=True,
@@ -40,7 +44,10 @@ def server_error(e):
                              "contact your system administrator."}), 500
 
 
-PUBLIC_ENDPOINTS = {"login", "logout", "me", "meta"}
+PUBLIC_ENDPOINTS = {"login", "logout", "me", "meta", "list_organizations"}
+MAX_FAILED_LOGINS = 5
+ORG_ID_RE = re.compile(r"^[a-z0-9_-]{2,20}$")
+HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 @app.before_request
@@ -56,6 +63,34 @@ def require_login():
 
 def current_org():
     return session["organization_id"]
+
+
+def current_role():
+    return session.get("role", "admin")
+
+
+def require_roles(*roles):
+    if current_role() not in roles:
+        abort(403, "You do not have permission to perform this action")
+
+
+def require_open_program(program, action="modify applicants"):
+    if program["status"] == "Closed":
+        abort(400, f"This program is closed. Reopen it before you {action}")
+
+
+def record_audit(cur, action, target_type=None, target_id=None, details=None,
+                 org_id=None, admin_id=None):
+    cur.execute(
+        "INSERT INTO audit_logs"
+        " (organization_id, admin_id, action, target_type, target_id, details)"
+        " VALUES (%s,%s,%s,%s,%s,%s)",
+        (org_id if org_id is not None else session.get("organization_id"),
+         admin_id if admin_id is not None else session.get("admin_id"),
+         action, target_type,
+         str(target_id) if target_id is not None else None,
+         details[:255] if details else None),
+    )
 
 
 def load_scholarship(cur, scholarship_id):
@@ -97,19 +132,62 @@ def login():
             "SELECT * FROM administrators"
             " WHERE email=%s AND organization_id=%s", (email, org))
         admin = cur.fetchone()
-    if admin is None or not check_password_hash(admin["password_hash"], password):
-        abort(401, "Wrong email or password for this organization")
+        if admin is None:
+            abort(401, "Wrong email or password for this organization")
+        if not admin["is_active"]:
+            record_audit(cur, "LOGIN_BLOCKED", "administrator",
+                         admin["admin_id"], f"Blocked login for {email}",
+                         org_id=admin["organization_id"],
+                         admin_id=admin["admin_id"])
+            conn.commit()
+            abort(403, "This account is deactivated or locked. Contact your "
+                       "organization owner or system administrator")
+        if not check_password_hash(admin["password_hash"], password):
+            attempts = (admin["failed_attempts"] or 0) + 1
+            locked = attempts >= MAX_FAILED_LOGINS
+            cur.execute(
+                "UPDATE administrators SET failed_attempts=%s, is_active=%s"
+                " WHERE admin_id=%s",
+                (attempts, 0 if locked else 1, admin["admin_id"]))
+            record_audit(cur, "ACCOUNT_LOCKED" if locked else "LOGIN_FAILED",
+                         "administrator", admin["admin_id"],
+                         f"Failed attempt {attempts} for {email}",
+                         org_id=admin["organization_id"],
+                         admin_id=admin["admin_id"])
+            conn.commit()
+            if locked:
+                abort(403, "Account locked after 5 failed login attempts. "
+                           "Contact your administrator")
+            abort(401, "Wrong email or password for this organization")
+        cur.execute(
+            "UPDATE administrators SET failed_attempts=0,"
+            " last_login=CURRENT_TIMESTAMP WHERE admin_id=%s",
+            (admin["admin_id"],))
+        record_audit(cur, "LOGIN_SUCCESS", "administrator", admin["admin_id"],
+                     f"{email} logged in",
+                     org_id=admin["organization_id"],
+                     admin_id=admin["admin_id"])
+        conn.commit()
     session.clear()
+    session.permanent = True
     session["admin_id"] = admin["admin_id"]
     session["organization_id"] = admin["organization_id"]
     session["full_name"] = admin["full_name"]
+    session["role"] = admin["role"]
     return jsonify({"admin_id": admin["admin_id"],
                     "full_name": admin["full_name"],
-                    "organization_id": admin["organization_id"]})
+                    "organization_id": admin["organization_id"],
+                    "role": admin["role"],
+                    "must_change_pw": bool(admin["must_change_pw"])})
 
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
+    if "admin_id" in session:
+        with db() as (conn, cur):
+            record_audit(cur, "LOGOUT", "administrator", session["admin_id"],
+                         "Administrator logged out")
+            conn.commit()
     session.clear()
     return jsonify({"ok": True})
 
@@ -118,9 +196,48 @@ def logout():
 def me():
     if "admin_id" not in session:
         abort(401, "Not logged in")
-    return jsonify({"admin_id": session["admin_id"],
-                    "full_name": session["full_name"],
-                    "organization_id": session["organization_id"]})
+    with db() as (conn, cur):
+        cur.execute(
+            "SELECT admin_id, full_name, organization_id, role, is_active,"
+            " must_change_pw FROM administrators WHERE admin_id=%s",
+            (session["admin_id"],))
+        admin = cur.fetchone()
+    if admin is None or not admin["is_active"]:
+        session.clear()
+        abort(401, "Not logged in")
+    return jsonify({"admin_id": admin["admin_id"],
+                    "full_name": admin["full_name"],
+                    "organization_id": admin["organization_id"],
+                    "role": admin["role"],
+                    "must_change_pw": bool(admin["must_change_pw"])})
+
+
+@app.route("/api/change-password", methods=["POST"])
+def change_password():
+    data = json_body()
+    current_pw = str(data.get("current_password") or "")
+    new_pw = str(data.get("new_password") or "")
+    if not current_pw or not new_pw:
+        abort(400, "Enter your current password and a new password")
+    if len(new_pw) < 8:
+        abort(400, "New password must be at least 8 characters")
+    if current_pw == new_pw:
+        abort(400, "New password must be different from your current password")
+    with db() as (conn, cur):
+        cur.execute("SELECT password_hash FROM administrators WHERE admin_id=%s",
+                    (session["admin_id"],))
+        row = cur.fetchone()
+        if row is None or not check_password_hash(row["password_hash"], current_pw):
+            abort(401, "Current password is incorrect")
+        cur.execute(
+            "UPDATE administrators SET password_hash=%s, must_change_pw=0"
+            " WHERE admin_id=%s",
+            (generate_password_hash(new_pw, method="pbkdf2:sha256"),
+             session["admin_id"]))
+        record_audit(cur, "PASSWORD_CHANGE", "administrator",
+                     session["admin_id"], "Changed own password")
+        conn.commit()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/meta", methods=["GET"])
@@ -130,6 +247,290 @@ def meta():
                     "location_req_choices": LOCATION_REQ_CHOICES,
                     "fields": FIELDS, "statuses": STATUSES,
                     "grade_scales": load_scales()})
+
+
+# ==================== VINZ: organizations, admin accounts, audit logs ====================
+
+def _clean_hex(value, label):
+    val = str(value or "").strip()
+    if not val:
+        return None
+    if not HEX_COLOR_RE.match(val):
+        abort(400, f"{label} must be a 6-digit hex color like #002855")
+    return val.upper()
+
+
+@app.route("/api/organizations", methods=["GET"])
+def list_organizations():
+    with db() as (conn, cur):
+        cur.execute(
+            "SELECT organization_id, organization_name, logo_path,"
+            " theme_primary_color, theme_accent_color, theme_bg_color"
+            " FROM organizations ORDER BY organization_name")
+        return jsonify(cur.fetchall())
+
+
+@app.route("/api/organizations", methods=["POST"])
+def create_organization():
+    require_roles("super_admin")
+    data = json_body()
+    org_id = str(data.get("organization_id") or "").strip().lower()
+    org_name = str(data.get("organization_name") or "").strip()
+    if not ORG_ID_RE.match(org_id):
+        abort(400, "Organization ID must be 2 to 20 lowercase letters, "
+                   "numbers, hyphens or underscores")
+    if not org_name or len(org_name) > 150:
+        abort(400, "Organization name is required (max 150 characters)")
+    logo_path = str(data.get("logo_path") or "").strip() or None
+    primary = _clean_hex(data.get("theme_primary_color"), "Primary color")
+    accent = _clean_hex(data.get("theme_accent_color"), "Accent color")
+    bg = _clean_hex(data.get("theme_bg_color"), "Background color")
+    with db() as (conn, cur):
+        cur.execute("SELECT 1 FROM organizations WHERE organization_id=%s",
+                    (org_id,))
+        if cur.fetchone() is not None:
+            abort(409, "An organization with this ID already exists")
+        cur.execute(
+            "INSERT INTO organizations (organization_id, organization_name,"
+            " logo_path, theme_primary_color, theme_accent_color, theme_bg_color)"
+            " VALUES (%s,%s,%s,%s,%s,%s)",
+            (org_id, org_name, logo_path, primary, accent, bg))
+        record_audit(cur, "ORG_CREATE", "organization", org_id,
+                     f"Created organization {org_name}")
+        conn.commit()
+    return jsonify({"organization_id": org_id}), 201
+
+
+@app.route("/api/organizations/<org_id>", methods=["PUT"])
+def update_organization(org_id):
+    require_roles("super_admin", "owner")
+    if current_role() == "owner" and org_id != current_org():
+        abort(404, "Organization not found")
+    data = json_body()
+    org_name = str(data.get("organization_name") or "").strip()
+    if not org_name or len(org_name) > 150:
+        abort(400, "Organization name is required (max 150 characters)")
+    logo_path = str(data.get("logo_path") or "").strip() or None
+    primary = _clean_hex(data.get("theme_primary_color"), "Primary color")
+    accent = _clean_hex(data.get("theme_accent_color"), "Accent color")
+    bg = _clean_hex(data.get("theme_bg_color"), "Background color")
+    with db() as (conn, cur):
+        cur.execute("SELECT 1 FROM organizations WHERE organization_id=%s",
+                    (org_id,))
+        if cur.fetchone() is None:
+            abort(404, "Organization not found")
+        cur.execute(
+            "UPDATE organizations SET organization_name=%s, logo_path=%s,"
+            " theme_primary_color=%s, theme_accent_color=%s, theme_bg_color=%s"
+            " WHERE organization_id=%s",
+            (org_name, logo_path, primary, accent, bg, org_id))
+        record_audit(cur, "ORG_UPDATE", "organization", org_id,
+                     f"Updated branding/details for {org_id}")
+        conn.commit()
+    return jsonify({"organization_id": org_id})
+
+
+def _load_managed_admin(cur, admin_id):
+    cur.execute(
+        "SELECT admin_id, organization_id, full_name, email, role, is_active,"
+        " last_login, failed_attempts, must_change_pw, date_added"
+        " FROM administrators WHERE admin_id=%s", (admin_id,))
+    row = cur.fetchone()
+    if row is None:
+        abort(404, "Administrator not found")
+    if current_role() != "super_admin" and row["organization_id"] != current_org():
+        abort(404, "Administrator not found")
+    return row
+
+
+def _active_owner_count(cur, org_id):
+    cur.execute(
+        "SELECT COUNT(*) AS n FROM administrators"
+        " WHERE organization_id=%s AND role='owner' AND is_active=1",
+        (org_id,))
+    return cur.fetchone()["n"]
+
+
+@app.route("/api/admins", methods=["GET"])
+def list_admins():
+    require_roles("super_admin", "owner")
+    org = request.args.get("organization_id")
+    with db() as (conn, cur):
+        if current_role() == "super_admin":
+            if org:
+                cur.execute(
+                    "SELECT admin_id, organization_id, full_name, email, role,"
+                    " is_active, last_login, failed_attempts, must_change_pw,"
+                    " date_added FROM administrators WHERE organization_id=%s"
+                    " ORDER BY admin_id", (org,))
+            else:
+                cur.execute(
+                    "SELECT admin_id, organization_id, full_name, email, role,"
+                    " is_active, last_login, failed_attempts, must_change_pw,"
+                    " date_added FROM administrators ORDER BY organization_id, admin_id")
+        else:
+            cur.execute(
+                "SELECT admin_id, organization_id, full_name, email, role,"
+                " is_active, last_login, failed_attempts, must_change_pw,"
+                " date_added FROM administrators WHERE organization_id=%s"
+                " ORDER BY admin_id", (current_org(),))
+        rows = [json_safe(r) for r in cur.fetchall()]
+    for r in rows:
+        r["is_active"] = bool(r["is_active"])
+        r["must_change_pw"] = bool(r["must_change_pw"])
+    return jsonify(rows)
+
+
+@app.route("/api/admins", methods=["POST"])
+def create_admin():
+    require_roles("super_admin", "owner")
+    data = json_body()
+    org_id = str(data.get("organization_id") or current_org()).strip()
+    if current_role() != "super_admin" and org_id != current_org():
+        abort(403, "You can only create administrators for your own organization")
+    full_name = str(data.get("full_name") or "").strip()
+    email = str(data.get("email") or "").strip().lower()
+    password = str(data.get("password") or "")
+    role = str(data.get("role") or "admin").strip()
+    if not full_name or len(full_name) > 150:
+        abort(400, "Full name is required (max 150 characters)")
+    if not email or "@" not in email or len(email) > 150:
+        abort(400, "A valid email address is required")
+    if len(password) < 8:
+        abort(400, "Password must be at least 8 characters")
+    allowed_roles = ("owner", "admin", "super_admin") if current_role() == "super_admin" else ("owner", "admin")
+    if role not in allowed_roles:
+        abort(400, "Invalid role")
+    with db() as (conn, cur):
+        cur.execute("SELECT 1 FROM organizations WHERE organization_id=%s", (org_id,))
+        if cur.fetchone() is None:
+            abort(404, "Organization not found")
+        cur.execute("SELECT 1 FROM administrators WHERE email=%s", (email,))
+        if cur.fetchone() is not None:
+            abort(409, "An administrator with this email already exists")
+        cur.execute(
+            "INSERT INTO administrators"
+            " (organization_id, full_name, email, password_hash, role, must_change_pw)"
+            " VALUES (%s,%s,%s,%s,%s,1)",
+            (org_id, full_name, email,
+             generate_password_hash(password, method="pbkdf2:sha256"), role))
+        new_id = cur.lastrowid
+        record_audit(cur, "ADMIN_CREATE", "administrator", new_id,
+                     f"Created {role} account {email} in {org_id}")
+        conn.commit()
+    return jsonify({"admin_id": new_id}), 201
+
+
+@app.route("/api/admins/<int:admin_id>", methods=["PUT"])
+def update_admin(admin_id):
+    require_roles("super_admin", "owner")
+    data = json_body()
+    with db() as (conn, cur):
+        target = _load_managed_admin(cur, admin_id)
+        full_name = str(data.get("full_name") or target["full_name"]).strip()
+        email = str(data.get("email") or target["email"]).strip().lower()
+        new_role = str(data.get("role") or target["role"]).strip()
+        if not full_name or len(full_name) > 150:
+            abort(400, "Full name is required (max 150 characters)")
+        if not email or "@" not in email or len(email) > 150:
+            abort(400, "A valid email address is required")
+        allowed_roles = ("owner", "admin", "super_admin") if current_role() == "super_admin" else ("owner", "admin")
+        if new_role not in allowed_roles:
+            abort(400, "Invalid role")
+        if admin_id == session["admin_id"] and new_role != target["role"]:
+            abort(400, "You cannot change your own role")
+        if target["role"] == "owner" and new_role != "owner" and target["is_active"]:
+            if _active_owner_count(cur, target["organization_id"]) <= 1:
+                abort(400, "Cannot demote the last active owner of an organization")
+        cur.execute("SELECT 1 FROM administrators WHERE email=%s AND admin_id<>%s",
+                    (email, admin_id))
+        if cur.fetchone() is not None:
+            abort(409, "Another administrator already uses this email")
+        cur.execute(
+            "UPDATE administrators SET full_name=%s, email=%s, role=%s"
+            " WHERE admin_id=%s", (full_name, email, new_role, admin_id))
+        record_audit(cur, "ADMIN_UPDATE", "administrator", admin_id,
+                     f"Updated {email} (role: {new_role})")
+        conn.commit()
+    return jsonify({"admin_id": admin_id})
+
+
+@app.route("/api/admins/<int:admin_id>/reset-password", methods=["POST"])
+def reset_admin_password(admin_id):
+    require_roles("super_admin", "owner")
+    data = json_body()
+    new_pw = str(data.get("new_password") or "")
+    if len(new_pw) < 8:
+        abort(400, "New password must be at least 8 characters")
+    with db() as (conn, cur):
+        target = _load_managed_admin(cur, admin_id)
+        cur.execute(
+            "UPDATE administrators SET password_hash=%s, must_change_pw=1,"
+            " failed_attempts=0 WHERE admin_id=%s",
+            (generate_password_hash(new_pw, method="pbkdf2:sha256"), admin_id))
+        record_audit(cur, "ADMIN_RESET_PW", "administrator", admin_id,
+                     f"Reset password for {target['email']}")
+        conn.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admins/<int:admin_id>/deactivate", methods=["POST"])
+def deactivate_admin(admin_id):
+    require_roles("super_admin", "owner")
+    if admin_id == session["admin_id"]:
+        abort(400, "You cannot deactivate your own account")
+    with db() as (conn, cur):
+        target = _load_managed_admin(cur, admin_id)
+        if target["role"] == "owner" and target["is_active"]:
+            if _active_owner_count(cur, target["organization_id"]) <= 1:
+                abort(400, "Cannot deactivate the last active owner of an organization")
+        cur.execute("UPDATE administrators SET is_active=0 WHERE admin_id=%s",
+                    (admin_id,))
+        record_audit(cur, "ADMIN_DEACTIVATE", "administrator", admin_id,
+                     f"Deactivated {target['email']}")
+        conn.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admins/<int:admin_id>/reactivate", methods=["POST"])
+def reactivate_admin(admin_id):
+    require_roles("super_admin", "owner")
+    with db() as (conn, cur):
+        target = _load_managed_admin(cur, admin_id)
+        cur.execute(
+            "UPDATE administrators SET is_active=1, failed_attempts=0"
+            " WHERE admin_id=%s", (admin_id,))
+        record_audit(cur, "ADMIN_REACTIVATE", "administrator", admin_id,
+                     f"Reactivated {target['email']}")
+        conn.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/audit-logs", methods=["GET"])
+def get_audit_logs():
+    require_roles("super_admin", "owner")
+    org = request.args.get("organization_id")
+    limit = min(max(int(request.args.get("limit", 200)), 1), 500)
+    with db() as (conn, cur):
+        base_sql = (
+            "SELECT al.log_id, al.organization_id, al.admin_id,"
+            " a.full_name AS admin_name, a.email AS admin_email,"
+            " al.action, al.target_type, al.target_id, al.details, al.created_at"
+            " FROM audit_logs al"
+            " LEFT JOIN administrators a ON a.admin_id = al.admin_id"
+        )
+        if current_role() == "super_admin":
+            if org:
+                cur.execute(base_sql + " WHERE al.organization_id=%s"
+                            " ORDER BY al.log_id DESC LIMIT %s", (org, limit))
+            else:
+                cur.execute(base_sql + " ORDER BY al.log_id DESC LIMIT %s",
+                            (limit,))
+        else:
+            cur.execute(base_sql + " WHERE al.organization_id=%s"
+                        " ORDER BY al.log_id DESC LIMIT %s",
+                        (current_org(), limit))
+        return jsonify([json_safe(r) for r in cur.fetchall()])
 
 
 # ==================== VINZ: applicant + screening routes ====================
@@ -158,6 +559,7 @@ def program_json(row):
     out = json_safe({k: row[k] for k in SCHOLARSHIP_COLS})
     out["grade_scale_label"] = row["grade_scale_label"]
     out["higher_is_better"] = bool(row["higher_is_better"])
+    out["is_archived"] = bool(row.get("is_archived", 0))
     return out
 
 
@@ -188,6 +590,7 @@ def add_applicant(scholarship_id):
     data = json_body()
     with db() as (conn, cur):
         program = load_scholarship(cur, scholarship_id)
+        require_open_program(program, "add applicants")
         clean, error = clean_applicant(data, program_scale(program))
         if error:
             abort(400, error)
@@ -253,6 +656,8 @@ def screen_scholarship(scholarship_id):
                             "eligible": bool(is_eligible)})
         cur.execute("UPDATE scholarship_programs SET status='Screening'"
                     " WHERE scholarship_id=%s", (scholarship_id,))
+        record_audit(cur, "SCREENING_RUN", "scholarship", scholarship_id,
+                     f"Screened {len(results)} applicants")
         conn.commit()
         return jsonify(results)
 
@@ -263,7 +668,8 @@ SCHOLARSHIP_COLS = ["scholarship_id", "organization_id", "scholarship_name",
                     "provider", "grade_scale", "gwa_limit", "income_cap",
                     "eligible_field",
                     "eligible_years", "location_req", "min_entrance",
-                    "available_slots", "status", "application_deadline"]
+                    "available_slots", "status", "is_archived",
+                    "application_deadline"]
 SCHOLARSHIP_COLUMNS = ", ".join(SCHOLARSHIP_COLS)
 
 PROGRAM_FIELDS = ["scholarship_name", "provider", "grade_scale", "gwa_limit",
@@ -288,14 +694,23 @@ def list_scholarships():
     org = request.args.get("organization_id") or current_org()
     if org != current_org():
         abort(403, "You can only view your own organization")
+    include_archived = request.args.get("include_archived") == "1"
     with db() as (conn, cur):
-        cur.execute(
+        sql = (
             "SELECT sp.*, gs.label AS grade_scale_label,"
             " gs.higher_is_better AS higher_is_better"
             " FROM scholarship_programs sp JOIN grade_scales gs"
             " ON gs.scale_id = sp.grade_scale"
-            " WHERE sp.organization_id=%s ORDER BY sp.scholarship_id", (org,))
-        return jsonify([program_json(r) for r in cur.fetchall()])
+            " WHERE sp.organization_id=%s"
+        )
+        if not include_archived:
+            sql += " AND sp.is_archived = 0"
+        sql += " ORDER BY sp.scholarship_id"
+        cur.execute(sql, (org,))
+        rows = [program_json(r) for r in cur.fetchall()]
+        for r in rows:
+            r["is_archived"] = bool(r["is_archived"])
+        return jsonify(rows)
 
 
 @app.route("/api/scholarships/<int:scholarship_id>", methods=["GET"])
@@ -316,8 +731,11 @@ def create_scholarship():
             + ", ".join(PROGRAM_FIELDS) + ") VALUES (%s,"
             + ",".join(["%s"] * len(PROGRAM_FIELDS)) + ")",
             (current_org(), *[clean[f] for f in PROGRAM_FIELDS]))
+        new_id = cur.lastrowid
+        record_audit(cur, "PROGRAM_CREATE", "scholarship", new_id,
+                     f"Created program {clean['scholarship_name']}")
         conn.commit()
-        return jsonify({"scholarship_id": cur.lastrowid}), 201
+        return jsonify({"scholarship_id": new_id}), 201
 
 
 @app.route("/api/scholarships/<int:scholarship_id>", methods=["PUT"])
@@ -351,10 +769,38 @@ def update_scholarship(scholarship_id):
                 "DELETE rr FROM ranking_results rr JOIN screening_results sr"
                 " ON sr.result_id = rr.result_id WHERE sr.scholarship_id=%s",
                 (scholarship_id,))
+        record_audit(cur, "PROGRAM_UPDATE", "scholarship", scholarship_id,
+                     f"Updated program {clean['scholarship_name']}")
         conn.commit()
         return jsonify({"scholarship_id": scholarship_id,
                         "screening_cleared": criteria_changed,
                         "ranking_cleared": criteria_changed or slots_changed})
+
+
+@app.route("/api/scholarships/<int:scholarship_id>", methods=["DELETE"])
+def delete_or_archive_scholarship(scholarship_id):
+    """Archive a program that already has applicants (setting is_archived=1 and
+    status='Closed'), or permanently delete it when empty or ?permanent=true."""
+    permanent = request.args.get("permanent", "").lower() == "true"
+    with db() as (conn, cur):
+        program = load_scholarship(cur, scholarship_id)
+        cur.execute("SELECT COUNT(*) AS n FROM applicants"
+                    " WHERE scholarship_id=%s", (scholarship_id,))
+        has_applicants = cur.fetchone()["n"] > 0
+        if permanent or not has_applicants:
+            cur.execute("DELETE FROM scholarship_programs"
+                        " WHERE scholarship_id=%s", (scholarship_id,))
+            record_audit(cur, "PROGRAM_DELETE", "scholarship", scholarship_id,
+                         f"Deleted program {program['scholarship_name']}")
+            conn.commit()
+            return jsonify({"deleted": scholarship_id, "archived": False})
+        cur.execute(
+            "UPDATE scholarship_programs SET is_archived=1, status='Closed'"
+            " WHERE scholarship_id=%s", (scholarship_id,))
+        record_audit(cur, "PROGRAM_ARCHIVE", "scholarship", scholarship_id,
+                     f"Archived program {program['scholarship_name']}")
+        conn.commit()
+        return jsonify({"archived": scholarship_id, "deleted": False})
 
 
 # ==================== SHAWN: ranking routes ====================
@@ -405,6 +851,8 @@ def rank_scholarship(scholarship_id):
         scored_count, shortlisted = write_ranking(cur, scholarship)
         cur.execute("UPDATE scholarship_programs SET status='Ranking'"
                     " WHERE scholarship_id=%s", (scholarship_id,))
+        record_audit(cur, "RANKING_RUN", "scholarship", scholarship_id,
+                     f"Ranked {scored_count} eligible applicants ({shortlisted} shortlisted)")
         conn.commit()
         return jsonify({"ranked_count": scored_count,
                         "shortlisted": shortlisted,
@@ -477,6 +925,7 @@ def update_applicant(scholarship_id, applicant_id):
     data = json_body()
     with db() as (conn, cur):
         program = load_scholarship(cur, scholarship_id)
+        require_open_program(program, "edit applicants")
         cur.execute("SELECT 1 FROM applicants WHERE applicant_id=%s"
                     " AND scholarship_id=%s", (applicant_id, scholarship_id))
         if cur.fetchone() is None:
@@ -571,6 +1020,7 @@ def delete_applicant(scholarship_id, applicant_id):
     the remaining applicants, so it is cleared and must be run again."""
     with db() as (conn, cur):
         scholarship = load_scholarship(cur, scholarship_id)
+        require_open_program(scholarship, "delete applicants")
         cur.execute("SELECT 1 FROM applicants WHERE applicant_id=%s"
                     " AND scholarship_id=%s", (applicant_id, scholarship_id))
         if cur.fetchone() is None:
@@ -628,6 +1078,7 @@ def bulk_delete_applicants(scholarship_id):
     data = json_body()
     with db() as (conn, cur):
         scholarship = load_scholarship(cur, scholarship_id)
+        require_open_program(scholarship, "delete applicants")
         delete_all = bool(data.get("all"))
         if delete_all:
             if str(data.get("confirm_name") or "").strip() != \
@@ -683,6 +1134,7 @@ def restore_applicants(scholarship_id):
         abort(400, f"Restore at most {MAX_BULK_IDS} applicants at a time")
     with db() as (conn, cur):
         program = load_scholarship(cur, scholarship_id)
+        require_open_program(program, "restore applicants")
         scale = program_scale(program)
         restored = skipped = 0
         for item in items:
@@ -970,6 +1422,7 @@ def import_applicants(scholarship_id):
     valid, errors, seen = [], [], set()
     with db() as (conn, cur):
         program = load_scholarship(cur, scholarship_id)
+        require_open_program(program, "import applicants")
         scale = program_scale(program)
         for i, r in enumerate(rows[1:], start=2):  # spreadsheet row numbers
             if not any(str(c or "").strip() for c in r):
