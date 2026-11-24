@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Logs — EduMatch PH</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
+<body><div id="shell"></div><main class="wrap">
+<h1>Audit logs</h1>
+<p class="lede">Read-only activity log of logins, account changes, program updates, and screening/ranking runs.</p>
+
+<div class="toolbar" style="margin-bottom:1rem">
+  <div class="input-icon grow" style="max-width:340px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input type="search" id="log-search" data-search placeholder="Search logs  ( / )" aria-label="Search audit logs"></div>
+  <div class="chips" id="cat-chips"></div>
+  <span class="grow"></span>
+  <button class="btn-secondary" id="export-logs-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>Export CSV</button>
+</div>
+<div id="logs-message" class="msg"></div>
+
+<div class="card">
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Timestamp</th><th>Actor</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+      <tbody id="logs-body"></tbody>
+    </table>
+  </div>
+</div>
+</main>
+<script src="app.js"></script>
+<script>
+renderShell("audit");
+let logs = [], cat = "all", filtered = [];
+const body = document.getElementById("logs-body");
+
+function categoryOf(action) {
+  const a = String(action || "").toLowerCase();
+  if (/login|logout|password/.test(a)) return "auth";
+  if (/admin|user|org|role/.test(a)) return "account";
+  if (/screen|rank|shortlist/.test(a)) return "screening";
+  return "other";
+}
+function render() {
+  const cats = [["all", "All"], ["auth", "Logins & Security"], ["screening", "Screening & Ranking"], ["account", "Accounts"], ["other", "Programs & Other"]];
+  document.getElementById("cat-chips").innerHTML = cats.map(([k, l]) => `<button type="button" class="chip ${cat === k ? "active" : ""}" data-c="${k}">${l}</button>`).join("");
+  const q = document.getElementById("log-search").value.trim().toLowerCase();
+  filtered = logs.filter((r) => (cat === "all" || categoryOf(r.action) === cat) &&
+    (!q || [r.actor_name, r.actor_email, r.action, r.target, r.details].join(" ").toLowerCase().includes(q)));
+  if (!filtered.length) {
+    body.innerHTML = '<tr><td colspan="5"><div class="empty"><h3>No audit log entries</h3><p>Activity will appear here as administrators log in, update programs, and run screening or ranking.</p></div></td></tr>';
+    return;
+  }
+  body.innerHTML = filtered.map((r) => {
+    const dt = r.created_at || r.timestamp || "";
+    const actor = r.actor_name || r.actor_email || r.admin_id || "System";
+    return `<tr><td style="white-space:nowrap">${escapeHtml(dt)}</td><td><b>${escapeHtml(actor)}</b></td>` +
+      `<td><span class="pill neutral">${escapeHtml(r.action || "")}</span></td><td>${escapeHtml(r.target || "")}</td><td class="hint">${escapeHtml(r.details || "")}</td></tr>`;
+  }).join("");
+}
+
+document.getElementById("cat-chips").addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (b) { cat = b.dataset.c; render(); } });
+document.getElementById("log-search").addEventListener("input", debounce(render, 120));
+document.getElementById("export-logs-btn").addEventListener("click", () => {
+  if (!filtered.length) { toast("Nothing to export.", "error"); return; }
+  const rows = [["Timestamp", "Actor", "Action", "Target", "Details"], ...filtered.map((r) => [r.created_at || r.timestamp || "", r.actor_name || r.actor_email || "", r.action || "", r.target || "", r.details || ""])];
+  downloadBlob(new Blob([toCsv(rows)], { type: "text/csv" }), "edumatch_audit_logs.csv");
+  toast("Audit logs exported.", "success");
+});
+
+(async () => {
+  body.innerHTML = skeletonRows(5, 6);
+  try {
+    const res = await apiFetch("/api/audit-logs");
+    logs = Array.isArray(res) ? res : (res && res.logs) || [];
+    render();
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty"><h3>Audit logs unavailable</h3><p>${escapeHtml(friendlyError(err))}</p></div></td></tr>`;
+  }
+})();
+</script></body></html>

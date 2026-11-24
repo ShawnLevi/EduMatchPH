@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Super Admin — EduMatch PH</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head>
+<body><div id="shell"></div><main class="wrap">
+<h1>Super Admin &amp; Account Management</h1>
+<p class="lede">Onboard partner organizations with custom branding and manage administrator accounts.</p>
+<div id="super-message" class="msg"></div>
+
+<div id="super-content" hidden>
+  <div class="toolbar" style="margin-bottom:1.1rem">
+    <button class="btn-primary" id="new-org-btn" type="button">+ Onboard organization</button>
+    <button class="btn-secondary" id="new-admin-btn" type="button">+ Create admin account</button>
+    <span class="grow"></span>
+    <div class="input-icon" style="max-width:280px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" id="admin-search" data-search placeholder="Search admins  ( / )" aria-label="Search admins"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Administrator accounts</h2>
+      <div class="chips" id="status-chips"></div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Organization</th><th>Role</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody id="admins-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</main>
+<script src="app.js"></script>
+<script>
+renderShell("super");
+let admins = [], orgs = [], statusFilter = "all";
+const body = document.getElementById("admins-body");
+
+function render() {
+  const counts = { all: admins.length, active: 0, inactive: 0 };
+  admins.forEach((a) => counts[a.is_active === false || a.status === "inactive" ? "inactive" : "active"]++);
+  document.getElementById("status-chips").innerHTML = [["all", "All"], ["active", "Active"], ["inactive", "Inactive"]]
+    .map(([k, l]) => `<button type="button" class="chip ${statusFilter === k ? "active" : ""}" data-s="${k}">${l}<span class="count">${counts[k]}</span></button>`).join("");
+  const q = document.getElementById("admin-search").value.trim().toLowerCase();
+  const list = admins.filter((a) => {
+    const active = !(a.is_active === false || a.status === "inactive");
+    const matchStatus = statusFilter === "all" || (statusFilter === "active" ? active : !active);
+    const matchQ = !q || [a.full_name, a.email, a.organization_id, a.role].join(" ").toLowerCase().includes(q);
+    return matchStatus && matchQ;
+  });
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="6"><div class="empty"><h3>No administrator accounts found</h3><p>Create an admin account or adjust your search filter.</p></div></td></tr>';
+    return;
+  }
+  body.innerHTML = list.map((a) => {
+    const active = !(a.is_active === false || a.status === "inactive");
+    const id = a.admin_id || a.id;
+    return `<tr><td><b>${escapeHtml(a.full_name)}</b></td><td>${escapeHtml(a.email)}</td>` +
+      `<td><span class="rule-chip">${escapeHtml(String(a.organization_id || "").toUpperCase())}</span></td>` +
+      `<td>${escapeHtml(a.role || "admin")}</td>` +
+      `<td><span class="pill ${active ? "ok" : "no"}">${active ? "Active" : "Inactive"}</span></td>` +
+      `<td class="row-actions">` +
+      `<button class="btn-secondary small" data-edit="${id}" type="button">Edit</button> ` +
+      `<button class="btn-secondary small" data-reset="${id}" type="button">Reset password</button> ` +
+      `<button class="${active ? "btn-danger-outline btn-secondary" : "btn-primary"} small" data-toggle="${id}" data-active="${active ? "1" : "0"}" type="button">${active ? "Deactivate" : "Reactivate"}</button>` +
+      `</td></tr>`;
+  }).join("");
+}
+
+function openOrgModal() {
+  const colorRow = (id, label, def) => `<div class="field"><label for="${id}">${label}</label><div class="color-pick-row"><input type="color" id="${id}-pick" value="${def}"><input type="text" id="${id}" value="${def}"></div></div>`;
+  const layer = openModal(`<div class="modal-head"><h2>Onboard new organization</h2></div><form id="org-form" novalidate>
+    <div class="grid2">
+      <div class="field"><label for="o-id">Organization code / ID</label><input id="o-id" placeholder="e.g. usc" required><span class="field-error" data-e="id"></span></div>
+      <div class="field"><label for="o-name">Organization name</label><input id="o-name" placeholder="e.g. University of San Carlos" required><span class="field-error" data-e="name"></span></div>
+      <div class="field" style="grid-column:1/-1"><label for="o-logo">Logo path or URL (optional)</label><input id="o-logo" placeholder="EduMatchPH_logo.jpg"></div>
+      ${colorRow("o-prim", "Primary color", "#0B1E3D")}
+      ${colorRow("o-acc", "Accent color", "#E8A63C")}
+      ${colorRow("o-bg", "Background color", "#FBF8F2")}
+    </div>
+    <div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button><button type="submit" class="btn-primary" id="o-save">Create organization</button></div></form>`, { wide: true });
+  [["o-prim"], ["o-acc"], ["o-bg"]].forEach(([id]) => {
+    const p = $("#" + id + "-pick", layer.el), t = $("#" + id, layer.el);
+    p.addEventListener("input", () => { t.value = p.value; });
+    t.addEventListener("input", () => { if (/^#[0-9a-f]{6}$/i.test(t.value)) p.value = t.value; });
+  });
+  $("[data-cancel]", layer.el).addEventListener("click", () => layer.close());
+  $("#org-form", layer.el).addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = $("#o-id", layer.el).value.trim().toLowerCase(), name = $("#o-name", layer.el).value.trim();
+    if (!id) { $("[data-e=id]", layer.el).textContent = "Enter an organization ID."; return; }
+    if (!name) { $("[data-e=name]", layer.el).textContent = "Enter the organization name."; return; }
+    if (!(await confirmDialog({ title: "Onboard organization?", message: `Create ${name} (${id.toUpperCase()}) with these branding settings?`, confirmText: "Onboard" }))) return;
+    await withLoading($("#o-save", layer.el), async () => {
+      try {
+        await apiFetch("/api/super-admin/organizations", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({
+          organization_id: id, name, logo_path: $("#o-logo", layer.el).value.trim() || null,
+          theme_primary_color: $("#o-prim", layer.el).value.trim(), theme_accent_color: $("#o-acc", layer.el).value.trim(), theme_bg_color: $("#o-bg", layer.el).value.trim(),
+        }) });
+        layer.close(); toast(`Onboarded ${name}.`, "success"); loadData();
+      } catch (err) { toast(friendlyError(err), "error"); }
+    });
+  });
+}
+
+function openAdminModal(existing) {
+  const editing = !!existing;
+  const orgOpts = (orgs.length ? orgs : [{ organization_id: "uclm", name: "UCLM" }, { organization_id: "dost", name: "DOST" }])
+    .map((o) => `<option value="${escapeHtml(o.organization_id || o.id)}">${escapeHtml(o.name || o.organization_id)}</option>`).join("");
+  const layer = openModal(`<div class="modal-head"><h2>${editing ? "Edit administrator" : "Create administrator"}</h2></div><form id="adm-form" novalidate>
+    <div class="grid2">
+      <div class="field" style="grid-column:1/-1"><label for="a-name">Full name</label><input id="a-name" value="${editing ? escapeHtml(existing.full_name) : ""}" required><span class="field-error" data-e="name"></span></div>
+      <div class="field" style="grid-column:1/-1"><label for="a-email">Email</label><input type="email" id="a-email" value="${editing ? escapeHtml(existing.email) : ""}" required><span class="field-error" data-e="email"></span></div>
+      <div class="field"><label for="a-org">Organization</label><select id="a-org">${orgOpts}</select></div>
+      <div class="field"><label for="a-role">Role</label><select id="a-role"><option value="admin">Admin</option><option value="super_admin">Super Admin</option><option value="owner">Owner</option></select></div>
+      ${editing ? "" : '<div class="field" style="grid-column:1/-1"><label for="a-pw">Temporary password</label><input type="password" id="a-pw" required><span class="hint">At least 8 characters. User will be prompted to change on first login.</span><span class="field-error" data-e="pw"></span></div>'}
+    </div>
+    <div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button><button type="submit" class="btn-primary" id="a-save">${editing ? "Save changes" : "Create account"}</button></div></form>`, { wide: true });
+  if (editing) {
+    $("#a-org", layer.el).value = existing.organization_id || "";
+    $("#a-role", layer.el).value = existing.role || "admin";
+  }
+  $("[data-cancel]", layer.el).addEventListener("click", () => layer.close());
+  $("#adm-form", layer.el).addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const full_name = $("#a-name", layer.el).value.trim(), email = $("#a-email", layer.el).value.trim(),
+          organization_id = $("#a-org", layer.el).value, role = $("#a-role", layer.el).value;
+    if (!full_name) { $("[data-e=name]", layer.el).textContent = "Enter full name."; return; }
+    if (!email) { $("[data-e=email]", layer.el).textContent = "Enter email."; return; }
+    if (!editing && $("#a-pw", layer.el).value.length < 8) { $("[data-e=pw]", layer.el).textContent = "At least 8 characters."; return; }
+    if (editing && role !== (existing.role || "admin")) {
+      if (!(await confirmDialog({ title: "Change administrator role?", message: `Change ${full_name}'s role from ${existing.role || "admin"} to ${role}?`, confirmText: "Confirm role change" }))) return;
+    }
+    await withLoading($("#a-save", layer.el), async () => {
+      try {
+        if (editing) {
+          const id = existing.admin_id || existing.id;
+          await apiFetch(`/api/super-admin/admins/${id}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ full_name, email, organization_id, role }) });
+          toast(`Updated ${full_name}.`, "success");
+        } else {
+          await apiFetch("/api/super-admin/admins", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ full_name, email, organization_id, role, password: $("#a-pw", layer.el).value }) });
+          toast(`Created account for ${full_name}.`, "success");
+        }
+        layer.close(); loadData();
+      } catch (err) { toast(friendlyError(err), "error"); }
+    });
+  });
+}
+
+document.getElementById("new-org-btn").addEventListener("click", openOrgModal);
+document.getElementById("new-admin-btn").addEventListener("click", () => openAdminModal());
+document.getElementById("status-chips").addEventListener("click", (e) => { const b = e.target.closest("[data-s]"); if (b) { statusFilter = b.dataset.s; render(); } });
+document.getElementById("admin-search").addEventListener("input", debounce(render, 120));
+body.addEventListener("click", async (e) => {
+  const ed = e.target.closest("[data-edit]");
+  if (ed) { const a = admins.find((x) => String(x.admin_id || x.id) === ed.dataset.edit); if (a) openAdminModal(a); return; }
+  const rs = e.target.closest("[data-reset]");
+  if (rs) {
+    const a = admins.find((x) => String(x.admin_id || x.id) === rs.dataset.reset);
+    if (!a || !(await confirmDialog({ title: "Reset password?", message: `Reset password for ${a.full_name} and require password change on next login?`, confirmText: "Reset password" }))) return;
+    try {
+      const r = await apiFetch(`/api/super-admin/admins/${rs.dataset.reset}/reset-password`, { method: "POST" });
+      toast(r && r.temporary_password ? `Temporary password: ${r.temporary_password}` : `Password reset for ${a.full_name}.`, "success", { duration: 10000 });
+    } catch (err) { toast(friendlyError(err), "error"); }
+    return;
+  }
+  const tg = e.target.closest("[data-toggle]");
+  if (tg) {
+    const active = tg.dataset.active === "1", a = admins.find((x) => String(x.admin_id || x.id) === tg.dataset.toggle);
+    const verb = active ? "Deactivate" : "Reactivate";
+    if (!a || !(await confirmDialog({ title: `${verb} ${a.full_name}?`, danger: active, confirmText: verb, message: active ? "They will no longer be able to log in until reactivated." : "They will regain access to log in." }))) return;
+    try {
+      await apiFetch(`/api/super-admin/admins/${tg.dataset.toggle}/${active ? "deactivate" : "reactivate"}`, { method: "POST" });
+      toast(`${a.full_name} ${active ? "deactivated" : "reactivated"}.`, "success"); loadData();
+    } catch (err) { toast(friendlyError(err), "error"); }
+  }
+});
+
+async function loadData() {
+  body.innerHTML = skeletonRows(6, 4);
+  try {
+    const [m, list] = await Promise.all([loadMeta().catch(() => ({})), apiFetch("/api/super-admin/admins")]);
+    orgs = (m && m.organizations) || [];
+    admins = Array.isArray(list) ? list : (list && list.admins) || [];
+    render();
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="6"><div class="empty"><h3>Unable to load accounts</h3><p>${escapeHtml(friendlyError(err))}</p></div></td></tr>`;
+  }
+}
+
+(async () => {
+  try {
+    const me = await getMe();
+    const role = String(me.role || "").toLowerCase();
+    if (!me.is_super_admin && role !== "owner" && role !== "super_admin" && role !== "superadmin") {
+      document.getElementById("super-message").innerHTML = '<div class="card empty"><h3>Access restricted</h3><p>Only Owner or Super Admin accounts can access this page.</p><a class="btn-primary" href="programs.html">Back to programs</a></div>';
+      return;
+    }
+    document.getElementById("super-content").hidden = false;
+    loadData();
+  } catch (err) { showError("super-message", err); }
+})();
+</script></body></html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduMatch PH — Administrator login</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="page">
+  <div class="brand-panel">
+    <div class="brand-mark"><span class="brand-mark-dot"></span><span class="brand-mark-dot"></span></div>
+    <h1>EduMatch PH</h1>
+    <p class="tagline">Scholarship applicant screening and priority ranking for administrators.</p>
+    <ul class="brand-points">
+      <li>Six eligibility criteria checked with clear reasons</li>
+      <li>Eligible applicants ranked by a priority score</li>
+      <li>You make the final decision</li>
+    </ul>
+    <p style="margin-top:2rem"><a href="index.html" style="color:var(--amber-500);text-decoration:none;font-weight:600">← Back to EduMatch PH overview</a></p>
+  </div>
+  <div class="auth-panel"><div class="auth-card">
+    <img class="login-logo" src="EduMatchPH_logo.jpg" alt="EduMatch PH">
+    <form id="login-form" class="panel" novalidate>
+      <h2 class="card-title">Administrator log in</h2>
+      <div class="field"><label>Organization</label>
+        <div class="org-pick" id="org-pick">
+          <span class="skeleton" style="height:58px"></span>
+          <span class="skeleton" style="height:58px"></span>
+        </div></div>
+      <div class="field"><label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="username" placeholder="name@organization.edu.ph" required></div>
+      <div class="field"><label for="login-password">Password</label>
+        <div class="pw-wrap"><input type="password" id="login-password" autocomplete="current-password" required>
+          <button class="pw-toggle" id="pw-toggle" type="button" aria-label="Show password">Show</button></div>
+        <span class="caps" id="caps" hidden>Caps Lock is on</span></div>
+      <div id="login-message" class="alert error" role="alert" hidden></div>
+      <button class="btn-primary btn-lg" id="login-btn" type="submit">Log in</button>
+    </form>
+  </div></div>
+</div>
+<script src="app.js"></script>
+<script>
+const FALLBACK_ORGS = [
+  { organization_id: "uclm", name: "UCLM", full_name: "University of Cebu Lapu-Lapu and Mandaue" },
+  { organization_id: "dost", name: "DOST", full_name: "Dept. of Science and Technology" },
+];
+const orgBox = document.getElementById("org-pick");
+function renderOrgs(orgs) {
+  const list = Array.isArray(orgs) && orgs.length ? orgs : FALLBACK_ORGS;
+  const last = store("edumatch_org");
+  orgBox.innerHTML = list.map((o, i) => {
+    const id = String(o.organization_id || o.id || "").toLowerCase();
+    const label = o.short_name || o.code || o.name || id.toUpperCase();
+    const sub = o.full_name || o.description || "";
+    const checked = last ? id === last : i === 0;
+    return `<input type="radio" name="org" id="org-${escapeHtml(id)}" value="${escapeHtml(id)}" ${checked ? "checked" : ""}>` +
+      `<label for="org-${escapeHtml(id)}">${escapeHtml(label)}${sub ? `<small>${escapeHtml(sub)}</small>` : ""}</label>`;
+  }).join("");
+}
+loadMeta().then((m) => renderOrgs(m && m.organizations)).catch(() => renderOrgs(FALLBACK_ORGS));
+
+const pw = document.getElementById("login-password"), form = document.getElementById("login-form"), msgEl = document.getElementById("login-message");
+const params = new URLSearchParams(window.location.search);
+let loggedOut = params.get("logged_out") === "1";
+try { if (sessionStorage.getItem("edumatch_logged_out") === "1") { loggedOut = true; sessionStorage.removeItem("edumatch_logged_out"); } } catch (e) {}
+if (loggedOut) {
+  msgEl.className = "alert success";
+  msgEl.textContent = "You have been logged out.";
+  msgEl.hidden = false;
+  toast("You have been logged out.", "success");
+  if (params.has("logged_out")) history.replaceState(null, "", "login.html");
+}
+document.getElementById("pw-toggle").addEventListener("click", (e) => {
+  const show = pw.type === "password"; pw.type = show ? "text" : "password"; e.target.textContent = show ? "Hide" : "Show";
+});
+pw.addEventListener("keyup", (e) => { document.getElementById("caps").hidden = !(e.getModifierState && e.getModifierState("CapsLock")); });
+function fail(text) {
+  msgEl.className = "alert error"; msgEl.textContent = text; msgEl.hidden = false;
+  form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+}
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  msgEl.hidden = true;
+  const orgRadio = document.querySelector("input[name=org]:checked");
+  const email = document.getElementById("login-email").value.trim(), org = orgRadio ? orgRadio.value : "";
+  if (!org) { fail("Select your organization."); return; }
+  if (!email || !pw.value) { fail("Enter your email and password."); return; }
+  await withLoading(document.getElementById("login-btn"), async () => {
+    try { await login(org, email, pw.value); store("edumatch_org", org); window.location.href = "programs.html"; }
+    catch (err) { fail(friendlyError(err)); }
+  });
+});
+</script>
+</body></html>

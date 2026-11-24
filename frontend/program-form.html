@@ -24,7 +24,7 @@
     <div class="grid2">
       <div class="field"><label for="grade_scale">Grade scale</label><select id="grade_scale"></select><span class="hint" id="grade-scale-hint"></span><span class="field-error" data-e="grade_scale"></span></div>
       <div class="field"><label for="gwa_limit">GWA limit (worst grade accepted)</label><input type="number" id="gwa_limit" step="any"><span class="field-error" data-e="gwa_limit"></span></div>
-      <div class="field"><label for="income_cap">Household income cap (PHP/year)</label><input type="number" id="income_cap" min="0"><span class="field-error" data-e="income_cap"></span></div>
+      <div class="field"><label for="income_cap">Household income cap (PHP/year)</label><input type="number" id="income_cap" min="1"><span class="field-error" data-e="income_cap"></span></div>
       <div class="field"><label for="min_entrance">Minimum entrance score (0-100)</label><input type="number" id="min_entrance" min="0" max="100"><span class="field-error" data-e="min_entrance"></span></div>
       <div class="field"><label for="eligible_field">Eligible field</label><select id="eligible_field"></select><span class="field-error" data-e="eligible_field"></span></div>
       <div class="field"><label for="location_req">Location requirement</label><select id="location_req"></select><span class="field-error" data-e="location_req"></span></div>
@@ -35,11 +35,25 @@
         <input type="checkbox" name="eligible_years" id="y2" value="2"><label for="y2">2nd</label>
         <input type="checkbox" name="eligible_years" id="y3" value="3"><label for="y3">3rd</label>
         <input type="checkbox" name="eligible_years" id="y4" value="4"><label for="y4">4th</label>
+        <input type="checkbox" name="eligible_years" id="y5" value="5"><label for="y5">5th</label>
       </div><span class="field-error" data-e="eligible_years"></span></div>
+    <div class="field" style="margin-top:1rem"><label for="req-input">Additional requirements (optional)</label>
+      <div class="req-builder">
+        <input type="text" id="req-input" placeholder="e.g. Medical Certificate, Police Clearance">
+        <button class="btn-secondary" id="req-add-btn" type="button">+ Add requirement</button>
+      </div>
+      <div class="chips" id="req-presets" style="margin-top:.45rem">
+        <button type="button" class="chip" data-req="Medical Certificate">+ Medical Certificate</button>
+        <button type="button" class="chip" data-req="Police Clearance">+ Police Clearance</button>
+        <button type="button" class="chip" data-req="Barangay Indigency">+ Barangay Indigency</button>
+        <button type="button" class="chip" data-req="Good Moral Certificate">+ Good Moral Certificate</button>
+      </div>
+      <div class="req-list" id="req-list"></div>
+    </div>
     <div class="note" style="margin-top:1rem">The grade scale is locked once the program has applicants. Changing a rule clears the earlier screening and ranking.</div>
   </div>
   <div class="toolbar"><button class="btn-primary" id="save-btn" type="submit">Save program</button>
-    <a class="btn-secondary small" id="back" href="programs.html">Back</a><span class="hint">Tip: press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save.</span></div>
+    <a class="btn-secondary" id="back" href="programs.html">← Back</a><span class="hint">Tip: press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save.</span></div>
   <div id="program-message" class="msg"></div>
 </form>
 <aside class="card side"><h2 class="section-title">Rule summary</h2><p class="section-sub">What the system will check.</p><ul class="summary-list" id="summary"></ul></aside>
@@ -51,9 +65,31 @@ const editingId = getScholarshipIdFromUrl();
 renderShell(editingId ? "edit" : "new");
 const RULE_FIELDS = ["grade_scale", "gwa_limit", "income_cap", "eligible_field", "eligible_years", "location_req", "min_entrance"];
 const TEXT = ["scholarship_name", "provider", "grade_scale", "gwa_limit", "income_cap", "eligible_field", "location_req", "min_entrance", "available_slots", "status", "application_deadline"];
-let original = null, dirty = false, saving = false;
+let original = null, dirty = false, saving = false, extraReqs = [];
 const $id = (i) => document.getElementById(i);
 const yearsPicked = () => $$('input[name="eligible_years"]:checked').map((c) => c.value);
+function parseReqs(raw) {
+  if (Array.isArray(raw)) return raw.map((x) => String(x).trim()).filter(Boolean);
+  if (typeof raw === "string" && raw.trim()) {
+    try { const p = JSON.parse(raw); if (Array.isArray(p)) return p.map((x) => String(x).trim()).filter(Boolean); } catch (e) {}
+    return raw.split(",").map((x) => x.trim()).filter(Boolean);
+  }
+  return [];
+}
+function renderReqs() {
+  $id("req-list").innerHTML = extraReqs.map((r, i) =>
+    `<span class="req-tag">${escapeHtml(r)}<button type="button" data-rm-req="${i}" aria-label="Remove ${escapeHtml(r)}">×</button></span>`).join("");
+  updateSummary();
+}
+function addReq(val) {
+  const v = String(val || "").trim();
+  if (!v || extraReqs.some((x) => x.toLowerCase() === v.toLowerCase())) return;
+  extraReqs.push(v); dirty = true; renderReqs();
+}
+$id("req-add-btn").addEventListener("click", () => { addReq($id("req-input").value); $id("req-input").value = ""; $id("req-input").focus(); });
+$id("req-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $id("req-add-btn").click(); } });
+$id("req-presets").addEventListener("click", (e) => { const b = e.target.closest("[data-req]"); if (b) addReq(b.dataset.req); });
+$id("req-list").addEventListener("click", (e) => { const b = e.target.closest("[data-rm-req]"); if (b) { extraReqs.splice(+b.dataset.rmReq, 1); dirty = true; renderReqs(); } });
 
 function showScaleHint() {
   const scale = GRADE_SCALES[$id("grade_scale").value], limit = $id("gwa_limit");
@@ -68,7 +104,7 @@ function updateSummary() {
     row("GWA", v("gwa_limit") ? (scale && !scale.higher_is_better ? "≤ " : "≥ ") + v("gwa_limit") + (scale ? " (" + scale.label.split(" (")[0] + ")" : "") : "") +
     row("Entrance", v("min_entrance") ? "≥ " + v("min_entrance") : "") + row("Income", v("income_cap") ? "≤ " + peso(v("income_cap")) + "/yr" : "") +
     row("Course", v("eligible_field") === "ANY" ? "Any course" : v("eligible_field")) + row("Year level", ys.length ? yearsLabel(ys.join(",")) : "") + row("Location", v("location_req")) +
-    row("Slots", v("available_slots"));
+    row("Slots", v("available_slots")) + (extraReqs.length ? row("Extra reqs", extraReqs.join(", ")) : "");
 }
 function clearErrs(e) { const f = e.target.closest(".field"); if (f) $$(".field-error", f).forEach((x) => (x.textContent = "")); }
 function markDirty(e) { dirty = true; if (e && e.target) clearErrs(e); updateSummary(); }
@@ -95,6 +131,8 @@ async function loadProgramIntoForm() {
       showScaleHint();
       const ys = String(original.eligible_years).split(",");
       $$('input[name="eligible_years"]').forEach((c) => { c.checked = ys.includes(c.value); });
+      extraReqs = parseReqs(original.additional_requirements);
+      renderReqs();
     }
     updateSummary(); dirty = false;
   } catch (err) { showError("program-message", err); }
@@ -108,7 +146,7 @@ $id("program-form").addEventListener("submit", async (e) => {
     scholarship_name: val("scholarship_name"), provider: val("provider"), grade_scale: val("grade_scale"), gwa_limit: parseFloat(val("gwa_limit")),
     income_cap: parseFloat(val("income_cap")), eligible_field: val("eligible_field"), eligible_years: yearsPicked(), location_req: val("location_req"),
     min_entrance: parseInt(val("min_entrance"), 10), available_slots: parseInt(val("available_slots"), 10), status: val("status") || "Open",
-    application_deadline: val("application_deadline") || null,
+    application_deadline: val("application_deadline") || null, additional_requirements: extraReqs,
   };
   const scale = GRADE_SCALES[payload.grade_scale];
   let bad = 0;
@@ -116,7 +154,7 @@ $id("program-form").addEventListener("submit", async (e) => {
   if (!payload.provider) bad += setErr("provider", "Enter the provider.");
   if (!payload.grade_scale) bad += setErr("grade_scale", "Choose a grade scale.");
   if (isNaN(payload.gwa_limit) || (scale && (payload.gwa_limit < scale.min_value || payload.gwa_limit > scale.max_value))) bad += setErr("gwa_limit", scale ? `Enter a value from ${scale.min_value} to ${scale.max_value}.` : "Choose a grade scale first.");
-  if (isNaN(payload.income_cap) || payload.income_cap < 0) bad += setErr("income_cap", "Enter the yearly income cap.");
+  if (isNaN(payload.income_cap) || payload.income_cap < 1) bad += setErr("income_cap", "Income cap must be at least ₱1.");
   if (isNaN(payload.min_entrance) || payload.min_entrance < 0 || payload.min_entrance > 100) bad += setErr("min_entrance", "Enter a score from 0 to 100.");
   if (!payload.eligible_field) bad += setErr("eligible_field", "Choose a field.");
   if (!payload.location_req) bad += setErr("location_req", "Choose a location requirement.");
