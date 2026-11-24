@@ -3,6 +3,11 @@
 <title>EduMatch PH — Administrator login</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head>
 <body>
+  <script>
+  try {
+    if (!sessionStorage.getItem('seenLanding')) { location.replace('landing.html'); }
+  } catch (e) {}
+</script>
 <div class="page">
   <div class="brand-panel">
     <div class="brand-mark"><span class="brand-mark-dot"></span><span class="brand-mark-dot"></span></div>

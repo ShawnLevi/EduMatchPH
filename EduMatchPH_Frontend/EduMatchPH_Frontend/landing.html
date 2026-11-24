@@ -155,6 +155,7 @@
 </div>
 
 <script>
+  try { sessionStorage.setItem('seenLanding', '1'); } catch (e) {}
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   if (!reduce) {
