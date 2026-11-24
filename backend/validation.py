@@ -55,7 +55,7 @@ def clean_applicant(data, scale):
     income, err = _number(data, "household_income", 0, 100_000_000)
     if err:
         return None, err
-    year, err = _number(data, "year_level", 1, 4, whole=True)
+    year, err = _number(data, "year_level", 1, 5, whole=True)
     if err:
         return None, err
 
@@ -83,7 +83,7 @@ def _years(value):
         years = sorted({int(p.strip()) for p in parts if p.strip()})
     except ValueError:
         return None
-    if not years or any(y < 1 or y > 4 for y in years):
+    if not years or any(y < 1 or y > 5 for y in years):
         return None
     return ",".join(str(y) for y in years)
 
@@ -96,6 +96,8 @@ def clean_program(data, scales):
     if not name:
         return None, "Scholarship name is required"
     provider = str(data.get("provider") or "").strip()
+    if not provider:
+        return None, "Provider is required"
 
     scale_id = str(data.get("grade_scale") or "")
     scale = scales.get(scale_id)
@@ -118,10 +120,11 @@ def clean_program(data, scales):
 
     field = str(data.get("eligible_field") or "")
     if field not in FIELDS:
-        return None, "Eligible field must be Any, STEM or Business"
+        return None, ("Eligible field must be Any, STEM, Business, Maritime, "
+                      "Criminology, Nursing or Education")
     years = _years(data.get("eligible_years"))
     if years is None:
-        return None, "Choose at least one year level from 1 to 4"
+        return None, "Choose at least one year level from 1 to 5"
     location_req = str(data.get("location_req") or "").strip()
     if location_req not in LOCATION_REQ_CHOICES:
         return None, ("Location requirement must be Nationwide, Cebu, or one "
@@ -138,7 +141,7 @@ def clean_program(data, scales):
             return None, "Application deadline must be a date like 2026-12-31"
         deadline = str(deadline)
     return {
-        "scholarship_name": name, "provider": provider or None,
+        "scholarship_name": name, "provider": provider,
         "grade_scale": scale_id, "gwa_limit": gwa_limit, "income_cap": income_cap,
         "eligible_field": field, "eligible_years": years,
         "location_req": location_req, "min_entrance": min_entrance,

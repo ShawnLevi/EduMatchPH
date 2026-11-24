@@ -8,16 +8,30 @@ BUSINESS_COURSES = {
     "BS Business Administration", "BS Accountancy",
     "BS Hospitality Management",
 }
+MARITIME_COURSES = {
+    "BS Marine Transportation", "BS Marine Engineering",
+}
+CRIMINOLOGY_COURSES = {"BS Criminology"}
+NURSING_COURSES = {"BS Nursing"}
+EDUCATION_COURSES = {
+    "BS Education", "BS Elementary Education", "BS Secondary Education",
+}
+
+FIELD_COURSES = {
+    "STEM": STEM_COURSES,
+    "BUSINESS": BUSINESS_COURSES,
+    "MARITIME": MARITIME_COURSES,
+    "CRIMINOLOGY": CRIMINOLOGY_COURSES,
+    "NURSING": NURSING_COURSES,
+    "EDUCATION": EDUCATION_COURSES,
+}
 
 
 def field_ok(course, eligible_field):
     if eligible_field == "ANY":
         return True
-    if eligible_field == "STEM":
-        return course in STEM_COURSES
-    if eligible_field == "BUSINESS":
-        return course in BUSINESS_COURSES
-    return False
+    allowed = FIELD_COURSES.get(eligible_field)
+    return course in allowed if allowed is not None else False
 
 
 def location_ok(applicant_location, location_req):

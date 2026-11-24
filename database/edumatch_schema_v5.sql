@@ -17,6 +17,8 @@
 -- ============================================================
 
 DROP TABLE IF EXISTS
+    audit_logs,
+    applicant_requirements, program_requirements, requirement_types,
     ranking_results, screening_reasons, screening_results,
     applicants, scholarship_programs, grade_scales,
     administrators, organizations;
@@ -30,7 +32,8 @@ CREATE TABLE organizations (
     organization_name VARCHAR(150) NOT NULL,
     logo_path VARCHAR(255),
     theme_primary_color VARCHAR(7),            -- hex, e.g. '#002855'
-    theme_accent_color VARCHAR(7)
+    theme_accent_color VARCHAR(7),
+    theme_bg_color VARCHAR(7)                  -- hex, e.g. '#FAF7F2'
 );
 
 CREATE TABLE administrators (
@@ -39,6 +42,11 @@ CREATE TABLE administrators (
     full_name VARCHAR(150) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    role ENUM('owner', 'admin', 'super_admin') NOT NULL DEFAULT 'admin',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    last_login TIMESTAMP NULL,
+    failed_attempts INT NOT NULL DEFAULT 0,
+    must_change_pw TINYINT(1) NOT NULL DEFAULT 0,
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (organization_id) REFERENCES organizations(organization_id) ON DELETE CASCADE
 );
@@ -75,12 +83,13 @@ CREATE TABLE scholarship_programs (
     grade_scale VARCHAR(20) NOT NULL,          -- which scale this program asks for (grade_scales)
     gwa_limit DECIMAL(6,2) NOT NULL,           -- the WORST GWA still accepted, in that scale
     income_cap DECIMAL(12,2) NOT NULL,
-    eligible_field ENUM('ANY','STEM','BUSINESS') NOT NULL DEFAULT 'ANY',
-    eligible_years VARCHAR(20) NOT NULL,       -- comma list, e.g. '1,2,3,4' — parsed in application code
+    eligible_field ENUM('ANY','STEM','BUSINESS','MARITIME','CRIMINOLOGY','NURSING','EDUCATION') NOT NULL DEFAULT 'ANY',
+    eligible_years VARCHAR(20) NOT NULL,       -- comma list, e.g. '1,2,3,4,5' — parsed in application code
     location_req VARCHAR(100) NOT NULL DEFAULT 'Nationwide',
     min_entrance INT NOT NULL DEFAULT 0,
     available_slots INT,
     status ENUM('Open','Screening','Ranking','Closed') DEFAULT 'Open',
+    is_archived TINYINT(1) NOT NULL DEFAULT 0,
     application_deadline DATE,
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (organization_id) REFERENCES organizations(organization_id) ON DELETE CASCADE,
@@ -101,7 +110,7 @@ CREATE TABLE applicants (
     entrance_score INT NOT NULL,               -- 0–100 (model trained on ~40–99)
     household_income DECIMAL(12,2) NOT NULL,   -- annual PHP (model trained on ~45,000–800,000)
     course VARCHAR(100) NOT NULL,
-    year_level TINYINT NOT NULL,               -- 1–4
+    year_level TINYINT NOT NULL,               -- 1–5
     location VARCHAR(100) NOT NULL,
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (scholarship_id) REFERENCES scholarship_programs(scholarship_id) ON DELETE CASCADE
@@ -117,6 +126,7 @@ CREATE TABLE screening_results (
     scholarship_id INT NOT NULL,
     eligible BOOLEAN NOT NULL,
     date_screened TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_screening_applicant_program (applicant_id, scholarship_id),
     FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id) ON DELETE CASCADE,
     FOREIGN KEY (scholarship_id) REFERENCES scholarship_programs(scholarship_id) ON DELETE CASCADE
 );
@@ -138,27 +148,93 @@ CREATE TABLE screening_reasons (
 CREATE TABLE ranking_results (
     ranking_id INT AUTO_INCREMENT PRIMARY KEY,
     result_id INT NOT NULL,                    -- FK to the ELIGIBLE screening_result being ranked
-    priority_score DECIMAL(5,2) NOT NULL,       -- 0–100, from the trained model
+    priority_score DECIMAL(5,2) NOT NULL,      -- 0–100, from the trained model
     rank_position INT,
     status ENUM('SHORTLIST','WAITLIST') NOT NULL,
     date_ranked TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_ranking_result (result_id),
     FOREIGN KEY (result_id) REFERENCES screening_results(result_id) ON DELETE CASCADE
+);
+
+-- ------------------------------------------------------------
+-- CLUSTER 6: PROGRAM-SPECIFIC PREREQUISITES
+-- ------------------------------------------------------------
+
+CREATE TABLE requirement_types (
+    requirement_id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(40) NOT NULL UNIQUE,
+    label VARCHAR(120) NOT NULL,
+    value_kind ENUM('YES_NO','NUMBER','DOCUMENT','CHOICE') NOT NULL,
+    unit VARCHAR(20) NULL,
+    is_sensitive TINYINT(1) NOT NULL DEFAULT 0,
+    notes VARCHAR(255) NULL
+);
+
+CREATE TABLE program_requirements (
+    program_req_id INT AUTO_INCREMENT PRIMARY KEY,
+    scholarship_id INT NOT NULL,
+    requirement_id INT NOT NULL,
+    min_value DECIMAL(8,2) NULL,
+    max_value DECIMAL(8,2) NULL,
+    expected_choice VARCHAR(60) NULL,
+    is_mandatory TINYINT(1) NOT NULL DEFAULT 1,
+    UNIQUE KEY uq_program_requirement (scholarship_id, requirement_id),
+    FOREIGN KEY (scholarship_id) REFERENCES scholarship_programs(scholarship_id) ON DELETE CASCADE,
+    FOREIGN KEY (requirement_id) REFERENCES requirement_types(requirement_id)
+);
+
+CREATE TABLE applicant_requirements (
+    applicant_req_id INT AUTO_INCREMENT PRIMARY KEY,
+    applicant_id INT NOT NULL,
+    requirement_id INT NOT NULL,
+    value_number DECIMAL(8,2) NULL,
+    value_text VARCHAR(60) NULL,
+    status ENUM('NOT_SUBMITTED','SUBMITTED','VERIFIED','REJECTED') NOT NULL DEFAULT 'NOT_SUBMITTED',
+    verified_on DATE NULL,
+    UNIQUE KEY uq_applicant_requirement (applicant_id, requirement_id),
+    FOREIGN KEY (applicant_id) REFERENCES applicants(applicant_id) ON DELETE CASCADE,
+    FOREIGN KEY (requirement_id) REFERENCES requirement_types(requirement_id)
+);
+
+-- ------------------------------------------------------------
+-- CLUSTER 7: AUDIT LOGS (read-only accountability trail)
+-- ------------------------------------------------------------
+
+CREATE TABLE audit_logs (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    organization_id VARCHAR(20) NULL,
+    admin_id INT NULL,
+    action VARCHAR(60) NOT NULL,
+    target_type VARCHAR(40) NULL,
+    target_id VARCHAR(60) NULL,
+    details VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organization_id) REFERENCES organizations(organization_id) ON DELETE SET NULL,
+    FOREIGN KEY (admin_id) REFERENCES administrators(admin_id) ON DELETE SET NULL
 );
 
 -- ------------------------------------------------------------
 -- STARTER DATA
 -- ------------------------------------------------------------
 
-INSERT INTO organizations (organization_id, organization_name, theme_primary_color, theme_accent_color) VALUES
-('dost', 'Department of Science and Technology', '#003DA5', '#FDB813'),
-('uclm', 'University of Cebu Lapu-Lapu and Mandaue', '#002855', '#C8102E');
+INSERT INTO organizations (organization_id, organization_name, theme_primary_color, theme_accent_color, theme_bg_color) VALUES
+('dost', 'Department of Science and Technology', '#003DA5', '#FDB813', '#F5F7FB'),
+('uclm', 'University of Cebu Lapu-Lapu and Mandaue', '#002855', '#C8102E', '#FAF7F2');
 -- NOTE: colors are placeholders — verify against each organization's real brand guide before any demo.
 
--- Both demo accounts use the password: admin123 (stored as a hash).
+-- All demo accounts use the password: admin123 (stored as a PBKDF2-SHA256 hash with a unique salt per account).
 -- Make hashes for new accounts with hash_password.py.
-INSERT INTO administrators (organization_id, full_name, email, password_hash) VALUES
-('uclm', 'Alicia Ramos', 'alicia.ramos@uclm.edu.ph', 'pbkdf2:sha256:1000000$qx7GyKcF15FYgxsm$700660967a9532a95050ae6b4826b0cee0703a43b763d859fee0811eee3f18f5'),
-('dost', 'Marco Villanueva', 'marco.villanueva@dost.gov.ph', 'pbkdf2:sha256:1000000$qx7GyKcF15FYgxsm$700660967a9532a95050ae6b4826b0cee0703a43b763d859fee0811eee3f18f5');
+INSERT INTO administrators (organization_id, full_name, email, password_hash, role, is_active, must_change_pw) VALUES
+('uclm', 'Alicia Ramos', 'alicia.ramos@uclm.edu.ph', 'pbkdf2:sha256:1000000$XEeahqdWeTXXeckP$2a1ee5311e704f1ede888a5e2943141a5ad4542efee993338142412334c56402', 'owner', 1, 0),
+('dost', 'Marco Villanueva', 'marco.villanueva@dost.gov.ph', 'pbkdf2:sha256:1000000$PU2AoDZVatgg2NAM$448cf6b6405c3d229e22b1f91fc9f1b604fb5b1d3f4fff37eaa8bd6321505e93', 'owner', 1, 0),
+('uclm', 'System Super Admin', 'superadmin@edumatch.ph', 'pbkdf2:sha256:1000000$wjPLTHtyVtmX3sxx$39feaa3c6972e071d5db81a9d46406b48e7c55e4a345ff0c6b0436452a7d2721', 'super_admin', 1, 0);
+
+INSERT INTO requirement_types (code, label, value_kind, unit, is_sensitive, notes) VALUES
+('MEDICAL_CLEARANCE', 'PEME / Medical Clearance', 'YES_NO', NULL, 1, 'Store clearance result only, not medical details (RA 10173).'),
+('MIN_HEIGHT_CM', 'Minimum Height', 'NUMBER', 'cm', 0, 'Used by Maritime and Criminology programs.'),
+('DRUG_TEST', 'Drug Test Clearance', 'YES_NO', NULL, 1, 'Store clearance result only.'),
+('POLICE_CLEARANCE', 'Police / NBI Clearance', 'DOCUMENT', NULL, 0, 'Required for Criminology.'),
+('INDIGENCY_CERT', 'Certificate of Indigency / ITR', 'DOCUMENT', NULL, 0, 'Financial need verification.');
 
 INSERT INTO scholarship_programs
 (organization_id, scholarship_name, provider, grade_scale, gwa_limit, income_cap, eligible_field, eligible_years, location_req, min_entrance, available_slots, status) VALUES

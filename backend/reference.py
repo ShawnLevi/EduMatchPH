@@ -32,10 +32,15 @@ LOCATION_REQ_CHOICES = ["Nationwide", "Cebu"] + LOCALITIES
 COURSES = sorted([
     "AB Communication", "BS Accountancy", "BS Biology",
     "BS Business Administration", "BS Civil Engineering",
-    "BS Computer Science", "BS Education", "BS Electronics Engineering",
+    "BS Computer Science", "BS Criminology", "BS Education",
+    "BS Electronics Engineering", "BS Elementary Education",
     "BS Hospitality Management", "BS Information Technology",
-    "BS Psychology",
+    "BS Marine Engineering", "BS Marine Transportation",
+    "BS Nursing", "BS Psychology", "BS Secondary Education",
 ])
 
-FIELDS = ["ANY", "STEM", "BUSINESS"]
+FIELDS = [
+    "ANY", "STEM", "BUSINESS",
+    "MARITIME", "CRIMINOLOGY", "NURSING", "EDUCATION",
+]
 STATUSES = ["Open", "Screening", "Ranking", "Closed"]

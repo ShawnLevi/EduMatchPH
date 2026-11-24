@@ -82,7 +82,7 @@ try:
     tmp.post("/api/logout")
     check("After logout -> 401", error_ok(tmp.get("/api/scholarships"), 401))
     check("Unknown route -> JSON 404", error_ok(uclm.get("/api/nothing"), 404))
-    check("Wrong method -> JSON 405", error_ok(uclm.delete("/api/scholarships/1"), 405))
+    check("Wrong method -> JSON 405", error_ok(uclm.delete("/api/meta"), 405))
 
     print("--- Input validation")
     pid = make_program(uclm)
@@ -580,6 +580,66 @@ try:
           r.status_code == 200 and j["valid_rows"] == 1 and len(j["errors"]) == 1 and j["errors"][0]["row"] == 3 and
           j["errors"][0]["record"]["full_name"] == "Bad GWA" and j["errors"][0]["record"]["gwa"] == "9", j)
 
+    print("--- Closed-program guards, 5-year courses, archive/delete, safeguards & audit logs")
+    check("Closed program: add applicant is refused (400)",
+          error_ok(uclm.post(bu + "/applicants", json={**GOOD, "full_name": "Closed Add"}), 400))
+    check("Closed program: edit applicant is refused (400)",
+          error_ok(uclm.put(f"{bu}/applicants/{bids['Bulk A']}", json={**GOOD, "full_name": "Bulk A"}), 400))
+    check("Closed program: delete applicant is refused (400)",
+          error_ok(uclm.delete(f"{bu}/applicants/{bids['Bulk A']}"), 400))
+    check("Closed program: bulk-delete is refused (400)",
+          error_ok(uclm.post(bu + "/applicants/bulk-delete", json={"ids": [bids["Bulk A"]]}), 400))
+    check("Closed program: import is refused (400)",
+          error_ok(uclm.post(bu + "/applicants/import",
+                             data={"file": (io.BytesIO(csvbad.encode()), "x.csv"), "preview": "false"},
+                             content_type="multipart/form-data"), 400))
+    r_arch = uclm.delete(bu)
+    check("Deleting a program with applicants archives it",
+          r_arch.status_code == 200 and r_arch.get_json()["archived"] == pb and r_arch.get_json()["deleted"] is False, r_arch.get_json())
+    check("Archived program is hidden from default list",
+          all(s["scholarship_id"] != pb for s in uclm.get("/api/scholarships").get_json()))
+    p_empty = make_program(uclm, scholarship_name="TEST Maritime 5Yr", eligible_field="MARITIME", eligible_years="1,2,3,4,5")
+    r_5yr = uclm.post(f"/api/scholarships/{p_empty}/applicants",
+                      json={**GOOD, "full_name": "Fifth Year Cadet", "course": "BS Marine Transportation", "year_level": 5})
+    check("5-year Maritime applicant accepted (201)", r_5yr.status_code == 201, r_5yr.get_json())
+    r_del_perm = uclm.delete(f"/api/scholarships/{p_empty}?permanent=true")
+    check("Permanent delete removes program", r_del_perm.status_code == 200 and r_del_perm.get_json()["deleted"] == p_empty)
+
+    sa = app.test_client()
+    assert login(sa, "uclm", "superadmin@edumatch.ph").status_code == 200
+    r_org = sa.post("/api/organizations", json={
+        "organization_id": "test_org", "organization_name": "TEST University",
+        "theme_primary_color": "#112233", "theme_accent_color": "#AABBCC", "theme_bg_color": "#FAF7F2"
+    })
+    check("Super Admin creates organization (201)", r_org.status_code == 201, r_org.get_json())
+    check("Public /api/organizations includes new org",
+          any(o["organization_id"] == "test_org" for o in anon.get("/api/organizations").get_json()))
+    r_adm = sa.post("/api/admins", json={
+        "organization_id": "test_org", "full_name": "Test Owner",
+        "email": "test_owner@edumatch.ph", "password": "Password123", "role": "owner"
+    })
+    check("Super Admin creates org owner (201)", r_adm.status_code == 201, r_adm.get_json())
+    adm_id = r_adm.get_json()["admin_id"]
+    owner_c = app.test_client()
+    assert login(owner_c, "test_org", "test_owner@edumatch.ph", "Password123").status_code == 200
+    check("Owner cannot change own role (400)",
+          error_ok(owner_c.put(f"/api/admins/{adm_id}", json={"role": "admin"}), 400))
+    check("Cannot demote last active owner (400)",
+          error_ok(sa.put(f"/api/admins/{adm_id}", json={"role": "admin"}), 400))
+    check("Cannot deactivate last active owner (400)",
+          error_ok(sa.post(f"/api/admins/{adm_id}/deactivate"), 400))
+    r_adm2 = owner_c.post("/api/admins", json={
+        "full_name": "Test Staff", "email": "test_staff@edumatch.ph",
+        "password": "Password123", "role": "admin"
+    })
+    check("Owner creates org admin (201)", r_adm2.status_code == 201, r_adm2.get_json())
+    for _ in range(5):
+        login(app.test_client(), "test_org", "test_staff@edumatch.ph", "wrongpw")
+    check("Locked account after 5 failed logins returns 403",
+          error_ok(login(app.test_client(), "test_org", "test_staff@edumatch.ph", "Password123"), 403))
+    check("Owner can view org audit logs",
+          len(owner_c.get("/api/audit-logs").get_json()) >= 1)
+
     print("--- Model loads from any folder")
     code = f"import sys; sys.path.insert(0, r'{os.path.dirname(os.path.abspath(__file__))}'); import ranking; print('ok')"
     out = subprocess.run([sys.executable, "-c", code], cwd="/" if os.name != "nt" else "C:\\", capture_output=True, text=True)
@@ -590,6 +650,9 @@ try:
 finally:
     with db() as (conn, cur):
         cur.execute("DELETE FROM scholarship_programs WHERE scholarship_name LIKE 'TEST %'")
+        cur.execute("DELETE FROM administrators WHERE email LIKE 'test_%@edumatch.ph'")
+        cur.execute("DELETE FROM organizations WHERE organization_id LIKE 'test_%'")
+        cur.execute("DELETE FROM audit_logs WHERE details LIKE '%test_%' OR details LIKE '%TEST %'")
         conn.commit()
 
 print(f"\n{sum(results)} of {len(results)} checks passed")
