@@ -365,11 +365,11 @@ async function renderShell(active) {
     if (isSuper) {
       const sLink = document.getElementById("nav-super");
       if (sLink) sLink.hidden = false;
-      const cpBtn = document.getElementById("chpwd-btn");
-      if (cpBtn) cpBtn.hidden = false;
-      if (me.must_change_pw || me.must_change_password || me.force_password_change) {
-        openChangePasswordModal({ forced: true });
-      }
+    }
+    const cpBtn = document.getElementById("chpwd-btn");
+    if (cpBtn) cpBtn.hidden = false;
+    if (me.must_change_pw || me.must_change_password || me.force_password_change) {
+      openChangePasswordModal({ forced: true });
     }
   }).catch(() => {});
   if (!sid) return null;

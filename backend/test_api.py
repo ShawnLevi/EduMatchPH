@@ -640,6 +640,51 @@ try:
     check("Owner can view org audit logs",
           len(owner_c.get("/api/audit-logs").get_json()) >= 1)
 
+    print("--- Program-specific prerequisites & rank-gap fix")
+    req_prog = make_program(
+        uclm, scholarship_name="TEST Maritime Cadetship",
+        eligible_field="MARITIME", eligible_years="1,2,3,4,5",
+        additional_requirements=["PEME / Medical Clearance", "Color-Vision Test"],
+    )
+    rp_url = f"/api/scholarships/{req_prog}"
+    got_p = uclm.get(rp_url).get_json()
+    check("Program returns additional_requirements",
+          got_p["additional_requirements"] == ["PEME / Medical Clearance", "Color-Vision Test"],
+          got_p.get("additional_requirements"))
+    m_base = {**GOOD, "course": "BS Marine Transportation", "year_level": 2}
+    r_m1 = uclm.post(rp_url + "/applicants", json={
+        **m_base, "full_name": "Cadet Complete", "gwa": 1.3,
+        "submitted_requirements": ["PEME / Medical Clearance", "Color-Vision Test"],
+    })
+    r_m2 = uclm.post(rp_url + "/applicants", json={
+        **m_base, "full_name": "Cadet Missing Med", "gwa": 1.4,
+        "submitted_requirements": ["Color-Vision Test"],
+    })
+    r_m3 = uclm.post(rp_url + "/applicants", json={
+        **m_base, "full_name": "Cadet Second", "gwa": 1.5,
+        "submitted_requirements": ["PEME / Medical Clearance", "Color-Vision Test"],
+    })
+    check("Applicants with submitted_requirements saved (201)",
+          r_m1.status_code == 201 and r_m2.status_code == 201 and r_m3.status_code == 201)
+    scr_m = uclm.post(rp_url + "/screen").get_json()
+    elig_by_id = {x["applicant_id"]: x["eligible"] for x in scr_m}
+    check("Applicant meeting custom prerequisites is eligible",
+          elig_by_id[r_m1.get_json()["applicant_id"]] is True)
+    check("Applicant missing Medical Clearance is ineligible",
+          elig_by_id[r_m2.get_json()["applicant_id"]] is False)
+    sum_m = uclm.get(rp_url + "/screening-summary").get_json()
+    check("Screening summary includes custom prerequisite failures",
+          any(f["criterion"] == "PEME / Medical Clearance" and f["failed"] == 1
+              for f in sum_m["failures"]), sum_m["failures"])
+    uclm.post(rp_url + "/rank")
+    uclm.put(f"{rp_url}/applicants/{r_m1.get_json()['applicant_id']}", json={
+        **m_base, "full_name": "Cadet Complete", "gwa": 1.35,
+        "submitted_requirements": ["PEME / Medical Clearance", "Color-Vision Test"],
+    })
+    sl_after = uclm.get(rp_url + "/shortlist").get_json()
+    check("Remaining ranked applicants renumber without gaps after edit",
+          [x["rank_position"] for x in sl_after] == [1], sl_after)
+
     print("--- Model loads from any folder")
     code = f"import sys; sys.path.insert(0, r'{os.path.dirname(os.path.abspath(__file__))}'); import ranking; print('ok')"
     out = subprocess.run([sys.executable, "-c", code], cwd="/" if os.name != "nt" else "C:\\", capture_output=True, text=True)

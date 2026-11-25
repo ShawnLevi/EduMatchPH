@@ -42,7 +42,8 @@ def location_ok(applicant_location, location_req):
     return applicant_location == location_req  # one specific city/town
 
 
-def check_eligibility(applicant, scholarship):
+def check_eligibility(applicant, scholarship, required_reqs=None,
+                      submitted_reqs=None):
     years_text = scholarship["eligible_years"]
     eligible_years = [int(y) for y in years_text.replace("|", ",").split(",")]
 
@@ -71,5 +72,13 @@ def check_eligibility(applicant, scholarship):
         "Entrance Score": (ent_ok, applicant["entrance_score"],
                            scholarship["min_entrance"]),
     }
+    if required_reqs:
+        submitted = {str(r).strip().lower() for r in (submitted_reqs or ())}
+        for req in required_reqs:
+            label = str(req).strip()
+            if not label:
+                continue
+            met = label.lower() in submitted
+            checks[label] = (met, "Submitted" if met else "Missing", "Required")
     is_eligible = all(v[0] for v in checks.values())
     return is_eligible, checks

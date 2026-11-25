@@ -6,8 +6,11 @@ from flask import Blueprint, abort, jsonify, request
 from werkzeug.exceptions import HTTPException
 
 from db import db, json_safe
-from helpers import (has_ranking, json_body, load_scholarship, program_scale,
-                     require_open_program, screen_one, write_ranking)
+from helpers import (has_ranking, json_body, load_applicant_requirements_map,
+                     load_program_requirements, load_scholarship,
+                     normalize_req_list, program_scale, renumber_ranking,
+                     require_open_program, save_applicant_requirements,
+                     screen_one, write_ranking)
 from validation import clean_applicant
 
 applicants_bp = Blueprint("applicants", __name__)
@@ -86,6 +89,7 @@ def read_spreadsheet(upload):
                      methods=["POST"])
 def add_applicant(scholarship_id):
     data = json_body()
+    submitted = normalize_req_list(data.get("submitted_requirements"))
     with db() as (conn, cur):
         program = load_scholarship(cur, scholarship_id)
         require_open_program(program, "add applicants")
@@ -95,8 +99,11 @@ def add_applicant(scholarship_id):
         if applicant_exists(cur, scholarship_id, clean):
             abort(409, "This applicant is already in this program")
         cur.execute(INSERT_APPLICANT, applicant_values(scholarship_id, clean))
+        new_id = cur.lastrowid
+        if submitted:
+            save_applicant_requirements(cur, new_id, submitted)
         conn.commit()
-        return jsonify({"applicant_id": cur.lastrowid}), 201
+        return jsonify({"applicant_id": new_id}), 201
 
 
 @applicants_bp.route("/api/scholarships/<int:scholarship_id>/applicants",
@@ -109,13 +116,21 @@ def list_applicants(scholarship_id):
             " household_income, course, year_level, location"
             " FROM applicants WHERE scholarship_id=%s ORDER BY applicant_id",
             (scholarship_id,))
-        return jsonify([json_safe(r) for r in cur.fetchall()])
+        rows = [json_safe(r) for r in cur.fetchall()]
+        req_map = load_applicant_requirements_map(
+            cur, [r["applicant_id"] for r in rows]
+        )
+        for r in rows:
+            r["submitted_requirements"] = req_map.get(r["applicant_id"], [])
+        return jsonify(rows)
 
 
 @applicants_bp.route("/api/scholarships/<int:scholarship_id>/applicants/"
                      "<int:applicant_id>", methods=["PUT"])
 def update_applicant(scholarship_id, applicant_id):
     data = json_body()
+    has_reqs = "submitted_requirements" in data
+    submitted = normalize_req_list(data.get("submitted_requirements")) if has_reqs else None
     with db() as (conn, cur):
         program = load_scholarship(cur, scholarship_id)
         require_open_program(program, "edit applicants")
@@ -136,15 +151,20 @@ def update_applicant(scholarship_id, applicant_id):
             (clean["full_name"], clean["gwa"], clean["entrance_score"],
              clean["household_income"], clean["course"], clean["year_level"],
              clean["location"], applicant_id))
+        if has_reqs:
+            save_applicant_requirements(cur, applicant_id, submitted)
         cur.execute("SELECT 1 FROM screening_results WHERE applicant_id=%s",
                     (applicant_id,))
         was_screened = cur.fetchone() is not None
         cur.execute("DELETE FROM screening_results WHERE applicant_id=%s",
                     (applicant_id,))
+        ranked = has_ranking(cur, scholarship_id)
+        if ranked:
+            renumber_ranking(cur, program)
         conn.commit()
         return jsonify({"updated": applicant_id,
                         "was_screened": was_screened,
-                        "program_ranked": has_ranking(cur, scholarship_id)})
+                        "program_ranked": ranked})
 
 
 @applicants_bp.route("/api/scholarships/<int:scholarship_id>/applicants/"
@@ -264,8 +284,15 @@ def screen_selected_applicants(scholarship_id):
                     tuple(ids))
         cur.execute(f"SELECT * FROM applicants WHERE applicant_id IN ({marks})",
                     tuple(ids))
-        eligible = sum(1 for a in cur.fetchall()
-                       if screen_one(cur, a, scholarship))
+        applicants = cur.fetchall()
+        req_labels = load_program_requirements(cur, scholarship_id)
+        submitted_map = (load_applicant_requirements_map(cur, ids)
+                         if req_labels else {})
+        eligible = sum(
+            1 for a in applicants
+            if screen_one(cur, a, scholarship, req_labels,
+                          submitted_map.get(a["applicant_id"], []))
+        )
         if want_rank:
             write_ranking(cur, scholarship)
             cur.execute("UPDATE scholarship_programs SET status='Ranking'"
@@ -302,6 +329,15 @@ def import_applicants(scholarship_id):
         program = load_scholarship(cur, scholarship_id)
         require_open_program(program, "import applicants")
         scale = program_scale(program)
+        cur.execute(
+            "SELECT full_name, course, year_level, location"
+            " FROM applicants WHERE scholarship_id=%s",
+            (scholarship_id,),
+        )
+        existing_keys = {
+            (r["full_name"].lower(), r["course"], r["year_level"], r["location"])
+            for r in cur.fetchall()
+        }
         for i, r in enumerate(rows[1:], start=2):
             if not any(str(c or "").strip() for c in r):
                 continue
@@ -311,7 +347,7 @@ def import_applicants(scholarship_id):
             if error is None:
                 key = (clean["full_name"].lower(), clean["course"],
                        clean["year_level"], clean["location"])
-                if key in seen or applicant_exists(cur, scholarship_id, clean):
+                if key in seen or key in existing_keys:
                     error = "Duplicate applicant"
                 seen.add(key)
             if error:

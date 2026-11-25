@@ -4,7 +4,7 @@ import io
 from flask import Blueprint, Response, abort, jsonify
 
 from db import db
-from helpers import load_scholarship
+from helpers import load_program_requirements, load_scholarship
 
 exports_bp = Blueprint("exports", __name__)
 
@@ -33,21 +33,17 @@ def export_shortlist(scholarship_id):
         rows = cur.fetchall()
     if not rows:
         abort(400, "Run ranking first. There is nothing to export yet")
-    out = io.StringIO()
-    writer = csv.writer(out)
-    writer.writerow(["rank", "full_name", "priority_score", "status", "grade_scale",
-                     "gwa", "entrance_score", "household_income", "course",
-                     "year_level", "location"])
+    table = [["rank", "full_name", "priority_score", "status", "grade_scale",
+              "gwa", "entrance_score", "household_income", "course",
+              "year_level", "location"]]
     for r in rows:
-        writer.writerow([r["rank_position"], csv_safe(r["full_name"]),
-                         r["priority_score"], r["status"],
-                         scholarship["grade_scale"], r["gwa"],
-                         r["entrance_score"], r["household_income"],
-                         r["course"], r["year_level"], r["location"]])
-    filename = "shortlist_program_%d.csv" % scholarship_id
-    return Response("\ufeff" + out.getvalue(), mimetype="text/csv",
-                    headers={"Content-Disposition":
-                             "attachment; filename=" + filename})
+        table.append([r["rank_position"], csv_safe(r["full_name"]),
+                      r["priority_score"], r["status"],
+                      csv_safe(scholarship["grade_scale"]), r["gwa"],
+                      r["entrance_score"], r["household_income"],
+                      csv_safe(r["course"]), r["year_level"],
+                      csv_safe(r["location"])])
+    return csv_response(table, "shortlist_program_%d.csv" % scholarship_id)
 
 
 CRITERIA_ORDER = ["GWA", "Entrance Score", "Income", "Field", "Year Level",
@@ -114,18 +110,23 @@ def export_screening_reasons(scholarship_id):
     if not rows:
         abort(400, "Run screening first. There are no results to export yet")
     people = {}
+    extra_criteria = []
     for r in rows:
         person = people.setdefault(r["result_id"], {
             "name": r["full_name"], "eligible": r["eligible"], "c": {}})
-        person["c"][r["criterion_name"]] = r
+        cname = r["criterion_name"]
+        person["c"][cname] = r
+        if cname not in CRITERIA_ORDER and cname not in extra_criteria:
+            extra_criteria.append(cname)
+    criteria = CRITERIA_ORDER + extra_criteria
     header = ["full_name", "screening"]
-    for c in CRITERIA_ORDER:
+    for c in criteria:
         header += [f"{c} - applicant", f"{c} - required", f"{c} - result"]
     table = [header]
     for person in people.values():
         line = [csv_safe(person["name"]),
                 "Eligible" if person["eligible"] else "Not eligible"]
-        for c in CRITERIA_ORDER:
+        for c in criteria:
             x = person["c"].get(c)
             line += ([csv_safe(x["applicant_value"]), csv_safe(x["threshold_value"]),
                       "Met" if x["met"] else "Not met"] if x else ["", "", ""])
@@ -140,6 +141,7 @@ def screening_summary(scholarship_id):
     several counts once under each) and how many missed by one rule only."""
     with db() as (conn, cur):
         load_scholarship(cur, scholarship_id)
+        extra_reqs = load_program_requirements(cur, scholarship_id)
         cur.execute("SELECT COUNT(*) AS n FROM applicants WHERE scholarship_id=%s",
                     (scholarship_id,))
         total = cur.fetchone()["n"]
@@ -161,10 +163,14 @@ def screening_summary(scholarship_id):
             " WHERE sr.scholarship_id=%s AND rs.met=0"
             " GROUP BY sr.result_id HAVING COUNT(*)=1) t", (scholarship_id,))
         near = cur.fetchone()["n"]
+    criteria = CRITERIA_ORDER + [r for r in extra_reqs if r not in CRITERIA_ORDER]
+    for cname in failed:
+        if cname not in criteria:
+            criteria.append(cname)
     return jsonify({
         "total": total, "screened": screened, "unscreened": total - screened,
         "eligible": eligible, "ineligible": screened - eligible,
         "failures": [{"criterion": c, "failed": failed.get(c, 0)}
-                     for c in CRITERIA_ORDER],
+                     for c in criteria],
         "missed_by_one_rule": near,
     })
