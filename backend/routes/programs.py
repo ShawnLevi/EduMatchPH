@@ -2,7 +2,7 @@ from flask import Blueprint, abort, jsonify, request
 
 from db import db
 from helpers import (CRITERIA_FIELDS, PROGRAM_FIELDS, current_org,
-                     json_body, load_program_requirements,
+                     current_role, json_body, load_program_requirements,
                      load_programs_requirements_map, load_scholarship,
                      normalize_req_list, program_json, record_audit,
                      same_value, save_program_requirements, scales_by_id)
@@ -13,22 +13,33 @@ programs_bp = Blueprint("programs", __name__)
 
 @programs_bp.route("/api/scholarships", methods=["GET"])
 def list_scholarships():
-    org = request.args.get("organization_id") or current_org()
-    if org != current_org():
-        abort(403, "You can only view your own organization")
+    req_org = request.args.get("organization_id")
+    is_super = current_role() == "super_admin"
+    if not is_super:
+        org = req_org or current_org()
+        if org != current_org():
+            abort(403, "You can only view your own organization")
+    else:
+        org = req_org
     include_archived = request.args.get("include_archived") == "1"
     with db() as (conn, cur):
         sql = (
-            "SELECT sp.*, gs.label AS grade_scale_label,"
+            "SELECT sp.*, o.organization_name,"
+            " gs.label AS grade_scale_label,"
             " gs.higher_is_better AS higher_is_better"
-            " FROM scholarship_programs sp JOIN grade_scales gs"
-            " ON gs.scale_id = sp.grade_scale"
-            " WHERE sp.organization_id=%s"
+            " FROM scholarship_programs sp"
+            " JOIN organizations o ON o.organization_id = sp.organization_id"
+            " JOIN grade_scales gs ON gs.scale_id = sp.grade_scale"
+            " WHERE 1=1"
         )
+        params = []
+        if org:
+            sql += " AND sp.organization_id=%s"
+            params.append(org)
         if not include_archived:
             sql += " AND sp.is_archived = 0"
-        sql += " ORDER BY sp.scholarship_id"
-        cur.execute(sql, (org,))
+        sql += " ORDER BY sp.organization_id, sp.scholarship_id"
+        cur.execute(sql, tuple(params))
         raw_rows = cur.fetchall()
         req_map = load_programs_requirements_map(
             cur, [r["scholarship_id"] for r in raw_rows]

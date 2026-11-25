@@ -640,6 +640,24 @@ try:
     check("Owner can view org audit logs",
           len(owner_c.get("/api/audit-logs").get_json()) >= 1)
 
+    print("--- Global Super Admin visibility & Profile management")
+    sa_global = app.test_client()
+    r_sag = login(sa_global, "__all__", "superadmin@edumatch.ph", "admin123")
+    check("Super Admin logs in via __all__ global option (200)", r_sag.status_code == 200)
+    all_progs = sa_global.get("/api/scholarships").get_json()
+    org_ids_seen = {p["organization_id"] for p in all_progs}
+    check("Super Admin sees programs across multiple organizations",
+          "uclm" in org_ids_seen and "dost" in org_ids_seen, org_ids_seen)
+    r_prof = owner_c.put("/api/me/profile", json={
+        "full_name": "Test Owner Updated",
+        "avatar_url": "data:image/png;base64,iVBORw0KGgo=",
+    })
+    check("Profile update succeeds (200)", r_prof.status_code == 200, r_prof.get_json())
+    me_after = owner_c.get("/api/me").get_json()
+    check("/api/me returns updated full_name and avatar_url",
+          me_after["full_name"] == "Test Owner Updated"
+          and me_after["avatar_url"] == "data:image/png;base64,iVBORw0KGgo=", me_after)
+
     print("--- Program-specific prerequisites & rank-gap fix")
     req_prog = make_program(
         uclm, scholarship_name="TEST Maritime Cadetship",

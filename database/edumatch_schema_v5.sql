@@ -47,6 +47,7 @@ CREATE TABLE administrators (
     last_login TIMESTAMP NULL,
     failed_attempts INT NOT NULL DEFAULT 0,
     must_change_pw TINYINT(1) NOT NULL DEFAULT 0,
+    avatar_url MEDIUMTEXT NULL,
     date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (organization_id) REFERENCES organizations(organization_id) ON DELETE CASCADE
 );

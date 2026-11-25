@@ -12,7 +12,7 @@
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);background:linear-gradient(160deg,var(--cream) 0%,#F6EEDD 100%) fixed;min-height:100vh;line-height:1.5}
+body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);background:radial-gradient(ellipse 68% 58% at 50% 42%,rgba(252,224,194,.72) 0%,rgba(252,239,217,.36) 45%,rgba(251,248,242,0) 78%),linear-gradient(160deg,var(--cream) 0%,#F6EEDD 100%) fixed;min-height:100vh;line-height:1.5}
 h1,h2,h3,h4{font-family:'Fraunces',Georgia,serif;font-weight:600;margin:0;color:var(--navy-900);letter-spacing:-.01em}
 h1{font-size:1.9rem;line-height:1.2}h2{font-size:1.2rem}h3{font-size:1.05rem}
 a{color:var(--navy-600)}
@@ -27,7 +27,20 @@ a{color:var(--navy-600)}
 .brand img{width:36px;height:36px;border-radius:8px;object-fit:cover;background:#fff}
 .who{display:flex;align-items:center;gap:.75rem;font-size:.9rem}
 .org-badge{background:var(--amber-500);color:var(--navy-900);font-weight:700;font-size:.74rem;letter-spacing:.06em;padding:.22rem .6rem;border-radius:999px}
-.avatar{width:32px;height:32px;border-radius:50%;background:var(--navy-600);border:1.5px solid rgba(255,255,255,.22);display:grid;place-items:center;font-weight:600;font-size:.8rem}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--navy-600);border:1.5px solid rgba(255,255,255,.22);display:grid;place-items:center;font-weight:600;font-size:.8rem;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.account-menu{position:relative}
+.account-trigger{display:inline-flex;align-items:center;gap:.55rem;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:.24rem .75rem .24rem .3rem;font:inherit;font-size:.88rem;cursor:pointer;transition:background .15s,border-color .15s}
+.account-trigger:hover,.account-trigger[aria-expanded=true]{background:rgba(255,255,255,.16);border-color:var(--amber-500)}
+.account-trigger .caret{font-size:.7rem;opacity:.8}
+.account-dropdown{position:absolute;right:0;top:calc(100% + .45rem);min-width:220px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:.4rem;z-index:60}
+.account-dropdown .acct-meta{padding:.5rem .7rem .55rem;border-bottom:1px solid var(--line-soft);margin-bottom:.3rem}
+.account-dropdown .acct-meta strong{display:block;font-size:.88rem;color:var(--navy-900)}
+.account-dropdown .acct-meta span{display:block;font-size:.76rem;color:var(--ink-muted)}
+.account-dropdown button{width:100%;display:flex;align-items:center;gap:.55rem;text-align:left;background:transparent;border:0;border-radius:var(--radius-sm);padding:.55rem .7rem;font:inherit;font-size:.87rem;font-weight:500;color:var(--ink);cursor:pointer}
+.account-dropdown button:hover{background:var(--cream);color:var(--navy-900)}
+.account-dropdown button.danger{color:var(--no)}
+.account-dropdown button.danger:hover{background:var(--no-bg)}
 .who .name{opacity:.92;font-weight:500}
 .app-header .btn-secondary{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.3);padding:.48rem .95rem;font-size:.88rem;min-height:38px;box-shadow:none}
 .app-header .btn-secondary:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.55)}

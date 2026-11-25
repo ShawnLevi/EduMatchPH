@@ -159,18 +159,23 @@ def record_audit(cur, action, target_type=None, target_id=None, details=None,
 
 
 def load_scholarship(cur, scholarship_id):
-    """The program, but only if it belongs to the logged-in organization.
-    Another organization's id looks exactly like a missing one (404)."""
-    cur.execute(
-        "SELECT sp.*, gs.label AS grade_scale_label,"
+    """The program, scoped to the logged-in organization (super_admin sees all)."""
+    sql = (
+        "SELECT sp.*, o.organization_name,"
+        " gs.label AS grade_scale_label,"
         " gs.min_value AS scale_min, gs.max_value AS scale_max,"
         " gs.best_value AS scale_best, gs.passing_value AS scale_passing,"
         " gs.higher_is_better AS higher_is_better"
         " FROM scholarship_programs sp"
+        " JOIN organizations o ON o.organization_id = sp.organization_id"
         " JOIN grade_scales gs ON gs.scale_id = sp.grade_scale"
-        " WHERE sp.scholarship_id=%s AND sp.organization_id=%s",
-        (scholarship_id, current_org()),
+        " WHERE sp.scholarship_id=%s"
     )
+    params = [scholarship_id]
+    if current_role() != "super_admin":
+        sql += " AND sp.organization_id=%s"
+        params.append(current_org())
+    cur.execute(sql, tuple(params))
     row = cur.fetchone()
     if row is None:
         abort(404, "Scholarship not found")
@@ -225,6 +230,8 @@ CRITERIA_FIELDS = [
 
 def program_json(row, additional_requirements=None):
     out = json_safe({k: row[k] for k in SCHOLARSHIP_COLS})
+    if "organization_name" in row:
+        out["organization_name"] = row["organization_name"]
     out["grade_scale_label"] = row["grade_scale_label"]
     out["higher_is_better"] = bool(row["higher_is_better"])
     out["is_archived"] = bool(row.get("is_archived", 0))

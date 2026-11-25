@@ -280,9 +280,83 @@ function applyOrgTheme(me) {
     const img = $(".brand img");
     if (img) {
       img.src = org.logo_path;
-      img.onerror = () => { img.src = "EduMatchPH_logo.jpg"; };
+      img.onerror = () => { img.src = "EduMatchPH_icon.svg"; };
     }
   }
+}
+
+function setHeaderAvatar(me) {
+  const el = document.getElementById("avatar");
+  if (!el || !me) return;
+  if (me.avatar_url) {
+    el.innerHTML = `<img src="${escapeHtml(me.avatar_url)}" alt="">`;
+    const img = el.querySelector("img");
+    if (img) img.onerror = () => {
+      el.textContent = String(me.full_name || "A").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+    };
+  } else {
+    el.textContent = String(me.full_name || "A").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  }
+}
+
+function openProfileModal(me) {
+  let pendingAvatar = me.avatar_url || null;
+  const initials = String(me.full_name || "A").split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+  const layer = openModal(
+    `<div class="modal-head"><h2>Profile Management</h2></div>` +
+    `<form id="prof-form" novalidate>` +
+    `<div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">` +
+    `<div class="avatar" id="prof-preview" style="width:60px;height:60px;font-size:1.15rem;flex:none;background:var(--navy-900);color:#fff">${pendingAvatar ? `<img src="${escapeHtml(pendingAvatar)}" alt="">` : escapeHtml(initials)}</div>` +
+    `<div style="flex:1"><label class="label" for="prof-file">Profile photo</label>` +
+    `<input type="file" id="prof-file" accept="image/*" style="margin-top:.25rem;font-size:.82rem">` +
+    `<div class="toolbar" style="margin-top:.35rem"><button type="button" class="btn-ghost small" id="prof-clear">Remove photo</button><span class="hint">PNG/JPG under 1 MB</span></div></div></div>` +
+    `<div class="grid2" style="grid-template-columns:1fr">` +
+    `<div class="field"><label for="prof-name">Full name</label><input type="text" id="prof-name" value="${escapeHtml(me.full_name || "")}" required><span class="field-error" data-e="name"></span></div>` +
+    `<div class="field"><label>Email</label><input type="text" value="${escapeHtml(me.email || "")}" disabled></div>` +
+    `<div class="field"><label>Organization &amp; Role</label><input type="text" value="${escapeHtml(String(me.organization_id || "").toUpperCase())} · ${escapeHtml(me.role || "admin")}" disabled></div>` +
+    `</div><div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button><button type="submit" class="btn-primary" id="prof-save">Save profile</button></div></form>`
+  );
+  const f = $("#prof-form", layer.el);
+  const prev = $("#prof-preview", layer.el);
+  $("#prof-file", f).addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (file.size > 1_000_000) { toast("Please choose an image smaller than 1 MB.", "error"); e.target.value = ""; return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      pendingAvatar = String(reader.result || "");
+      prev.innerHTML = `<img src="${escapeHtml(pendingAvatar)}" alt="">`;
+    };
+    reader.readAsDataURL(file);
+  });
+  $("#prof-clear", f).addEventListener("click", () => {
+    pendingAvatar = null;
+    $("#prof-file", f).value = "";
+    prev.textContent = initials;
+  });
+  $("[data-cancel]", f).addEventListener("click", () => layer.close());
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("#prof-name", f).value.trim();
+    if (!name) { $("[data-e=name]", f).textContent = "Full name is required."; return; }
+    await withLoading($("#prof-save", f), async () => {
+      try {
+        const res = await apiFetch("/api/me/profile", {
+          method: "PUT", headers: JSON_HEADERS,
+          body: JSON.stringify({ full_name: name, avatar_url: pendingAvatar }),
+        });
+        me.full_name = res.full_name;
+        me.avatar_url = res.avatar_url;
+        const nameEl = document.getElementById("admin-name");
+        const metaEl = document.getElementById("acct-meta-name");
+        if (nameEl) nameEl.textContent = res.full_name;
+        if (metaEl) metaEl.textContent = res.full_name;
+        setHeaderAvatar(me);
+        layer.close();
+        toast("Profile updated.", "success");
+      } catch (er) { $("[data-e=name]", f).textContent = friendlyError(er); }
+    });
+  });
 }
 
 function openChangePasswordModal({ forced = false } = {}) {
@@ -332,13 +406,43 @@ async function renderShell(active) {
   nav += `<a href="audit-logs.html" class="${active === "audit" ? "active" : ""}" id="nav-audit" hidden>${ICON.history}Audit logs</a>`;
   nav += `<a href="super-admin.html" class="${active === "super" ? "active" : ""}" id="nav-super" hidden>${ICON.shield}Super Admin</a>`;
   document.getElementById("shell").innerHTML =
-    '<header class="app-header"><a class="brand" href="programs.html"><img src="EduMatchPH_logo.jpg" alt="">EduMatch PH</a>' +
-    '<div class="who"><span class="org-badge" id="org-name"></span><span class="avatar" id="avatar" aria-hidden="true"></span>' +
-    '<span class="name" id="admin-name"></span><button class="btn-secondary" id="chpwd-btn" type="button" title="Change your password" hidden>' + ICON.key + 'Password</button>' +
-    '<button class="btn-secondary" id="logout-btn" type="button">' + ICON.logout + 'Log out</button></div></header>' +
+    '<header class="app-header"><a class="brand" href="programs.html"><img src="EduMatchPH_icon.svg" alt="">EduMatch PH</a>' +
+    '<div class="who"><span class="org-badge" id="org-name"></span>' +
+    '<div class="account-menu" id="account-menu">' +
+    '<button class="account-trigger" id="account-trigger" type="button" aria-expanded="false" aria-haspopup="menu">' +
+    '<span class="avatar" id="avatar" aria-hidden="true"></span>' +
+    '<span class="name" id="admin-name"></span><span class="caret">▾</span></button>' +
+    '<div class="account-dropdown" id="account-dropdown" role="menu" hidden>' +
+    '<div class="acct-meta"><strong id="acct-meta-name"></strong><span id="acct-meta-role"></span></div>' +
+    '<button type="button" id="menu-profile" role="menuitem">' + ICON.users + 'Profile management</button>' +
+    '<button type="button" id="menu-chpwd" role="menuitem">' + ICON.key + 'Change password</button>' +
+    '<button type="button" id="menu-logout" class="danger" role="menuitem">' + ICON.logout + 'Log out</button>' +
+    '</div></div></div></header>' +
     '<div class="crumbs" id="crumbs"></div><nav class="subnav" aria-label="Sections">' + nav + "</nav>";
-  document.getElementById("chpwd-btn").addEventListener("click", () => openChangePasswordModal());
-  document.getElementById("logout-btn").addEventListener("click", async () => {
+
+  let CURRENT_ME = null;
+  const trigger = document.getElementById("account-trigger");
+  const dropdown = document.getElementById("account-dropdown");
+  const closeMenu = () => { dropdown.hidden = true; trigger.setAttribute("aria-expanded", "false"); };
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = dropdown.hidden;
+    dropdown.hidden = !open;
+    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#account-menu")) closeMenu();
+  });
+  document.getElementById("menu-profile").addEventListener("click", () => {
+    closeMenu();
+    if (CURRENT_ME) openProfileModal(CURRENT_ME);
+  });
+  document.getElementById("menu-chpwd").addEventListener("click", () => {
+    closeMenu();
+    openChangePasswordModal();
+  });
+  document.getElementById("menu-logout").addEventListener("click", async () => {
+    closeMenu();
     const ok = await confirmDialog({
       title: "Log out?",
       message: "Are you sure you want to log out of EduMatch PH?",
@@ -351,9 +455,12 @@ async function renderShell(active) {
   document.getElementById("crumbs").innerHTML = crumbs(sid ? '<span class="skeleton" style="display:inline-block;width:140px;height:12px;vertical-align:middle"></span>' :
     active === "new" ? "New program" : active === "audit" ? "Audit logs" : active === "super" ? "Super Admin" : "");
   getMe().then((me) => {
+    CURRENT_ME = me;
     document.getElementById("admin-name").textContent = me.full_name;
-    document.getElementById("avatar").textContent = me.full_name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-    document.getElementById("org-name").textContent = String(me.organization_id).toUpperCase();
+    document.getElementById("acct-meta-name").textContent = me.full_name;
+    document.getElementById("acct-meta-role").textContent = `${String(me.organization_id || "").toUpperCase()} · ${me.role || "admin"}`;
+    setHeaderAvatar(me);
+    document.getElementById("org-name").textContent = String(me.role || "").toLowerCase() === "super_admin" ? "GLOBAL" : String(me.organization_id).toUpperCase();
     document.body.dataset.org = String(me.organization_id).toLowerCase();
     applyOrgTheme(me);
     const role = String(me.role || "").toLowerCase();
@@ -361,13 +468,12 @@ async function renderShell(active) {
     if (isSuper || role === "owner") {
       const aLink = document.getElementById("nav-audit");
       if (aLink) aLink.hidden = false;
-    }
-    if (isSuper) {
       const sLink = document.getElementById("nav-super");
-      if (sLink) sLink.hidden = false;
+      if (sLink) {
+        sLink.hidden = false;
+        if (!isSuper) sLink.innerHTML = ICON.shield + "Team &amp; Branding";
+      }
     }
-    const cpBtn = document.getElementById("chpwd-btn");
-    if (cpBtn) cpBtn.hidden = false;
     if (me.must_change_pw || me.must_change_password || me.force_password_change) {
       openChangePasswordModal({ forced: true });
     }

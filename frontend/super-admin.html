@@ -207,9 +207,15 @@ async function loadData() {
   try {
     const me = await getMe();
     const role = String(me.role || "").toLowerCase();
-    if (!me.is_super_admin && role !== "super_admin" && role !== "superadmin") {
-      document.getElementById("super-message").innerHTML = '<div class="card empty"><h3>Access restricted</h3><p>Only Super Admin accounts can access this page.</p><a class="btn-primary" href="programs.html">Back to programs</a></div>';
+    const isSuper = Boolean(me.is_super_admin || role === "super_admin" || role === "superadmin");
+    if (!isSuper && role !== "owner") {
+      document.getElementById("super-message").innerHTML = '<div class="card empty"><h3>Access restricted</h3><p>Only Super Admin or Organization Owner accounts can access this page.</p><a class="btn-primary" href="programs.html">Back to programs</a></div>';
       return;
+    }
+    if (!isSuper) {
+      document.getElementById("new-org-btn").hidden = true;
+      document.querySelector("h1").textContent = "Team & Organization Management";
+      document.querySelector(".lede").textContent = "Manage staff administrator accounts for your organization.";
     }
     document.getElementById("super-content").hidden = false;
     loadData();

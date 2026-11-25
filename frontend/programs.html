@@ -39,7 +39,9 @@ function render() {
   if (!list.length) { grid.innerHTML = '<div class="card empty" style="grid-column:1/-1"><h3>No matching programs</h3><p>Try a different search or status filter.</p></div>'; return; }
   grid.innerHTML = list.map((p) => {
     const lvl = PIPE[p.status] ?? 0;
-    return '<article class="pcard"><div class="top"><div><h3>' + escapeHtml(p.scholarship_name) + '</h3><div class="provider">' + escapeHtml(p.provider || "") + '</div></div>' + statusPill(p.status) + '</div>' +
+    return '<article class="pcard"><div class="top"><div><h3>' + escapeHtml(p.scholarship_name) + '</h3><div class="provider">' +
+      (p.organization_id ? '<span class="org-badge" style="margin-right:.4rem">' + escapeHtml(String(p.organization_id).toUpperCase()) + '</span>' : '') +
+      escapeHtml(p.provider || "") + '</div></div>' + statusPill(p.status) + '</div>' +
       '<div class="chips">' + ruleSummaryChips(p) + '</div>' +
       '<div class="pipeline" title="Progress: add applicants, screening, ranking, closed">' + [0,1,2,3].map((i) => '<i class="' + (i <= lvl ? "on" : "") + '"></i>').join("") + '</div>' +
       '<div class="foot"><span class="counts">' + p.available_slots + ' slots</span>' +

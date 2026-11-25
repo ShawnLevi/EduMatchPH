@@ -17,12 +17,18 @@ def login():
     org = str(data.get("organization_id") or "").strip()
     email = str(data.get("email") or "").strip()
     password = str(data.get("password") or "")
-    if not (org and email and password):
-        abort(400, "Enter your organization, email and password")
+    if not (email and password):
+        abort(400, "Enter your email and password")
     with db() as (conn, cur):
-        cur.execute(
-            "SELECT * FROM administrators"
-            " WHERE email=%s AND organization_id=%s", (email, org))
+        if not org or org == "__all__":
+            cur.execute(
+                "SELECT * FROM administrators"
+                " WHERE email=%s AND role='super_admin'", (email,))
+        else:
+            cur.execute(
+                "SELECT * FROM administrators"
+                " WHERE email=%s AND (organization_id=%s OR role='super_admin')",
+                (email, org))
         admin = cur.fetchone()
         if admin is None:
             abort(401, "Wrong email or password for this organization")
@@ -59,6 +65,12 @@ def login():
                      f"{email} logged in",
                      org_id=admin["organization_id"],
                      admin_id=admin["admin_id"])
+        cur.execute(
+            "SELECT organization_id, organization_name, logo_path,"
+            " theme_primary_color, theme_accent_color, theme_bg_color"
+            " FROM organizations WHERE organization_id=%s",
+            (admin["organization_id"],))
+        org_row = cur.fetchone()
         conn.commit()
     session.clear()
     session.permanent = True
@@ -68,9 +80,12 @@ def login():
     session["role"] = admin["role"]
     return jsonify({"admin_id": admin["admin_id"],
                     "full_name": admin["full_name"],
+                    "email": admin["email"],
                     "organization_id": admin["organization_id"],
                     "role": admin["role"],
-                    "must_change_pw": bool(admin["must_change_pw"])})
+                    "must_change_pw": bool(admin["must_change_pw"]),
+                    "avatar_url": admin.get("avatar_url"),
+                    "organization": org_row})
 
 
 @auth_bp.route("/api/logout", methods=["POST"])
@@ -90,18 +105,56 @@ def me():
         abort(401, "Not logged in")
     with db() as (conn, cur):
         cur.execute(
-            "SELECT admin_id, full_name, organization_id, role, is_active,"
-            " must_change_pw FROM administrators WHERE admin_id=%s",
+            "SELECT admin_id, full_name, email, organization_id, role,"
+            " is_active, must_change_pw, avatar_url"
+            " FROM administrators WHERE admin_id=%s",
             (session["admin_id"],))
         admin = cur.fetchone()
-    if admin is None or not admin["is_active"]:
-        session.clear()
-        abort(401, "Not logged in")
+        if admin is None or not admin["is_active"]:
+            session.clear()
+            abort(401, "Not logged in")
+        cur.execute(
+            "SELECT organization_id, organization_name, logo_path,"
+            " theme_primary_color, theme_accent_color, theme_bg_color"
+            " FROM organizations WHERE organization_id=%s",
+            (admin["organization_id"],))
+        org_row = cur.fetchone()
     return jsonify({"admin_id": admin["admin_id"],
                     "full_name": admin["full_name"],
+                    "email": admin["email"],
                     "organization_id": admin["organization_id"],
                     "role": admin["role"],
-                    "must_change_pw": bool(admin["must_change_pw"])})
+                    "must_change_pw": bool(admin["must_change_pw"]),
+                    "avatar_url": admin.get("avatar_url"),
+                    "organization": org_row})
+
+
+@auth_bp.route("/api/me/profile", methods=["PUT"])
+def update_profile():
+    data = json_body()
+    full_name = str(data.get("full_name") or "").strip()
+    if not full_name or len(full_name) > 150:
+        abort(400, "Full name is required (max 150 characters)")
+    avatar = data.get("avatar_url")
+    if avatar is not None:
+        avatar = str(avatar).strip() or None
+        if avatar and len(avatar) > 1_500_000:
+            abort(400, "Profile image is too large (max ~1 MB)")
+    with db() as (conn, cur):
+        if "avatar_url" in data:
+            cur.execute(
+                "UPDATE administrators SET full_name=%s, avatar_url=%s"
+                " WHERE admin_id=%s",
+                (full_name, avatar, session["admin_id"]))
+        else:
+            cur.execute(
+                "UPDATE administrators SET full_name=%s WHERE admin_id=%s",
+                (full_name, session["admin_id"]))
+        record_audit(cur, "PROFILE_UPDATE", "administrator",
+                     session["admin_id"], f"Updated profile for {full_name}")
+        conn.commit()
+    session["full_name"] = full_name
+    return jsonify({"full_name": full_name, "avatar_url": avatar})
 
 
 @auth_bp.route("/api/change-password", methods=["POST"])
