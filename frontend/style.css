@@ -3,7 +3,7 @@
 :root {
   --navy-900:#0F172A; --navy-800:#1E293B; --navy-700:#1B3868; --navy-600:#24427C; --navy-100:#E6ECF7;
   --header-bg:#0B1E3D; --header-ink:#FFFFFF;
-  --amber-500:#E8A63C; --amber-600:#CE8A1F; --amber-100:#FCEFD9;
+  --amber-500:#E8A63C; --amber-600:#CE8A1F; --amber-100:#FCEFD9; --accent-ink:#CE8A1F;
   --btn-primary-ink:#0B1E3D;
   --wrap-ink:#0F172A; --wrap-muted:#475569;
   --cream:#FBF8F2; --card:#FFFFFF;
@@ -58,8 +58,8 @@ body.has-bg-image .subnav{background:rgba(255,255,255,.88);backdrop-filter:blur(
 .subnav a{display:inline-flex;align-items:center;gap:.45rem;padding:.65rem 1rem;text-decoration:none;color:var(--ink-muted);font-weight:500;font-size:.92rem;border-bottom:2.5px solid transparent;margin-bottom:-1px;border-radius:8px 8px 0 0;transition:color .15s,background .15s,border-color .15s}
 .subnav a svg{width:16px;height:16px;flex:none;opacity:.75}
 .subnav a:hover{color:var(--navy-900);background:rgba(11,30,61,.04)}
-.subnav a.active{color:var(--navy-900);border-bottom-color:var(--amber-500);font-weight:600;background:rgba(255,255,255,.65)}
-.subnav a.active svg{color:var(--amber-600);opacity:1}
+.subnav a.active{color:var(--navy-900);border-bottom-color:var(--accent-ink);font-weight:600;background:rgba(255,255,255,.78)}
+.subnav a.active svg{color:var(--accent-ink);opacity:1}
 .wrap{max-width:1180px;margin:.75rem auto 2.5rem;padding:1.5rem 1.75rem 2.5rem;background:var(--org-surface-bg,transparent);border-radius:var(--radius)}
 body.has-surface .wrap{box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.45);backdrop-filter:blur(6px)}
 .wrap>h1,.wrap>h2,.prog-head h1{color:var(--wrap-ink)}
@@ -162,7 +162,7 @@ tbody tr.clickable{cursor:pointer}
 th.sortable{cursor:pointer;user-select:none}
 th.sortable:hover{color:var(--navy-800)}
 th.sortable .arrow{opacity:.35;margin-left:.25rem;font-size:.7rem}
-th.sorted .arrow{opacity:1;color:var(--amber-600)}
+th.sorted .arrow{opacity:1;color:var(--accent-ink)}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 td.met{color:var(--ok);font-weight:600}td.notmet{color:var(--no);font-weight:600}
 .detail-row td{background:#FAF8F2;padding:.9rem 1.2rem}
@@ -180,7 +180,7 @@ tr.open .caret{transform:rotate(90deg)}
 .skeleton{display:block;border-radius:6px;background:linear-gradient(90deg,#EEEAE0 25%,#F7F4EC 37%,#EEEAE0 63%);background-size:400% 100%;animation:shimmer 1.3s ease infinite;min-height:1em}
 @keyframes shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--ink-muted)}
-.empty .ico{width:54px;height:54px;border-radius:50%;background:var(--amber-100);color:var(--amber-600);display:grid;place-items:center;margin:0 auto .8rem}
+.empty .ico{width:54px;height:54px;border-radius:50%;background:var(--amber-100);color:var(--accent-ink);display:grid;place-items:center;margin:0 auto .8rem}
 .empty .ico svg{width:26px;height:26px}
 .empty h3{margin-bottom:.3rem}
 .empty p{margin:.2rem auto 1rem;max-width:46ch}
@@ -212,7 +212,7 @@ tr.open .caret{transform:rotate(90deg)}
 .dropzone{border:2px dashed #cfcab9;border-radius:var(--radius);padding:1.6rem 1rem;text-align:center;background:#FDFBF6;transition:all .15s;cursor:pointer}
 .dropzone:hover,.dropzone.drag{border-color:var(--amber-500);background:var(--amber-100)}
 .dropzone b{color:var(--navy-800)}
-.dropzone .ico{width:34px;height:34px;margin:0 auto .4rem;color:var(--amber-600)}
+.dropzone .ico{width:34px;height:34px;margin:0 auto .4rem;color:var(--accent-ink)}
 
 /* ---------- score / contribution visuals ---------- */
 .scorebar{display:flex;align-items:center;gap:.6rem;min-width:150px}
@@ -251,7 +251,7 @@ tr.open .caret{transform:rotate(90deg)}
 .pcard .provider{color:var(--ink-muted);font-size:.85rem}
 .pipeline{display:flex;gap:4px;align-items:center}
 .pipeline i{flex:1;height:5px;border-radius:99px;background:var(--line-soft)}
-.pipeline i.on{background:var(--amber-500)}
+.pipeline i.on{background:var(--accent-ink)}
 .pcard .foot{display:flex;gap:.5rem;align-items:center;margin-top:auto;padding-top:.45rem}
 .pcard .counts{font-size:.85rem;color:var(--ink-muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 

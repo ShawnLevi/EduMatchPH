@@ -345,7 +345,7 @@ function clearThemeCache() {
 function resetRootTheme() {
   const root = document.documentElement.style;
   ["--header-bg", "--header-ink", "--header-border", "--header-trigger-bg", "--header-trigger-hover",
-   "--amber-500", "--amber-600", "--btn-primary-ink", "--btn-primary-border",
+   "--amber-500", "--amber-600", "--accent-ink", "--btn-primary-ink", "--btn-primary-border",
    "--wrap-ink", "--wrap-muted", "--cream",
    "--org-bg-image", "--org-bg-opacity", "--org-surface-bg"].forEach((p) => root.removeProperty(p));
   if (document.body) {
@@ -383,6 +383,9 @@ function applyOrgTheme(me) {
     root.setProperty("--amber-600", aRgb ? shadeHex(aRgb, aLum > 0.85 ? 0.93 : 0.88) : org.theme_accent_color);
     root.setProperty("--btn-primary-ink", aLum > 0.30 ? "#0F172A" : "#FFFFFF");
     root.setProperty("--btn-primary-border", aLum > 0.82 ? "rgba(15,23,42,.2)" : "transparent");
+    const pRgb = org.theme_primary_color ? hexToRgb(org.theme_primary_color) : null;
+    const darkPrimary = pRgb && relLuminance(pRgb) < 0.40 ? org.theme_primary_color : "#1E293B";
+    root.setProperty("--accent-ink", aLum > 0.50 ? darkPrimary : (aRgb ? shadeHex(aRgb, 0.85) : org.theme_accent_color));
   }
 
   const surfOp = org.theme_surface_opacity != null ? Number(org.theme_surface_opacity) : 0.94;
