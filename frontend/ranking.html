@@ -5,6 +5,7 @@
 <link rel="stylesheet" href="style.css"></head>
 <body><div id="shell"></div><main class="wrap">
 <div id="prog-head"></div>
+<div id="deadline-warning"></div>
 <div class="toolbar" style="margin-bottom:1rem">
   <button class="btn-primary" id="run-ranking-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4"/></svg>Run ranking</button>
   <button class="btn-secondary" id="export-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>Download shortlist (CSV)</button>
@@ -37,10 +38,10 @@ const body = document.getElementById("shortlist-body");
 
 function render() {
   const sl = rows.filter((r) => r.status === "SHORTLIST").length, wl = rows.length - sl;
-  const st = (n, l, c) => `<div class="stat ${c}"><b data-n="${n}">${n}</b><span>${l}</span></div>`;
+  const stBtn = (fKey, n, l, c) => `<button type="button" class="stat ${c} ${filter === fKey ? "active" : ""}" data-sf="${fKey}"><b data-n="${n}">${n}</b><span>${l}</span></button>`;
   const st1 = document.getElementById("stats");
   const first = !st1.children.length;
-  st1.innerHTML = rows.length ? st(rows.length, "ranked", "") + st(sl, "shortlisted", "ok") + st(wl, "waitlisted", "wait") + st(program.available_slots, "slots", "") : "";
+  st1.innerHTML = rows.length ? stBtn("all", rows.length, "ranked", "") + stBtn("SHORTLIST", sl, "shortlisted", "ok") + stBtn("WAITLIST", wl, "waitlisted", "wait") + `<div class="stat"><b data-n="${program.available_slots}">${program.available_slots}</b><span>slots</span></div>` : "";
   if (first) $$("b[data-n]", st1).forEach((b) => animateNumber(b, +b.dataset.n));
   document.getElementById("filter-chips").innerHTML = rows.length ? [["all", "All", rows.length], ["SHORTLIST", "Shortlisted", sl], ["WAITLIST", "Waitlisted", wl]]
     .map(([k, l, n]) => `<button type="button" class="chip ${filter === k ? "active" : ""}" data-f="${k}">${l}<span class="count">${n}</span></button>`).join("") : "";
@@ -70,8 +71,11 @@ function render() {
   });
   body.innerHTML = html || '<tr><td colspan="6"><div class="empty"><h3>No matches</h3><p>No ranked applicant matches this search.</p></div></td></tr>';
   const cb = document.getElementById("compare-btn");
-  cb.textContent = `Compare selected (${picked.length}/2)`; cb.disabled = picked.length !== 2;
+  cb.textContent = `Compare selected (${picked.length}/2)`;
+  cb.disabled = picked.length !== 2;
+  cb.className = picked.length === 2 ? "btn-primary" : "btn-secondary";
 }
+document.getElementById("stats").addEventListener("click", (e) => { const b = e.target.closest("[data-sf]"); if (b) { filter = filter === b.dataset.sf ? "all" : b.dataset.sf; render(); } });
 document.getElementById("filter-chips").addEventListener("click", (e) => { const b = e.target.closest("[data-f]"); if (b) { filter = b.dataset.f; render(); } });
 document.getElementById("search").addEventListener("input", debounce(render, 120));
 document.querySelector("thead").addEventListener("click", (e) => {
@@ -95,6 +99,14 @@ async function load() {
 function applyStatus() {
   const closed = program.status === "Closed", btn = document.getElementById("run-ranking-btn");
   btn.disabled = closed; btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
+  const dw = document.getElementById("deadline-warning");
+  if (dw) {
+    if (program.application_deadline && new Date(program.application_deadline + "T23:59:59") < new Date()) {
+      dw.innerHTML = `<div class="alert warn" role="status"><span><strong>Past deadline:</strong> The application deadline (${escapeHtml(program.application_deadline)}) has passed.</span><a class="btn-secondary small" href="program-form.html?scholarship=${encodeURIComponent(scholarshipId)}">Update deadline</a></div>`;
+    } else {
+      dw.innerHTML = "";
+    }
+  }
 }
 async function runRanking(btn) {
   if (rows.length && !(await confirmDialog({ title: "Run ranking again?", confirmText: "Run ranking", message: "The earlier ranking will be replaced with a new one." }))) return;
@@ -147,7 +159,13 @@ body.addEventListener("click", (e) => {
 body.addEventListener("change", (e) => {
   const c = e.target.closest("[data-pick]"); if (!c) return;
   const id = +c.dataset.pick;
-  if (c.checked) { picked.push(id); if (picked.length > 2) picked.shift(); } else picked = picked.filter((x) => x !== id);
+  if (c.checked) {
+    if (picked.length >= 2) {
+      picked.shift();
+      toast("Replaced oldest selection — Compare evaluates 2 applicants at a time.", "info");
+    }
+    picked.push(id);
+  } else picked = picked.filter((x) => x !== id);
   render();
 });
 

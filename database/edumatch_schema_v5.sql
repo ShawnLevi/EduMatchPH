@@ -30,7 +30,7 @@ DROP TABLE IF EXISTS
 CREATE TABLE organizations (
     organization_id VARCHAR(20) PRIMARY KEY,   -- e.g. 'dost', 'uclm'
     organization_name VARCHAR(150) NOT NULL,
-    logo_path VARCHAR(255),
+    logo_path MEDIUMTEXT NULL,
     theme_primary_color VARCHAR(7),            -- hex, e.g. '#0B1E3D'
     theme_accent_color VARCHAR(7),
     theme_bg_color VARCHAR(7),                 -- hex, e.g. '#FBF8F2' (center content block)

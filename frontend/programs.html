@@ -11,8 +11,10 @@
   <span class="guide-step"><span class="guide-num">3</span> Rank eligible applicants &amp; review shortlist</span>
 </div>
 <div class="toolbar">
-  <div class="input-icon grow" style="max-width:340px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="prog-search" data-search placeholder="Search programs  ( press / )" aria-label="Search programs"></div>
+  <div class="input-icon grow" style="max-width:320px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="prog-search" data-search placeholder="Search programs  ( press / )" aria-label="Search programs"></div>
+  <select id="org-filter" aria-label="Filter by organization" style="width:auto;min-width:165px" hidden><option value="all">All organizations</option></select>
   <div class="chips" id="status-chips"></div>
+  <label class="hint" id="archived-wrap" style="display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;user-select:none" hidden><input type="checkbox" id="show-archived"> Show archived</label>
   <span class="grow"></span>
   <a class="btn-primary" href="program-form.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New program</a>
 </div>
@@ -22,54 +24,95 @@
 <script src="app.js"></script>
 <script>
 renderShell("programs");
-let ROWS = [], statusFilter = "all", IS_SUPER_ADMIN = false;
+let ROWS = [], statusFilter = "all", orgFilter = "all", showArchived = false, IS_SUPER_ADMIN = false;
 const grid = document.getElementById("programs-grid");
+const orgSel = document.getElementById("org-filter");
 grid.innerHTML = Array.from({length: 3}, () => '<div class="pcard"><span class="skeleton" style="height:20px;width:70%"></span><span class="skeleton" style="height:14px;width:40%"></span><span class="skeleton" style="height:40px"></span></div>').join("");
 const PIPE = { Open: 0, Screening: 1, Ranking: 2, Closed: 3 };
 
+async function fetchPrograms() {
+  return apiFetch("/api/scholarships" + (showArchived ? "?include_archived=1" : ""));
+}
+function renderOrgFilter() {
+  const orgMap = new Map();
+  ROWS.forEach((p) => { if (p.organization_id) orgMap.set(p.organization_id, p.organization_name || String(p.organization_id).toUpperCase()); });
+  if (orgMap.size > 1) {
+    orgSel.hidden = false;
+    orgSel.innerHTML = '<option value="all">All organizations (' + ROWS.length + ')</option>' +
+      [...orgMap.entries()].map(([id, nm]) => '<option value="' + escapeHtml(id) + '"' + (orgFilter === id ? " selected" : "") + '>' + escapeHtml(String(id).toUpperCase()) + " — " + escapeHtml(nm) + "</option>").join("");
+  } else {
+    orgSel.hidden = true;
+    orgFilter = "all";
+  }
+}
 function render() {
   const q = document.getElementById("prog-search").value.trim().toLowerCase();
-  const list = ROWS.filter((p) => (statusFilter === "all" || p.status === statusFilter) &&
-    (!q || (p.scholarship_name + " " + (p.provider || "")).toLowerCase().includes(q)));
+  const list = ROWS.filter((p) =>
+    (orgFilter === "all" || p.organization_id === orgFilter) &&
+    (statusFilter === "all" || p.status === statusFilter) &&
+    (!q || [p.scholarship_name, p.provider || "", p.organization_id || "", p.organization_name || ""].join(" ").toLowerCase().includes(q)));
   if (!ROWS.length) {
     grid.innerHTML = '<div class="card empty" style="grid-column:1/-1"><div class="ico">' + ICON.inbox + '</div><h3>No programs yet</h3>' +
       '<p>A program holds the scholarship rules. Create one, then add applicants and run screening.</p><a class="btn-primary" href="program-form.html">Create your first program</a></div>';
     return;
   }
-  if (!list.length) { grid.innerHTML = '<div class="card empty" style="grid-column:1/-1"><h3>No matching programs</h3><p>Try a different search or status filter.</p></div>'; return; }
+  if (!list.length) { grid.innerHTML = '<div class="card empty" style="grid-column:1/-1"><h3>No matching programs</h3><p>Try a different search, organization, or status filter.</p></div>'; return; }
+  const now = new Date();
   grid.innerHTML = list.map((p) => {
     const lvl = PIPE[p.status] ?? 0;
-    return '<article class="pcard"><div class="top"><div><h3>' + escapeHtml(p.scholarship_name) + '</h3><div class="provider">' +
+    const pastDeadline = p.status !== "Closed" && p.application_deadline && new Date(p.application_deadline + "T23:59:59") < now;
+    return '<article class="pcard" style="' + (p.is_archived ? "opacity:.78;border-style:dashed" : "") + '"><div class="top"><div><h3>' + escapeHtml(p.scholarship_name) + '</h3><div class="provider">' +
       (p.organization_id ? '<span class="org-badge" style="margin-right:.4rem">' + escapeHtml(String(p.organization_id).toUpperCase()) + '</span>' : '') +
-      escapeHtml(p.provider || "") + '</div></div>' + statusPill(p.status) + '</div>' +
+      escapeHtml(p.provider || "") + '</div></div><div style="display:flex;gap:.35rem;align-items:center;flex-wrap:wrap">' +
+      (p.is_archived ? '<span class="pill no">Archived</span>' : '') +
+      (pastDeadline ? '<span class="pill wait" title="Deadline ' + escapeHtml(p.application_deadline) + ' has passed">Past deadline</span>' : '') +
+      statusPill(p.status) + '</div></div>' +
       '<div class="chips">' + ruleSummaryChips(p) + '</div>' +
       '<div class="pipeline" title="Progress: add applicants, screening, ranking, closed">' + [0,1,2,3].map((i) => '<i class="' + (i <= lvl ? "on" : "") + '"></i>').join("") + '</div>' +
-      '<div class="foot"><span class="counts">' + p.available_slots + ' slots</span>' +
-      (IS_SUPER_ADMIN && p.status !== "Closed" ? '<button class="icon-btn" data-archive="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" title="Archive (close) program" aria-label="Archive ' + escapeHtml(p.scholarship_name) + '">' + ICON.archive + '</button>' : '') +
+      '<div class="foot"><span class="counts">' + p.available_slots + ' slots' + (p.application_deadline ? ' · Due ' + escapeHtml(p.application_deadline) : '') + '</span>' +
+      (p.is_archived ? '<button class="btn-secondary small" data-restore="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" type="button">Restore</button>' : '') +
+      (IS_SUPER_ADMIN && !p.is_archived && p.status !== "Closed" ? '<button class="icon-btn" data-archive="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" title="Archive (close) program" aria-label="Archive ' + escapeHtml(p.scholarship_name) + '">' + ICON.archive + '</button>' : '') +
       (IS_SUPER_ADMIN ? '<button class="icon-btn" data-del-prog="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" title="Delete program" aria-label="Delete ' + escapeHtml(p.scholarship_name) + '">' + ICON.trash + '</button>' : '') +
       '<a class="btn-secondary" href="program-form.html?scholarship=' + p.scholarship_id + '">' + ICON.edit + 'Edit</a>' +
       '<a class="btn-primary" href="applicants.html?scholarship=' + p.scholarship_id + '">Open →</a></div></article>';
   }).join("");
 }
 function renderChips() {
-  const counts = {}; ROWS.forEach((p) => { counts[p.status] = (counts[p.status] || 0) + 1; });
+  const base = ROWS.filter((p) => orgFilter === "all" || p.organization_id === orgFilter);
+  const counts = {}; base.forEach((p) => { counts[p.status] = (counts[p.status] || 0) + 1; });
   document.getElementById("status-chips").innerHTML = ["all", "Open", "Screening", "Ranking", "Closed"].filter((s) => s === "all" || counts[s])
-    .map((s) => '<button type="button" class="chip' + (statusFilter === s ? " active" : "") + '" data-s="' + s + '">' + (s === "all" ? "All" : s) + '<span class="count">' + (s === "all" ? ROWS.length : counts[s]) + '</span></button>').join("");
+    .map((s) => '<button type="button" class="chip' + (statusFilter === s ? " active" : "") + '" data-s="' + s + '">' + (s === "all" ? "All" : s) + '<span class="count">' + (s === "all" ? base.length : counts[s]) + '</span></button>').join("");
 }
 document.getElementById("status-chips").addEventListener("click", (e) => {
   const b = e.target.closest("[data-s]"); if (!b) return; statusFilter = b.dataset.s; renderChips(); render();
 });
+orgSel.addEventListener("change", () => { orgFilter = orgSel.value; renderChips(); render(); });
+document.getElementById("show-archived").addEventListener("change", async (e) => {
+  showArchived = e.target.checked;
+  try { ROWS = await fetchPrograms(); renderOrgFilter(); renderChips(); render(); }
+  catch (err) { toast(friendlyError(err), "error"); }
+});
 document.getElementById("prog-search").addEventListener("input", debounce(render, 120));
 grid.addEventListener("click", async (e) => {
+  const rs = e.target.closest("[data-restore]");
+  if (rs) {
+    const id = rs.dataset.restore, name = rs.dataset.name;
+    try {
+      await apiFetch(`/api/scholarships/${id}/restore`, { method: "POST" });
+      toast(`Restored ${name}.`, "success");
+      ROWS = await fetchPrograms(); renderOrgFilter(); renderChips(); render();
+    } catch (err) { toast(friendlyError(err), "error"); }
+    return;
+  }
   if (!IS_SUPER_ADMIN) return;
   const ar = e.target.closest("[data-archive]");
   if (ar) {
     const id = ar.dataset.archive, name = ar.dataset.name;
-    if (!(await confirmDialog({ title: `Archive "${name}"?`, message: "Archiving closes this program so no new screening or ranking can run. You can reopen it later by editing.", confirmText: "Archive program" }))) return;
+    if (!(await confirmDialog({ title: `Archive "${name}"?`, message: "Archiving closes and hides this program from active lists. Toggle 'Show archived' anytime to restore it.", confirmText: "Archive program" }))) return;
     try {
       await apiFetch(`/api/scholarships/${id}`, { method: "DELETE" });
       toast(`Archived ${name}.`, "success");
-      ROWS = await apiFetch("/api/scholarships"); renderChips(); render();
+      ROWS = await fetchPrograms(); renderOrgFilter(); renderChips(); render();
     } catch (err) { toast(friendlyError(err), "error"); }
     return;
   }
@@ -80,17 +123,18 @@ grid.addEventListener("click", async (e) => {
     try {
       await apiFetch(`/api/scholarships/${id}?permanent=true`, { method: "DELETE" });
       toast(`Deleted ${name}.`, "success");
-      ROWS = await apiFetch("/api/scholarships"); renderChips(); render();
+      ROWS = await fetchPrograms(); renderOrgFilter(); renderChips(); render();
     } catch (err) { toast(friendlyError(err), "error"); }
   }
 });
 (async () => {
   try {
-    const [me, rows] = await Promise.all([getMe().catch(() => null), apiFetch("/api/scholarships")]);
+    const [me, rows] = await Promise.all([getMe().catch(() => null), fetchPrograms()]);
     const role = String((me && me.role) || "").toLowerCase();
     IS_SUPER_ADMIN = Boolean(me && (me.is_super_admin || role === "super_admin" || role === "superadmin"));
+    if (IS_SUPER_ADMIN || role === "owner") document.getElementById("archived-wrap").hidden = false;
     ROWS = rows;
-    renderChips(); render();
+    renderOrgFilter(); renderChips(); render();
   } catch (err) { grid.innerHTML = ""; showError("programs-message", err); }
 })();
 </script></body></html>

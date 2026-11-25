@@ -29,11 +29,15 @@ const valueOf = (s, name) => { const r = s.reasons.find((x) => x.criterion_name 
 
 function card(p, other, lead) {
   const win = (mine, theirs, lowerWins) => (lowerWins ? mine < theirs : mine > theirs) ? "win" : "";
+  const coreKeys = new Set(CRITERION_ROWS.map((x) => x[1]));
+  const extraReasons = (p.sc && Array.isArray(p.sc.reasons)) ? p.sc.reasons.filter((r) => !coreKeys.has(r.criterion_name)) : [];
   return `<div class="cmp-card ${lead ? "lead" : ""}"><h3>${escapeHtml(p.name)}</h3>` +
     `<span class="pill ${p.ex.status === "SHORTLIST" ? "ok" : "wait"}">${escapeHtml(STATUS_LABELS[p.ex.status])}</span>` +
     `<div class="cmp-rows"><div class="cmp-row"><span>Rank</span><b class="${win(p.ex.rank_position, other.ex.rank_position, true)}">#${p.ex.rank_position}</b></div>` +
     `<div class="cmp-row"><span>Priority score</span><b class="${win(p.ex.priority_score, other.ex.priority_score)}">${p.ex.priority_score}</b></div>` +
-    CRITERION_ROWS.map(([l, k]) => `<div class="cmp-row"><span>${l}</span><b>${escapeHtml(valueOf(p.sc, k))}</b></div>`).join("") + `</div></div>`;
+    CRITERION_ROWS.map(([l, k]) => `<div class="cmp-row"><span>${l}</span><b>${escapeHtml(valueOf(p.sc, k))}</b></div>`).join("") +
+    extraReasons.map((r) => `<div class="cmp-row"><span>${escapeHtml(r.criterion_name)}</span><b>${escapeHtml(r.applicant_value)}</b></div>`).join("") +
+    `</div></div>`;
 }
 function renderComparison(a, b) {
   const maxAbs = Math.max(...a.ex.effects.map((x) => Math.abs(x.effect_points)), ...b.ex.effects.map((x) => Math.abs(x.effect_points)), 1);
@@ -63,6 +67,7 @@ async function compare() {
     screeningCache = screening;
     const pick = (id) => screening.find((s) => String(s.applicant_id) === String(id));
     const sa = pick(A.value), sb = pick(B.value);
+    if (!sa || !sb) { box.innerHTML = ""; showError("compare-message", new Error("Screening details were not found for one of the selected applicants.")); return; }
     box.innerHTML = renderComparison({ name: sa.full_name, ex: ea, sc: sa }, { name: sb.full_name, ex: eb, sc: sb });
   } catch (err) { box.innerHTML = ""; showError("compare-message", err); }
 }

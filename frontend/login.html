@@ -5,24 +5,28 @@
 <body>
 <div class="page">
   <div class="brand-panel">
-    <div class="brand-mark"><span class="brand-mark-dot"></span><span class="brand-mark-dot"></span></div>
+    <div style="margin-bottom:1.1rem"><img src="EduMatchPH_icon.svg" alt="EduMatch PH" style="width:52px;height:52px;border-radius:13px;background:#fff;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.22)"></div>
     <h1>EduMatch PH</h1>
     <p class="tagline">Scholarship applicant screening and priority ranking for administrators.</p>
     <ul class="brand-points">
-      <li>Six eligibility criteria checked with clear reasons</li>
-      <li>Eligible applicants ranked by a priority score</li>
+      <li>Core and custom eligibility rules checked with clear reasons</li>
+      <li>Eligible applicants ranked by an explainable priority score</li>
       <li>You make the final decision</li>
     </ul>
     <p style="margin-top:2rem"><a href="index.html" style="color:var(--amber-500);text-decoration:none;font-weight:600">← Back to EduMatch PH overview</a></p>
   </div>
   <div class="auth-panel"><div class="auth-card">
-    <img class="login-logo" src="EduMatchPH_logo.jpg" alt="EduMatch PH">
+    <div style="display:flex;align-items:center;justify-content:center;gap:.65rem;margin-bottom:.75rem">
+      <img src="EduMatchPH_icon.svg" alt="EduMatch PH" style="width:42px;height:42px;border-radius:10px;border:1px solid var(--line);padding:3px;background:#fff;object-fit:contain">
+      <span style="font-family:'Fraunces',serif;font-weight:600;font-size:1.35rem;color:var(--navy-900)">EduMatch PH</span>
+    </div>
     <form id="login-form" class="panel" novalidate>
       <h2 class="card-title">Administrator log in</h2>
       <div class="field"><label for="login-org">Organization</label>
         <select id="login-org" required>
           <option value="">Loading organizations...</option>
-        </select></div>
+        </select>
+        <span class="hint">Global Super Admins may sign in with any organization selected.</span></div>
       <div class="field"><label for="login-email">Email</label>
         <input type="email" id="login-email" autocomplete="username" placeholder="name@organization.edu.ph" required></div>
       <div class="field"><label for="login-password">Password</label>

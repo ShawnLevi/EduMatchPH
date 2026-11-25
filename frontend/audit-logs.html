@@ -39,8 +39,10 @@ function categoryOf(action) {
   return "other";
 }
 function render() {
+  const counts = { all: logs.length, auth: 0, screening: 0, account: 0, other: 0 };
+  logs.forEach((r) => { counts[categoryOf(r.action)] = (counts[categoryOf(r.action)] || 0) + 1; });
   const cats = [["all", "All"], ["auth", "Logins & Security"], ["screening", "Screening & Ranking"], ["account", "Accounts"], ["other", "Programs & Other"]];
-  document.getElementById("cat-chips").innerHTML = cats.map(([k, l]) => `<button type="button" class="chip ${cat === k ? "active" : ""}" data-c="${k}">${l}</button>`).join("");
+  document.getElementById("cat-chips").innerHTML = cats.map(([k, l]) => `<button type="button" class="chip ${cat === k ? "active" : ""}" data-c="${k}">${l}<span class="count">${counts[k] || 0}</span></button>`).join("");
   const q = document.getElementById("log-search").value.trim().toLowerCase();
   filtered = logs.filter((r) => {
     const actor = r.admin_name || r.actor_name || r.admin_email || r.actor_email || "";
@@ -55,8 +57,9 @@ function render() {
   body.innerHTML = filtered.map((r) => {
     const dt = r.created_at || r.timestamp || "";
     const actor = r.admin_name || r.actor_name || r.admin_email || r.actor_email || r.admin_id || "System";
+    const orgBadge = r.organization_id ? ` <span class="rule-chip">${escapeHtml(String(r.organization_id).toUpperCase())}</span>` : "";
     const target = r.target || (r.target_type ? `${r.target_type}${r.target_id ? " #" + r.target_id : ""}` : "");
-    return `<tr><td style="white-space:nowrap">${escapeHtml(dt)}</td><td><b>${escapeHtml(actor)}</b></td>` +
+    return `<tr><td style="white-space:nowrap">${escapeHtml(dt)}</td><td><b>${escapeHtml(actor)}</b>${orgBadge}</td>` +
       `<td><span class="pill neutral">${escapeHtml(r.action || "")}</span></td><td>${escapeHtml(target)}</td><td class="hint">${escapeHtml(r.details || "")}</td></tr>`;
   }).join("");
 }

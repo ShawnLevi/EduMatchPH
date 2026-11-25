@@ -20,7 +20,7 @@
     </div>
   </div>
   <div class="card">
-    <h2 class="section-title">Eligibility rules</h2><p class="section-sub">An applicant must meet all six to be eligible.</p>
+    <h2 class="section-title">Eligibility rules</h2><p class="section-sub">An applicant must meet every rule below (plus any additional requirements) to be eligible.</p>
     <div class="grid2">
       <div class="field"><label for="grade_scale">Grade scale</label><select id="grade_scale"></select><span class="hint" id="grade-scale-hint"></span><span class="field-error" data-e="grade_scale"></span></div>
       <div class="field"><label for="gwa_limit">GWA limit (worst grade accepted)</label><input type="number" id="gwa_limit" step="any"><span class="field-error" data-e="gwa_limit"></span></div>
@@ -161,9 +161,10 @@ $id("program-form").addEventListener("submit", async (e) => {
   if (!payload.eligible_years.length) bad += setErr("eligible_years", "Pick at least one year level.");
   if (isNaN(payload.available_slots) || payload.available_slots < 0) bad += setErr("available_slots", "Enter the number of slots.");
   if (bad) { toast("Please fix the highlighted fields.", "error"); const f = document.querySelector(".field-error:not(:empty)"); if (f) { f.scrollIntoView({ block: "center", behavior: "smooth" }); const i = f.closest(".field").querySelector("input,select"); if (i) i.focus(); } return; }
-  if (original && RULE_FIELDS.some((f) => String(payload[f]) !== String(original[f]) &&
+  const reqsChanged = original && JSON.stringify(extraReqs.map((x) => x.toLowerCase())) !== JSON.stringify(parseReqs(original.additional_requirements).map((x) => x.toLowerCase()));
+  if (original && (reqsChanged || RULE_FIELDS.some((f) => String(payload[f]) !== String(original[f]) &&
       !(["gwa_limit", "income_cap"].includes(f) && parseFloat(payload[f]) === parseFloat(original[f])) &&
-      !(f === "eligible_years" && payload[f].join(",") === String(original[f])))) {
+      !(f === "eligible_years" && payload[f].join(",") === String(original[f]))))) {
     if (!(await confirmDialog({ title: "Change the rules?", message: "Changing the rules clears this program's screening and ranking. Save anyway?", confirmText: "Save anyway", danger: true }))) return;
   }
   await withLoading($id("save-btn"), async () => {

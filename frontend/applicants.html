@@ -11,7 +11,7 @@
   <button class="btn-primary" id="add-btn" type="button" title="Add one applicant manually"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add applicant</button>
   <button class="btn-secondary" id="import-btn" type="button" title="Upload a .csv or .xlsx spreadsheet of applicants"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7 9m5-5 5 5M4 20h16"/></svg>Import CSV / Excel</button>
   <button class="btn-secondary" id="export-apps-btn" type="button" title="Download the applicant list as a CSV file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>Export applicants</button>
-  <button class="btn-secondary" id="export-reasons-btn" type="button" title="Download the six criteria for every screened applicant as a CSV file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>Export reasons</button>
+  <button class="btn-secondary" id="export-reasons-btn" type="button" title="Download every criterion result for screened applicants as a CSV file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>Export reasons</button>
   <button class="btn-danger-outline btn-secondary" id="delete-all-btn" type="button" title="Remove all applicants from this program"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete all</button>
   <span class="grow"></span>
   <span class="hint" id="run-hint"></span>
@@ -72,14 +72,26 @@ function buildRows() {
 function statusCell(r) {
   return r.status === "eligible" ? '<span class="pill ok">Eligible</span>' : r.status === "ineligible" ? '<span class="pill no">Not eligible</span>' : '<span class="pill">Not screened</span>';
 }
+function rulesText() {
+  const extra = programReqs().length;
+  return extra ? `all ${6 + extra} rules` : "all 6 rules";
+}
 function checksCell(r) {
-  return '<span class="mini-chips">' + CRITERIA.map(([n, ch]) => {
+  const coreNames = new Set(CRITERIA.map((c) => c[0]));
+  const extraNames = programReqs();
+  if (r.s && Array.isArray(r.s.reasons)) {
+    r.s.reasons.forEach((q) => {
+      if (!coreNames.has(q.criterion_name) && !extraNames.includes(q.criterion_name)) extraNames.push(q.criterion_name);
+    });
+  }
+  const allItems = [...CRITERIA, ...extraNames.map((n) => [n, (String(n).replace(/[^A-Za-z0-9]/g, "")[0] || "+").toUpperCase()])];
+  return '<span class="mini-chips">' + allItems.map(([n, ch]) => {
     const x = r.s && r.s.reasons.find((q) => q.criterion_name === n);
-    return `<span class="mini ${x ? (x.met ? "met" : "notmet") : "na"}" title="${escapeHtml(n)}${x ? ": " + (x.met ? "met" : "not met") : ""}">${ch}</span>`;
+    return `<span class="mini ${x ? (x.met ? "met" : "notmet") : "na"}" title="${escapeHtml(n)}${x ? ": " + (x.met ? "met" : "not met") : ""}">${escapeHtml(ch)}</span>`;
   }).join("") + "</span>";
 }
 function detailHtml(r) {
-  if (!r.s) return '<span class="hint">Not screened yet. Run screening to see the six checks.</span>';
+  if (!r.s) return `<span class="hint">Not screened yet. Run screening to check against ${rulesText()}.</span>`;
   return '<table><thead><tr><th>Criterion</th><th>Applicant</th><th>Required</th><th>Result</th></tr></thead><tbody>' +
     r.s.reasons.map((x) => `<tr><td>${escapeHtml(x.criterion_name)}</td><td>${escapeHtml(x.applicant_value)}</td><td>${escapeHtml(x.threshold_value)}</td><td class="${x.met ? "met" : "notmet"}">${x.met ? "✓ Met" : "✗ Not met"}</td></tr>`).join("") + "</tbody></table>";
 }
@@ -96,7 +108,7 @@ function render() {
   const ranked = program && program.status === "Ranking", closed = program && program.status === "Closed";
   if (!all.length) stale.innerHTML = "";
   else if (counts.unscreened && screened) stale.innerHTML = `<div class="insight nextstep"><span>${counts.unscreened} applicant${counts.unscreened > 1 ? "s were" : " was"} added or edited after the last screening. Run screening again to include them.</span>${closed ? "" : nextBtn("next-screen", "Next step: Run screening")}</div>`;
-  else if (counts.unscreened) stale.innerHTML = `<div class="insight nextstep"><span>${counts.unscreened} applicant${counts.unscreened > 1 ? "s are" : " is"} waiting. Run screening to check them against the six rules.</span>${closed ? "" : nextBtn("next-screen", "Next step: Run screening")}</div>`;
+  else if (counts.unscreened) stale.innerHTML = `<div class="insight nextstep"><span>${counts.unscreened} applicant${counts.unscreened > 1 ? "s are" : " is"} waiting. Run screening to check them against ${rulesText()}.</span>${closed ? "" : nextBtn("next-screen", "Next step: Run screening")}</div>`;
   else if (screened && counts.eligible && !closed) stale.innerHTML = `<div class="insight nextstep"><span>${ranked ? "Screening and ranking are up to date." : `Screening is complete: ${counts.eligible} of ${counts.all} applicants are eligible. Rank them to see the shortlist.`}</span>${nextBtn("next-rank", ranked ? "View ranking" : "Next step: Go to ranking")}</div>`;
   else stale.innerHTML = "";
   // filter + search
@@ -130,7 +142,7 @@ function render() {
   document.getElementById("delete-all-btn").disabled = !all.length;
   document.getElementById("export-apps-btn").disabled = !all.length;
   document.getElementById("export-reasons-btn").disabled = !screened;
-  document.getElementById("count-hint").textContent = rows.length ? `Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + slice.length} of ${rows.length}` : "";
+  document.getElementById("count-hint").textContent = rows.length ? `Click any row for details · Showing ${(page - 1) * pageSize + 1}–${(page - 1) * pageSize + slice.length} of ${rows.length}` : "";
   document.getElementById("pager").innerHTML = rows.length > 10 || pages > 1 ?
     `<span>Rows per page <select id="psize">${[10, 25, 50].map((n) => `<option ${n === pageSize ? "selected" : ""}>${n}</option>`).join("")}</select></span>` +
     `<span class="btns"><button class="btn-secondary small" id="prev" ${page <= 1 ? "disabled" : ""}>Previous</button><span>Page ${page} of ${pages}</span><button class="btn-secondary small" id="next" ${page >= pages ? "disabled" : ""}>Next</button></span>` : "";
@@ -173,7 +185,7 @@ async function reload() {
 function applyStatus() {
   const closed = program.status === "Closed", btn = document.getElementById("run-screening-btn");
   btn.disabled = closed; btn.title = closed ? "This program is closed. Reopen it by editing the program." : "";
-  document.getElementById("run-hint").textContent = closed ? "Program is closed" : "Checks every applicant against the six rules";
+  document.getElementById("run-hint").textContent = closed ? "Program is closed" : `Checks every applicant against ${rulesText()}`;
   const dw = document.getElementById("deadline-warning");
   if (program.application_deadline && new Date(program.application_deadline + "T23:59:59") < new Date()) {
     dw.innerHTML = `<div class="alert warn" role="status"><span><strong>Past deadline:</strong> The application deadline (${escapeHtml(program.application_deadline)}) has passed.</span><a class="btn-secondary small" href="program-form.html?scholarship=${encodeURIComponent(scholarshipId)}">Update deadline</a></div>`;
@@ -287,7 +299,7 @@ async function afterEdit(res, name, id) {
     `<p style="margin:0 0 1rem;color:var(--ink-muted)">The saved ${ranked ? "screening result and ranking" : "screening result"} for this applicant ${ranked ? "no longer match" : "no longer matches"} the new details. Choose how to update ${ranked ? "them" : "it"}.</p>` +
     `<div class="choice-list">` +
     `<button type="button" class="choice" data-one><b>${verb} this applicant only</b><span>${ranked ? "Everyone else keeps their score. Rank positions and shortlist places are re-ordered, so other applicants may move up or down." : "Everyone else keeps their screening result."}</span></button>` +
-    `<button type="button" class="choice" data-all><b>${verb} all applicants again</b><span>${ranked ? "Checks every applicant against the six rules again and replaces the whole ranking." : "Checks every applicant against the six rules again."}</span></button>` +
+    `<button type="button" class="choice" data-all><b>${verb} all applicants again</b><span>${ranked ? `Checks every applicant against ${rulesText()} again and replaces the whole ranking.` : `Checks every applicant against ${rulesText()} again.`}</span></button>` +
     `<button type="button" class="choice quiet" data-later><b>Decide later</b><span>${escapeHtml(name)} will show as Not screened${ranked ? " and will not appear in the ranking" : ""} until you do.</span></button></div>`);
   const busy = (b) => { $$(".choice", layer.el).forEach((x) => (x.disabled = true)); b.classList.add("loading"); };
   $("[data-later]", layer.el).addEventListener("click", () => { layer.close(); toast(`${name} is not screened yet.`, "info"); });
@@ -392,7 +404,7 @@ function screenSelected() {
   const layer = openModal(`<div class="modal-head"><h2>${verb} ${n} selected applicant${n > 1 ? "s" : ""}?</h2></div>` +
     `<div class="choice-list">` +
     `<button type="button" class="choice" data-one><b>${verb} the ${n} selected only</b><span>${ranked ? "Everyone else keeps their score. Rank positions and shortlist places are re-ordered, so other applicants may move up or down." : "Everyone else keeps their screening result."}</span></button>` +
-    `<button type="button" class="choice" data-all><b>${verb} all applicants again</b><span>${ranked ? "Checks every applicant against the six rules again and replaces the whole ranking." : "Checks every applicant against the six rules again."}</span></button>` +
+    `<button type="button" class="choice" data-all><b>${verb} all applicants again</b><span>${ranked ? `Checks every applicant against ${rulesText()} again and replaces the whole ranking.` : `Checks every applicant against ${rulesText()} again.`}</span></button>` +
     `<button type="button" class="choice quiet" data-no><b>Cancel</b><span>Nothing changes.</span></button></div>`);
   const busy = (b) => { $$(".choice", layer.el).forEach((x) => (x.disabled = true)); b.classList.add("loading"); };
   $("[data-no]", layer.el).addEventListener("click", () => layer.close());
@@ -437,18 +449,22 @@ function renderSummary() {
 }
 
 // ---------- import (modal with drag and drop) ----------
-const TEMPLATE = "full_name,gwa,entrance_score,household_income,course,year_level,location\nJuan Dela Cruz,1.75,88,180000,BS Computer Science,2,Lapu-Lapu City\n";
+function buildCsvTemplate() {
+  const isShs = program && program.grade_scale === "SHS_PERCENT";
+  const g1 = isShs ? "92" : "1.55", g2 = isShs ? "88" : "1.85";
+  return `full_name,gwa,entrance_score,household_income,course,year_level,location\nJuan Dela Cruz,${g1},88,180000,BS Computer Science,2,Lapu-Lapu City\nMaria Clara Santos,${g2},91,145000,BS Information Technology,1,Mandaue City\n`;
+}
 function openImport() {
-  const layer = openModal(`<div class="modal-head"><h2>Import applicants</h2></div>
+  const layer = openModal(`<div class="modal-head" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap"><h2>Import applicants</h2><button class="btn-secondary small" id="tpl" type="button">${ICON.download}Download CSV template</button></div>
     <div class="dropzone" id="dz" tabindex="0"><div class="ico">${ICON.upload}</div><b>Drop a .csv or .xlsx file here</b><div class="hint">or click to choose a file (max 2 MB, 1000 rows)</div></div>
     <input type="file" id="imp-file" accept=".csv,.xlsx" hidden>
-    <p class="hint" style="margin:.7rem 0 0">Columns: full_name, gwa, entrance_score, household_income, course, year_level, location. <a href="#" id="tpl">Download a template</a></p>
+    <p class="hint" style="margin:.7rem 0 0">Columns: <code>full_name, gwa, entrance_score, household_income, course, year_level, location</code>.</p>
     <div id="imp-out" style="margin-top:1rem"></div>
     <div class="modal-actions"><button class="btn-secondary" data-cancel type="button">Close</button><button class="btn-primary" id="imp-go" type="button" hidden>Import</button></div>`, { wide: true });
   const dz = $("#dz", layer.el), inp = $("#imp-file", layer.el), out = $("#imp-out", layer.el), go = $("#imp-go", layer.el);
   let file = null;
   $("[data-cancel]", layer.el).addEventListener("click", () => layer.close());
-  $("#tpl", layer.el).addEventListener("click", (e) => { e.preventDefault(); downloadBlob(new Blob([TEMPLATE], { type: "text/csv" }), "edumatch_applicants_template.csv"); });
+  $("#tpl", layer.el).addEventListener("click", (e) => { e.preventDefault(); downloadBlob(new Blob([buildCsvTemplate()], { type: "text/csv" }), "edumatch_applicants_template.csv"); });
   dz.addEventListener("click", () => inp.click());
   dz.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inp.click(); } });
   ["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("drag"); }));

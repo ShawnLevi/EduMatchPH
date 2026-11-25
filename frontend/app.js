@@ -196,11 +196,15 @@ async function withLoading(btn, fn) {
   try { return await fn(); } finally { btn.classList.remove("loading"); btn.disabled = false; }
 }
 
-function login(organizationId, email, password) {
-  return apiFetch("/api/login", { method: "POST", headers: JSON_HEADERS,
+async function login(organizationId, email, password) {
+  clearThemeCache();
+  const me = await apiFetch("/api/login", { method: "POST", headers: JSON_HEADERS,
     body: JSON.stringify({ organization_id: organizationId, email, password }) });
+  saveThemeCache(me);
+  return me;
 }
 async function logout() {
+  clearThemeCache();
   try {
     await apiFetch("/api/logout", { method: "POST" });
   } catch (err) {
@@ -240,9 +244,11 @@ function statusPill(status) {
 function programTitle(p) { return `${p.scholarship_name} (${p.provider || ""})`; }
 function ruleSummaryChips(p) {
   const gwa = p.higher_is_better ? `GWA ≥ ${p.gwa_limit}` : `GWA ≤ ${p.gwa_limit}`;
-  return [gwa, "Income ≤ " + pesoShort(p.income_cap), "Entrance ≥ " + p.min_entrance,
-          p.eligible_field === "ANY" ? "Any course" : p.eligible_field, yearsLabel(p.eligible_years), p.location_req]
-    .map((t) => `<span class="rule-chip">${escapeHtml(t)}</span>`).join("");
+  const list = [gwa, "Income ≤ " + pesoShort(p.income_cap), "Entrance ≥ " + p.min_entrance,
+    p.eligible_field === "ANY" ? "Any course" : p.eligible_field, yearsLabel(p.eligible_years), p.location_req];
+  const extra = Array.isArray(p.additional_requirements) ? p.additional_requirements.length : 0;
+  if (extra > 0) list.push(`+${extra} custom req${extra > 1 ? "s" : ""}`);
+  return list.map((t) => `<span class="rule-chip">${escapeHtml(t)}</span>`).join("");
 }
 function stepperHtml(program, sid, active) {
   const order = { Open: 0, Screening: 1, Ranking: 2, Closed: 3 };
@@ -264,44 +270,168 @@ function hexToRgb(hex) {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || "").trim());
   return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
 }
+function relLuminance(rgb) {
+  if (!rgb) return 0.5;
+  const lin = (c) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
+  return 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+}
+function shadeHex(rgb, factor) {
+  const clamp = (n) => Math.max(0, Math.min(255, Math.round(n)));
+  return "#" + [rgb[0] * factor, rgb[1] * factor, rgb[2] * factor].map((n) => clamp(n).toString(16).padStart(2, "0")).join("");
+}
+function compressImageFile(file, { maxDim = 256, mimeType = "image/png", quality = 0.85 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (!file) return reject(new Error("No file selected."));
+    if (file.type === "image/svg+xml" && file.size <= 350_000) {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result || ""));
+      r.onerror = () => reject(new Error("Could not read image."));
+      r.readAsDataURL(file);
+      return;
+    }
+    const r = new FileReader();
+    r.onerror = () => reject(new Error("Could not read image."));
+    r.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Unsupported image format."));
+      img.onload = () => {
+        let w = img.naturalWidth || img.width || maxDim;
+        let h = img.naturalHeight || img.height || maxDim;
+        if (w > maxDim || h > maxDim) {
+          const ratio = Math.min(maxDim / w, maxDim / h);
+          w = Math.max(1, Math.round(w * ratio));
+          h = Math.max(1, Math.round(h * ratio));
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (mimeType === "image/jpeg") {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, w, h);
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL(mimeType, quality));
+      };
+      img.src = String(r.result || "");
+    };
+    r.readAsDataURL(file);
+  });
+}
 
-function applyOrgTheme(me) {
+const THEME_CACHE_KEY = "edumatch_theme_v2";
+function saveThemeCache(me) {
   if (!me) return;
-  if (String(me.role || "").toLowerCase() === "super_admin") return;
-  const org = me.organization || me;
-  const root = document.documentElement.style;
-  if (org.theme_primary_color) {
-    root.setProperty("--navy-900", org.theme_primary_color);
-    root.setProperty("--navy-800", org.theme_primary_color);
-  }
-  if (org.theme_accent_color) {
-    root.setProperty("--amber-500", org.theme_accent_color);
-    root.setProperty("--amber-600", org.theme_accent_color);
-  }
-  const surfOp = org.theme_surface_opacity != null ? Number(org.theme_surface_opacity) : 0.94;
-  if (org.theme_bg_image) {
-    document.body.classList.add("has-bg-image");
-    root.setProperty("--org-bg-image", `url("${org.theme_bg_image.replace(/"/g, '\\"')}")`);
-    root.setProperty("--org-bg-opacity", String(org.theme_bg_opacity != null ? org.theme_bg_opacity : 1));
-    const rgb = hexToRgb(org.theme_bg_color || "#FBF8F2") || [251, 248, 242];
-    document.body.classList.add("has-surface");
-    root.setProperty("--org-surface-bg", `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${surfOp})`);
-  } else if (org.theme_bg_color) {
-    const rgb = hexToRgb(org.theme_bg_color);
-    if (rgb) {
-      document.body.classList.add("has-surface");
-      root.setProperty("--org-surface-bg", `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${surfOp})`);
-    }
-    root.setProperty("--cream", org.theme_bg_color);
-  }
-  if (org.logo_path) {
-    const img = $(".brand img");
-    if (img) {
-      img.src = org.logo_path;
-      img.onerror = () => { img.src = "EduMatchPH_logo.jpg"; };
-    }
+  try {
+    localStorage.setItem(THEME_CACHE_KEY, JSON.stringify(me));
+  } catch (e) {
+    try {
+      const slim = Object.assign({}, me, {
+        organization: me.organization ? Object.assign({}, me.organization, { theme_bg_image: null }) : null,
+      });
+      localStorage.setItem(THEME_CACHE_KEY, JSON.stringify(slim));
+    } catch (e2) {}
   }
 }
+function loadThemeCache() {
+  try {
+    const raw = localStorage.getItem(THEME_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function clearThemeCache() {
+  try { localStorage.removeItem(THEME_CACHE_KEY); } catch (e) {}
+  resetRootTheme();
+}
+function resetRootTheme() {
+  const root = document.documentElement.style;
+  ["--header-bg", "--header-ink", "--header-border", "--header-trigger-bg", "--header-trigger-hover",
+   "--amber-500", "--amber-600", "--btn-primary-ink", "--btn-primary-border",
+   "--wrap-ink", "--wrap-muted", "--cream",
+   "--org-bg-image", "--org-bg-opacity", "--org-surface-bg"].forEach((p) => root.removeProperty(p));
+  if (document.body) {
+    document.body.classList.remove("has-bg-image", "has-surface");
+  }
+}
+
+function applyOrgTheme(me) {
+  resetRootTheme();
+  if (!me) return;
+  const role = String(me.role || "").toLowerCase();
+  const isSuper = Boolean(me.is_super_admin || role === "super_admin" || role === "superadmin");
+  const brandImg = $(".brand img");
+  if (isSuper) {
+    if (brandImg) brandImg.src = "EduMatchPH_icon.svg";
+    return;
+  }
+  const org = me.organization || me;
+  const root = document.documentElement.style;
+
+  if (org.theme_primary_color) {
+    const pRgb = hexToRgb(org.theme_primary_color);
+    root.setProperty("--header-bg", org.theme_primary_color);
+    const lightHeader = pRgb && relLuminance(pRgb) > 0.28;
+    root.setProperty("--header-ink", lightHeader ? "#0F172A" : "#FFFFFF");
+    root.setProperty("--header-border", lightHeader ? "rgba(15,23,42,.22)" : "rgba(255,255,255,.22)");
+    root.setProperty("--header-trigger-bg", lightHeader ? "rgba(15,23,42,.06)" : "rgba(255,255,255,.08)");
+    root.setProperty("--header-trigger-hover", lightHeader ? "rgba(15,23,42,.13)" : "rgba(255,255,255,.16)");
+  }
+
+  if (org.theme_accent_color) {
+    const aRgb = hexToRgb(org.theme_accent_color);
+    const aLum = aRgb ? relLuminance(aRgb) : 0.45;
+    root.setProperty("--amber-500", org.theme_accent_color);
+    root.setProperty("--amber-600", aRgb ? shadeHex(aRgb, aLum > 0.85 ? 0.93 : 0.88) : org.theme_accent_color);
+    root.setProperty("--btn-primary-ink", aLum > 0.30 ? "#0F172A" : "#FFFFFF");
+    root.setProperty("--btn-primary-border", aLum > 0.82 ? "rgba(15,23,42,.2)" : "transparent");
+  }
+
+  const surfOp = org.theme_surface_opacity != null ? Number(org.theme_surface_opacity) : 0.94;
+  const blockHex = org.theme_bg_color || "#FBF8F2";
+  const bRgb = hexToRgb(blockHex) || [251, 248, 242];
+  const effRgb = [
+    bRgb[0] * surfOp + 251 * (1 - surfOp),
+    bRgb[1] * surfOp + 248 * (1 - surfOp),
+    bRgb[2] * surfOp + 242 * (1 - surfOp),
+  ];
+  const darkBlock = relLuminance(effRgb) < 0.24;
+  root.setProperty("--wrap-ink", darkBlock ? "#FFFFFF" : "#0F172A");
+  root.setProperty("--wrap-muted", darkBlock ? "rgba(255,255,255,.84)" : "#334155");
+
+  const applyBodyClasses = () => {
+    if (!document.body) return;
+    if (org.theme_bg_image) {
+      document.body.classList.add("has-bg-image", "has-surface");
+      root.setProperty("--org-bg-image", `url("${String(org.theme_bg_image).replace(/"/g, '\\"')}")`);
+      root.setProperty("--org-bg-opacity", String(org.theme_bg_opacity != null ? org.theme_bg_opacity : 1));
+      root.setProperty("--org-surface-bg", `rgba(${bRgb[0]},${bRgb[1]},${bRgb[2]},${surfOp})`);
+    } else if (org.theme_bg_color && String(org.theme_bg_color).toUpperCase() !== "#FBF8F2") {
+      document.body.classList.add("has-surface");
+      root.setProperty("--org-surface-bg", `rgba(${bRgb[0]},${bRgb[1]},${bRgb[2]},${surfOp})`);
+    }
+  };
+  if (document.body) applyBodyClasses();
+  else document.addEventListener("DOMContentLoaded", applyBodyClasses, { once: true });
+
+  if (brandImg) {
+    const validLogo = org.logo_path && !(String(org.logo_path).startsWith("data:") && String(org.logo_path).length === 255)
+      ? org.logo_path : "EduMatchPH_icon.svg";
+    brandImg.onerror = () => { brandImg.onerror = null; brandImg.src = "EduMatchPH_icon.svg"; };
+    brandImg.src = validLogo;
+  }
+}
+
+// Synchronous zero-flash theme restoration before first paint of page shell:
+(() => {
+  const p = window.location.pathname.toLowerCase();
+  if (p.endsWith("login.html") && window.location.search.includes("logged_out=1")) {
+    clearThemeCache();
+    return;
+  }
+  if (!p.endsWith("login.html") && !p.endsWith("index.html") && !p.endsWith("landing.html")) {
+    const cached = loadThemeCache();
+    if (cached) applyOrgTheme(cached);
+  }
+})();
 
 function setHeaderAvatar(me) {
   const el = document.getElementById("avatar");
@@ -336,16 +466,14 @@ function openProfileModal(me) {
   );
   const f = $("#prof-form", layer.el);
   const prev = $("#prof-preview", layer.el);
-  $("#prof-file", f).addEventListener("change", (e) => {
+  $("#prof-file", f).addEventListener("change", async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    if (file.size > 1_000_000) { toast("Please choose an image smaller than 1 MB.", "error"); e.target.value = ""; return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      pendingAvatar = String(reader.result || "");
+    if (file.size > 4_000_000) { toast("Please choose an image smaller than 4 MB.", "error"); e.target.value = ""; return; }
+    try {
+      pendingAvatar = await compressImageFile(file, { maxDim: 256, mimeType: "image/png" });
       prev.innerHTML = `<img src="${escapeHtml(pendingAvatar)}" alt="">`;
-    };
-    reader.readAsDataURL(file);
+    } catch (er) { toast(er.message || "Could not process image.", "error"); e.target.value = ""; }
   });
   $("#prof-clear", f).addEventListener("click", () => {
     pendingAvatar = null;
@@ -365,6 +493,7 @@ function openProfileModal(me) {
         });
         me.full_name = res.full_name;
         me.avatar_url = res.avatar_url;
+        saveThemeCache(me);
         const nameEl = document.getElementById("admin-name");
         const metaEl = document.getElementById("acct-meta-name");
         if (nameEl) nameEl.textContent = res.full_name;
@@ -423,8 +552,12 @@ async function renderShell(active) {
   }
   nav += `<a href="audit-logs.html" class="${active === "audit" ? "active" : ""}" id="nav-audit" hidden>${ICON.history}Audit logs</a>`;
   nav += `<a href="super-admin.html" class="${active === "super" ? "active" : ""}" id="nav-super" hidden>${ICON.shield}Super Admin</a>`;
+  const cachedMe = loadThemeCache();
+  const cachedOrg = cachedMe && String(cachedMe.role || "").toLowerCase() !== "super_admin" && cachedMe.organization;
+  const bootLogo = (cachedOrg && cachedOrg.logo_path && !(String(cachedOrg.logo_path).startsWith("data:") && String(cachedOrg.logo_path).length === 255))
+    ? cachedOrg.logo_path : "EduMatchPH_icon.svg";
   document.getElementById("shell").innerHTML =
-    '<header class="app-header"><a class="brand" href="programs.html"><img src="EduMatchPH_logo.jpg" alt="">EduMatch PH</a>' +
+    `<header class="app-header"><a class="brand" href="programs.html"><img src="${escapeHtml(bootLogo)}" onerror="this.onerror=null;this.src='EduMatchPH_icon.svg'" alt="">EduMatch PH</a>` +
     '<div class="who"><span class="org-badge" id="org-name"></span>' +
     '<div class="account-menu" id="account-menu">' +
     '<button class="account-trigger" id="account-trigger" type="button" aria-expanded="false" aria-haspopup="menu">' +
@@ -437,6 +570,29 @@ async function renderShell(active) {
     '<button type="button" id="menu-logout" class="danger" role="menuitem">' + ICON.logout + 'Log out</button>' +
     '</div></div></div></header>' +
     '<div class="crumbs" id="crumbs"></div><nav class="subnav" aria-label="Sections">' + nav + "</nav>";
+
+  const paintHeaderUser = (me) => {
+    if (!me) return;
+    document.getElementById("admin-name").textContent = me.full_name || "";
+    document.getElementById("acct-meta-name").textContent = me.full_name || "";
+    document.getElementById("acct-meta-role").textContent = `${String(me.organization_id || "").toUpperCase()} · ${me.role || "admin"}`;
+    setHeaderAvatar(me);
+    const role = String(me.role || "").toLowerCase();
+    const isSuper = Boolean(me.is_super_admin || role === "super_admin" || role === "superadmin");
+    document.getElementById("org-name").textContent = isSuper ? "GLOBAL" : String(me.organization_id || "").toUpperCase();
+    document.body.dataset.org = String(me.organization_id || "").toLowerCase();
+    applyOrgTheme(me);
+    if (isSuper || role === "owner") {
+      const aLink = document.getElementById("nav-audit");
+      if (aLink) aLink.hidden = false;
+      const sLink = document.getElementById("nav-super");
+      if (sLink) {
+        sLink.hidden = false;
+        if (!isSuper) sLink.innerHTML = ICON.shield + "Team &amp; Branding";
+      }
+    }
+  };
+  if (cachedMe) paintHeaderUser(cachedMe);
 
   let CURRENT_ME = null;
   const trigger = document.getElementById("account-trigger");
@@ -474,24 +630,8 @@ async function renderShell(active) {
     active === "new" ? "New program" : active === "audit" ? "Audit logs" : active === "super" ? "Super Admin" : "");
   getMe().then((me) => {
     CURRENT_ME = me;
-    document.getElementById("admin-name").textContent = me.full_name;
-    document.getElementById("acct-meta-name").textContent = me.full_name;
-    document.getElementById("acct-meta-role").textContent = `${String(me.organization_id || "").toUpperCase()} · ${me.role || "admin"}`;
-    setHeaderAvatar(me);
-    document.getElementById("org-name").textContent = String(me.role || "").toLowerCase() === "super_admin" ? "GLOBAL" : String(me.organization_id).toUpperCase();
-    document.body.dataset.org = String(me.organization_id).toLowerCase();
-    applyOrgTheme(me);
-    const role = String(me.role || "").toLowerCase();
-    const isSuper = Boolean(me.is_super_admin || role === "super_admin" || role === "superadmin");
-    if (isSuper || role === "owner") {
-      const aLink = document.getElementById("nav-audit");
-      if (aLink) aLink.hidden = false;
-      const sLink = document.getElementById("nav-super");
-      if (sLink) {
-        sLink.hidden = false;
-        if (!isSuper) sLink.innerHTML = ICON.shield + "Team &amp; Branding";
-      }
-    }
+    saveThemeCache(me);
+    paintHeaderUser(me);
     if (me.must_change_pw || me.must_change_password || me.force_password_change) {
       openChangePasswordModal({ forced: true });
     }

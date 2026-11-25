@@ -151,3 +151,16 @@ def delete_or_archive_scholarship(scholarship_id):
                      f"Archived program {program['scholarship_name']}")
         conn.commit()
         return jsonify({"archived": scholarship_id, "deleted": False})
+
+
+@programs_bp.route("/api/scholarships/<int:scholarship_id>/restore", methods=["POST"])
+def restore_scholarship(scholarship_id):
+    with db() as (conn, cur):
+        program = load_scholarship(cur, scholarship_id)
+        cur.execute(
+            "UPDATE scholarship_programs SET is_archived=0, status='Open'"
+            " WHERE scholarship_id=%s", (scholarship_id,))
+        record_audit(cur, "PROGRAM_RESTORE", "scholarship", scholarship_id,
+                     f"Restored archived program {program['scholarship_name']}")
+        conn.commit()
+        return jsonify({"restored": scholarship_id})
