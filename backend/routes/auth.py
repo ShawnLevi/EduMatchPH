@@ -1,7 +1,7 @@
 from flask import Blueprint, abort, jsonify, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from db import db
+from db import db, json_safe
 from helpers import json_body, load_scales, record_audit
 from reference import (COURSES, FIELDS, LOCALITIES, LOCATION_REQ_CHOICES,
                        STATUSES)
@@ -67,7 +67,8 @@ def login():
                      admin_id=admin["admin_id"])
         cur.execute(
             "SELECT organization_id, organization_name, logo_path,"
-            " theme_primary_color, theme_accent_color, theme_bg_color"
+            " theme_primary_color, theme_accent_color, theme_bg_color,"
+            " theme_bg_image, theme_bg_opacity, theme_surface_opacity"
             " FROM organizations WHERE organization_id=%s",
             (admin["organization_id"],))
         org_row = cur.fetchone()
@@ -85,7 +86,7 @@ def login():
                     "role": admin["role"],
                     "must_change_pw": bool(admin["must_change_pw"]),
                     "avatar_url": admin.get("avatar_url"),
-                    "organization": org_row})
+                    "organization": json_safe(org_row) if org_row else None})
 
 
 @auth_bp.route("/api/logout", methods=["POST"])
@@ -115,7 +116,8 @@ def me():
             abort(401, "Not logged in")
         cur.execute(
             "SELECT organization_id, organization_name, logo_path,"
-            " theme_primary_color, theme_accent_color, theme_bg_color"
+            " theme_primary_color, theme_accent_color, theme_bg_color,"
+            " theme_bg_image, theme_bg_opacity, theme_surface_opacity"
             " FROM organizations WHERE organization_id=%s",
             (admin["organization_id"],))
         org_row = cur.fetchone()
@@ -126,7 +128,7 @@ def me():
                     "role": admin["role"],
                     "must_change_pw": bool(admin["must_change_pw"]),
                     "avatar_url": admin.get("avatar_url"),
-                    "organization": org_row})
+                    "organization": json_safe(org_row) if org_row else None})
 
 
 @auth_bp.route("/api/me/profile", methods=["PUT"])

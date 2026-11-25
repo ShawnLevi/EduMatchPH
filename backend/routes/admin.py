@@ -22,14 +22,34 @@ def _clean_hex(value, label):
     return val.upper()
 
 
+def _clean_opacity(value, default, label):
+    if value is None or value == "":
+        return default
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        abort(400, f"{label} must be a number between 0 and 1")
+    if not 0.0 <= v <= 1.0:
+        abort(400, f"{label} must be between 0 and 1")
+    return round(v, 2)
+
+
+def _clean_media(value, label):
+    val = str(value or "").strip() or None
+    if val and len(val) > 1_500_000:
+        abort(400, f"{label} is too large (max ~1 MB)")
+    return val
+
+
 @admin_bp.route("/api/organizations", methods=["GET"])
 def list_organizations():
     with db() as (conn, cur):
         cur.execute(
             "SELECT organization_id, organization_name, logo_path,"
-            " theme_primary_color, theme_accent_color, theme_bg_color"
+            " theme_primary_color, theme_accent_color, theme_bg_color,"
+            " theme_bg_image, theme_bg_opacity, theme_surface_opacity"
             " FROM organizations ORDER BY organization_name")
-        return jsonify(cur.fetchall())
+        return jsonify([json_safe(r) for r in cur.fetchall()])
 
 
 @admin_bp.route("/api/organizations", methods=["POST"])
@@ -43,10 +63,13 @@ def create_organization():
                    "numbers, hyphens or underscores")
     if not org_name or len(org_name) > 150:
         abort(400, "Organization name is required (max 150 characters)")
-    logo_path = str(data.get("logo_path") or "").strip() or None
+    logo_path = _clean_media(data.get("logo_path"), "Logo")
     primary = _clean_hex(data.get("theme_primary_color"), "Primary color")
     accent = _clean_hex(data.get("theme_accent_color"), "Accent color")
     bg = _clean_hex(data.get("theme_bg_color"), "Background color")
+    bg_img = _clean_media(data.get("theme_bg_image"), "Background image")
+    bg_op = _clean_opacity(data.get("theme_bg_opacity"), 1.0, "Background opacity")
+    surf_op = _clean_opacity(data.get("theme_surface_opacity"), 0.94, "Content block opacity")
     with db() as (conn, cur):
         cur.execute("SELECT 1 FROM organizations WHERE organization_id=%s",
                     (org_id,))
@@ -54,9 +77,10 @@ def create_organization():
             abort(409, "An organization with this ID already exists")
         cur.execute(
             "INSERT INTO organizations (organization_id, organization_name,"
-            " logo_path, theme_primary_color, theme_accent_color, theme_bg_color)"
-            " VALUES (%s,%s,%s,%s,%s,%s)",
-            (org_id, org_name, logo_path, primary, accent, bg))
+            " logo_path, theme_primary_color, theme_accent_color, theme_bg_color,"
+            " theme_bg_image, theme_bg_opacity, theme_surface_opacity)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            (org_id, org_name, logo_path, primary, accent, bg, bg_img, bg_op, surf_op))
         record_audit(cur, "ORG_CREATE", "organization", org_id,
                      f"Created organization {org_name}")
         conn.commit()
@@ -72,10 +96,13 @@ def update_organization(org_id):
     org_name = str(data.get("organization_name") or "").strip()
     if not org_name or len(org_name) > 150:
         abort(400, "Organization name is required (max 150 characters)")
-    logo_path = str(data.get("logo_path") or "").strip() or None
+    logo_path = _clean_media(data.get("logo_path"), "Logo")
     primary = _clean_hex(data.get("theme_primary_color"), "Primary color")
     accent = _clean_hex(data.get("theme_accent_color"), "Accent color")
     bg = _clean_hex(data.get("theme_bg_color"), "Background color")
+    bg_img = _clean_media(data.get("theme_bg_image"), "Background image")
+    bg_op = _clean_opacity(data.get("theme_bg_opacity"), 1.0, "Background opacity")
+    surf_op = _clean_opacity(data.get("theme_surface_opacity"), 0.94, "Content block opacity")
     with db() as (conn, cur):
         cur.execute("SELECT 1 FROM organizations WHERE organization_id=%s",
                     (org_id,))
@@ -83,9 +110,10 @@ def update_organization(org_id):
             abort(404, "Organization not found")
         cur.execute(
             "UPDATE organizations SET organization_name=%s, logo_path=%s,"
-            " theme_primary_color=%s, theme_accent_color=%s, theme_bg_color=%s"
+            " theme_primary_color=%s, theme_accent_color=%s, theme_bg_color=%s,"
+            " theme_bg_image=%s, theme_bg_opacity=%s, theme_surface_opacity=%s"
             " WHERE organization_id=%s",
-            (org_name, logo_path, primary, accent, bg, org_id))
+            (org_name, logo_path, primary, accent, bg, bg_img, bg_op, surf_op, org_id))
         record_audit(cur, "ORG_UPDATE", "organization", org_id,
                      f"Updated branding/details for {org_id}")
         conn.commit()

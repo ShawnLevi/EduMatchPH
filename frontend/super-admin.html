@@ -19,6 +19,19 @@
 
   <div class="card">
     <div class="card-head">
+      <h2>Organizations &amp; Branding</h2>
+      <span class="hint">Customize logo, colors, background image, and transparency levels.</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Organization</th><th>Theme Colors</th><th>Background &amp; Transparency</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody id="orgs-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
       <h2>Administrator accounts</h2>
       <div class="chips" id="status-chips"></div>
     </div>
@@ -34,8 +47,29 @@
 <script src="app.js"></script>
 <script>
 renderShell("super");
-let admins = [], orgs = [], statusFilter = "all";
+let admins = [], orgs = [], CURRENT_ME = null, statusFilter = "all";
 const body = document.getElementById("admins-body");
+const orgsBody = document.getElementById("orgs-body");
+
+function renderOrgsTable() {
+  const role = String(CURRENT_ME && CURRENT_ME.role || "").toLowerCase();
+  const isSuper = role === "super_admin" || role === "superadmin";
+  const visible = isSuper ? orgs : orgs.filter((o) => o.organization_id === CURRENT_ME.organization_id);
+  if (!visible.length) {
+    orgsBody.innerHTML = '<tr><td colspan="4" class="hint">No organizations loaded.</td></tr>';
+    return;
+  }
+  const swatch = (c, lbl) => c ? `<span title="${lbl}: ${escapeHtml(c)}" style="display:inline-block;width:16px;height:16px;border-radius:4px;background:${escapeHtml(c)};border:1px solid var(--line);vertical-align:middle;margin-right:4px"></span>` : "";
+  orgsBody.innerHTML = visible.map((o) => {
+    const bgOp = o.theme_bg_opacity != null ? Math.round(Number(o.theme_bg_opacity) * 100) : 100;
+    const surfOp = o.theme_surface_opacity != null ? Math.round(Number(o.theme_surface_opacity) * 100) : 94;
+    return `<tr><td><b>${escapeHtml(o.organization_name)}</b><br><span class="hint">${escapeHtml(String(o.organization_id).toUpperCase())}</span></td>` +
+      `<td>${swatch(o.theme_primary_color, "Primary")}${swatch(o.theme_accent_color, "Accent")}${swatch(o.theme_bg_color, "Center Block")}` +
+      `<span class="hint">${escapeHtml(o.theme_primary_color || "#0B1E3D")} / ${escapeHtml(o.theme_accent_color || "#E8A63C")}</span></td>` +
+      `<td class="hint">${o.theme_bg_image ? "Custom image" : "Default gradient"} (${bgOp}% bg · ${surfOp}% block)</td>` +
+      `<td class="row-actions"><button class="btn-secondary small" data-edit-org="${escapeHtml(o.organization_id)}" type="button">Edit branding</button></td></tr>`;
+  }).join("");
+}
 
 function render() {
   const counts = { all: admins.length, active: 0, inactive: 0 };
@@ -68,37 +102,81 @@ function render() {
   }).join("");
 }
 
-function openOrgModal() {
-  const colorRow = (id, label, def) => `<div class="field"><label for="${id}">${label}</label><div class="color-pick-row"><input type="color" id="${id}-pick" value="${def}"><input type="text" id="${id}" value="${def}"></div></div>`;
-  const layer = openModal(`<div class="modal-head"><h2>Onboard new organization</h2></div><form id="org-form" novalidate>
+function openOrgModal(existing) {
+  const editing = !!existing;
+  const o = existing || {};
+  const colorRow = (id, label, def) => `<div class="field"><label for="${id}">${label}</label><div class="color-pick-row"><input type="color" id="${id}-pick" value="${escapeHtml(def)}"><input type="text" id="${id}" value="${escapeHtml(def)}"></div></div>`;
+  const bgOpVal = o.theme_bg_opacity != null ? Number(o.theme_bg_opacity) : 1.0;
+  const surfOpVal = o.theme_surface_opacity != null ? Number(o.theme_surface_opacity) : 0.94;
+  const layer = openModal(`<div class="modal-head"><h2>${editing ? "Edit organization branding" : "Onboard new organization"}</h2></div><form id="org-form" novalidate>
     <div class="grid2">
-      <div class="field"><label for="o-id">Organization code / ID</label><input id="o-id" placeholder="e.g. usc" required><span class="field-error" data-e="id"></span></div>
-      <div class="field"><label for="o-name">Organization name</label><input id="o-name" placeholder="e.g. University of San Carlos" required><span class="field-error" data-e="name"></span></div>
-      <div class="field" style="grid-column:1/-1"><label for="o-logo">Logo path or URL (optional)</label><input id="o-logo" placeholder="EduMatchPH_logo.jpg"></div>
-      ${colorRow("o-prim", "Primary color", "#0B1E3D")}
-      ${colorRow("o-acc", "Accent color", "#E8A63C")}
-      ${colorRow("o-bg", "Background color", "#FBF8F2")}
+      <div class="field"><label for="o-id">Organization code / ID</label><input id="o-id" value="${escapeHtml(o.organization_id || "")}" ${editing ? "disabled" : ""} placeholder="e.g. citu" required><span class="field-error" data-e="id"></span></div>
+      <div class="field"><label for="o-name">Organization name</label><input id="o-name" value="${escapeHtml(o.organization_name || "")}" placeholder="e.g. CIT-University" required><span class="field-error" data-e="name"></span></div>
+      <div class="field" style="grid-column:1/-1"><label for="o-logo">Logo path, URL, or upload image</label>
+        <input id="o-logo" value="${escapeHtml(o.logo_path || "")}" placeholder="EduMatchPH_logo.jpg">
+        <input type="file" id="o-logo-file" accept="image/*" style="margin-top:.3rem;font-size:.82rem"></div>
+      ${colorRow("o-prim", "Primary color (header & headings)", o.theme_primary_color || "#0B1E3D")}
+      ${colorRow("o-acc", "Accent color (buttons & highlights)", o.theme_accent_color || "#E8A63C")}
+      ${colorRow("o-bg", "Center content block color", o.theme_bg_color || "#FBF8F2")}
+      <div class="field"><label for="o-surf-op">Center block opacity (<span id="o-surf-op-lbl">${Math.round(surfOpVal * 100)}%</span>)</label>
+        <input type="range" id="o-surf-op" min="0.2" max="1" step="0.02" value="${surfOpVal}"></div>
+      <div class="field" style="grid-column:1/-1"><label for="o-bg-img">Background image URL or upload (optional)</label>
+        <div style="display:flex;gap:.5rem;align-items:center"><input id="o-bg-img" value="${escapeHtml(o.theme_bg_image || "")}" placeholder="https://... or upload below" style="flex:1"><button type="button" class="btn-ghost small" id="o-bg-clear">Clear</button></div>
+        <input type="file" id="o-bg-file" accept="image/*" style="margin-top:.3rem;font-size:.82rem"></div>
+      <div class="field" style="grid-column:1/-1"><label for="o-bg-op">Background image opacity (<span id="o-bg-op-lbl">${Math.round(bgOpVal * 100)}%</span>)</label>
+        <input type="range" id="o-bg-op" min="0" max="1" step="0.05" value="${bgOpVal}"></div>
     </div>
-    <div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button><button type="submit" class="btn-primary" id="o-save">Create organization</button></div></form>`, { wide: true });
+    <div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button><button type="submit" class="btn-primary" id="o-save">${editing ? "Save branding" : "Create organization"}</button></div></form>`, { wide: true });
   [["o-prim"], ["o-acc"], ["o-bg"]].forEach(([id]) => {
     const p = $("#" + id + "-pick", layer.el), t = $("#" + id, layer.el);
     p.addEventListener("input", () => { t.value = p.value; });
     t.addEventListener("input", () => { if (/^#[0-9a-f]{6}$/i.test(t.value)) p.value = t.value; });
   });
+  $("#o-surf-op", layer.el).addEventListener("input", (e) => { $("#o-surf-op-lbl", layer.el).textContent = Math.round(e.target.value * 100) + "%"; });
+  $("#o-bg-op", layer.el).addEventListener("input", (e) => { $("#o-bg-op-lbl", layer.el).textContent = Math.round(e.target.value * 100) + "%"; });
+  $("#o-bg-clear", layer.el).addEventListener("click", () => { $("#o-bg-img", layer.el).value = ""; $("#o-bg-file", layer.el).value = ""; });
+  const wireFile = (fileId, targetId) => {
+    $("#" + fileId, layer.el).addEventListener("change", (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      if (f.size > 1_000_000) { toast("Choose an image smaller than 1 MB.", "error"); e.target.value = ""; return; }
+      const r = new FileReader();
+      r.onload = () => { $("#" + targetId, layer.el).value = String(r.result || ""); };
+      r.readAsDataURL(f);
+    });
+  };
+  wireFile("o-logo-file", "o-logo");
+  wireFile("o-bg-file", "o-bg-img");
   $("[data-cancel]", layer.el).addEventListener("click", () => layer.close());
   $("#org-form", layer.el).addEventListener("submit", async (e) => {
     e.preventDefault();
-    const id = $("#o-id", layer.el).value.trim().toLowerCase(), name = $("#o-name", layer.el).value.trim();
+    const id = (editing ? o.organization_id : $("#o-id", layer.el).value.trim().toLowerCase());
+    const name = $("#o-name", layer.el).value.trim();
     if (!id) { $("[data-e=id]", layer.el).textContent = "Enter an organization ID."; return; }
     if (!name) { $("[data-e=name]", layer.el).textContent = "Enter the organization name."; return; }
-    if (!(await confirmDialog({ title: "Onboard organization?", message: `Create ${name} (${id.toUpperCase()}) with these branding settings?`, confirmText: "Onboard" }))) return;
+    const payload = {
+      organization_id: id,
+      organization_name: name,
+      logo_path: $("#o-logo", layer.el).value.trim() || null,
+      theme_primary_color: $("#o-prim", layer.el).value.trim(),
+      theme_accent_color: $("#o-acc", layer.el).value.trim(),
+      theme_bg_color: $("#o-bg", layer.el).value.trim(),
+      theme_bg_image: $("#o-bg-img", layer.el).value.trim() || null,
+      theme_bg_opacity: parseFloat($("#o-bg-op", layer.el).value),
+      theme_surface_opacity: parseFloat($("#o-surf-op", layer.el).value),
+    };
     await withLoading($("#o-save", layer.el), async () => {
       try {
-        await apiFetch("/api/organizations", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({
-          organization_id: id, organization_name: name, logo_path: $("#o-logo", layer.el).value.trim() || null,
-          theme_primary_color: $("#o-prim", layer.el).value.trim(), theme_accent_color: $("#o-acc", layer.el).value.trim(), theme_bg_color: $("#o-bg", layer.el).value.trim(),
-        }) });
-        layer.close(); toast(`Onboarded ${name}.`, "success"); loadData();
+        await apiFetch(editing ? `/api/organizations/${encodeURIComponent(id)}` : "/api/organizations", {
+          method: editing ? "PUT" : "POST", headers: JSON_HEADERS, body: JSON.stringify(payload),
+        });
+        layer.close();
+        toast(editing ? `Updated branding for ${name}.` : `Onboarded ${name}.`, "success");
+        if (editing && CURRENT_ME && CURRENT_ME.organization_id === id) {
+          location.reload();
+        } else {
+          loadData();
+        }
       } catch (err) { toast(friendlyError(err), "error"); }
     });
   });
@@ -191,12 +269,20 @@ body.addEventListener("click", async (e) => {
   }
 });
 
+orgsBody.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-edit-org]");
+  if (!b) return;
+  const org = orgs.find((x) => x.organization_id === b.dataset.editOrg);
+  if (org) openOrgModal(org);
+});
+
 async function loadData() {
   body.innerHTML = skeletonRows(6, 4);
   try {
     const [orgList, list] = await Promise.all([apiFetch("/api/organizations").catch(() => []), apiFetch("/api/admins")]);
     orgs = Array.isArray(orgList) ? orgList : (orgList && orgList.organizations) || [];
     admins = Array.isArray(list) ? list : (list && list.admins) || [];
+    renderOrgsTable();
     render();
   } catch (err) {
     body.innerHTML = `<tr><td colspan="6"><div class="empty"><h3>Unable to load accounts</h3><p>${escapeHtml(friendlyError(err))}</p></div></td></tr>`;
@@ -206,6 +292,7 @@ async function loadData() {
 (async () => {
   try {
     const me = await getMe();
+    CURRENT_ME = me;
     const role = String(me.role || "").toLowerCase();
     const isSuper = Boolean(me.is_super_admin || role === "super_admin" || role === "superadmin");
     if (!isSuper && role !== "owner") {

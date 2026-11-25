@@ -260,8 +260,14 @@ function stepperHtml(program, sid, active) {
 }
 function setStepSub(i, text) { const el = document.getElementById("step-sub-" + i); if (el) el.textContent = text; }
 
+function hexToRgb(hex) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || "").trim());
+  return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
+}
+
 function applyOrgTheme(me) {
   if (!me) return;
+  if (String(me.role || "").toLowerCase() === "super_admin") return;
   const org = me.organization || me;
   const root = document.documentElement.style;
   if (org.theme_primary_color) {
@@ -272,15 +278,27 @@ function applyOrgTheme(me) {
     root.setProperty("--amber-500", org.theme_accent_color);
     root.setProperty("--amber-600", org.theme_accent_color);
   }
-  if (org.theme_bg_color) {
+  const surfOp = org.theme_surface_opacity != null ? Number(org.theme_surface_opacity) : 0.94;
+  if (org.theme_bg_image) {
+    document.body.classList.add("has-bg-image");
+    root.setProperty("--org-bg-image", `url("${org.theme_bg_image.replace(/"/g, '\\"')}")`);
+    root.setProperty("--org-bg-opacity", String(org.theme_bg_opacity != null ? org.theme_bg_opacity : 1));
+    const rgb = hexToRgb(org.theme_bg_color || "#FBF8F2") || [251, 248, 242];
+    document.body.classList.add("has-surface");
+    root.setProperty("--org-surface-bg", `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${surfOp})`);
+  } else if (org.theme_bg_color) {
+    const rgb = hexToRgb(org.theme_bg_color);
+    if (rgb) {
+      document.body.classList.add("has-surface");
+      root.setProperty("--org-surface-bg", `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${surfOp})`);
+    }
     root.setProperty("--cream", org.theme_bg_color);
-    document.body.style.background = org.theme_bg_color;
   }
   if (org.logo_path) {
     const img = $(".brand img");
     if (img) {
       img.src = org.logo_path;
-      img.onerror = () => { img.src = "EduMatchPH_icon.svg"; };
+      img.onerror = () => { img.src = "EduMatchPH_logo.jpg"; };
     }
   }
 }
@@ -406,7 +424,7 @@ async function renderShell(active) {
   nav += `<a href="audit-logs.html" class="${active === "audit" ? "active" : ""}" id="nav-audit" hidden>${ICON.history}Audit logs</a>`;
   nav += `<a href="super-admin.html" class="${active === "super" ? "active" : ""}" id="nav-super" hidden>${ICON.shield}Super Admin</a>`;
   document.getElementById("shell").innerHTML =
-    '<header class="app-header"><a class="brand" href="programs.html"><img src="EduMatchPH_icon.svg" alt="">EduMatch PH</a>' +
+    '<header class="app-header"><a class="brand" href="programs.html"><img src="EduMatchPH_logo.jpg" alt="">EduMatch PH</a>' +
     '<div class="who"><span class="org-badge" id="org-name"></span>' +
     '<div class="account-menu" id="account-menu">' +
     '<button class="account-trigger" id="account-trigger" type="button" aria-expanded="false" aria-haspopup="menu">' +

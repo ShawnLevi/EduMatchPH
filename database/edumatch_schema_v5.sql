@@ -31,9 +31,12 @@ CREATE TABLE organizations (
     organization_id VARCHAR(20) PRIMARY KEY,   -- e.g. 'dost', 'uclm'
     organization_name VARCHAR(150) NOT NULL,
     logo_path VARCHAR(255),
-    theme_primary_color VARCHAR(7),            -- hex, e.g. '#002855'
+    theme_primary_color VARCHAR(7),            -- hex, e.g. '#0B1E3D'
     theme_accent_color VARCHAR(7),
-    theme_bg_color VARCHAR(7)                  -- hex, e.g. '#FAF7F2'
+    theme_bg_color VARCHAR(7),                 -- hex, e.g. '#FBF8F2' (center content block)
+    theme_bg_image MEDIUMTEXT NULL,            -- optional background image URL / data URI
+    theme_bg_opacity DECIMAL(3,2) NOT NULL DEFAULT 1.00,
+    theme_surface_opacity DECIMAL(3,2) NOT NULL DEFAULT 0.94
 );
 
 CREATE TABLE administrators (
@@ -220,7 +223,7 @@ CREATE TABLE audit_logs (
 
 INSERT INTO organizations (organization_id, organization_name, theme_primary_color, theme_accent_color, theme_bg_color) VALUES
 ('dost', 'Department of Science and Technology', '#003DA5', '#FDB813', '#F5F7FB'),
-('uclm', 'University of Cebu Lapu-Lapu and Mandaue', '#002855', '#C8102E', '#FAF7F2');
+('uclm', 'University of Cebu Lapu-Lapu and Mandaue', '#0B1E3D', '#E8A63C', '#FBF8F2');
 -- NOTE: colors are placeholders — verify against each organization's real brand guide before any demo.
 
 -- All demo accounts use the password: admin123 (stored as a PBKDF2-SHA256 hash with a unique salt per account).

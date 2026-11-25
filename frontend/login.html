@@ -48,7 +48,7 @@ function renderOrgs(orgs) {
     const id = String(o.organization_id || o.id || "").toLowerCase();
     const label = o.organization_name || o.full_name || o.name || id.toUpperCase();
     return `<option value="${escapeHtml(id)}">${escapeHtml(id.toUpperCase())} — ${escapeHtml(label)}</option>`;
-  }).join("") + '<option value="__all__">GLOBAL — System Super Admin</option>';
+  }).join("");
   if (last && [...orgSelect.options].some((opt) => opt.value === last)) {
     orgSelect.value = last;
   }
