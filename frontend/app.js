@@ -329,12 +329,12 @@ async function renderShell(active) {
            tab("compare", "compare.html", "Compare", ICON.compare) +
            tab("edit", "program-form.html", "Edit program", ICON.sliders);
   }
-  nav += `<a href="audit-logs.html" class="${active === "audit" ? "active" : ""}" id="nav-audit">${ICON.history}Audit logs</a>`;
+  nav += `<a href="audit-logs.html" class="${active === "audit" ? "active" : ""}" id="nav-audit" hidden>${ICON.history}Audit logs</a>`;
   nav += `<a href="super-admin.html" class="${active === "super" ? "active" : ""}" id="nav-super" hidden>${ICON.shield}Super Admin</a>`;
   document.getElementById("shell").innerHTML =
     '<header class="app-header"><a class="brand" href="programs.html"><img src="EduMatchPH_logo.jpg" alt="">EduMatch PH</a>' +
     '<div class="who"><span class="org-badge" id="org-name"></span><span class="avatar" id="avatar" aria-hidden="true"></span>' +
-    '<span class="name" id="admin-name"></span><button class="btn-secondary" id="chpwd-btn" type="button" title="Change your password">' + ICON.key + 'Password</button>' +
+    '<span class="name" id="admin-name"></span><button class="btn-secondary" id="chpwd-btn" type="button" title="Change your password" hidden>' + ICON.key + 'Password</button>' +
     '<button class="btn-secondary" id="logout-btn" type="button">' + ICON.logout + 'Log out</button></div></header>' +
     '<div class="crumbs" id="crumbs"></div><nav class="subnav" aria-label="Sections">' + nav + "</nav>";
   document.getElementById("chpwd-btn").addEventListener("click", () => openChangePasswordModal());
@@ -357,12 +357,19 @@ async function renderShell(active) {
     document.body.dataset.org = String(me.organization_id).toLowerCase();
     applyOrgTheme(me);
     const role = String(me.role || "").toLowerCase();
-    if (me.is_super_admin || role === "owner" || role === "super_admin" || role === "superadmin") {
+    const isSuper = Boolean(me.is_super_admin || role === "super_admin" || role === "superadmin");
+    if (isSuper || role === "owner") {
+      const aLink = document.getElementById("nav-audit");
+      if (aLink) aLink.hidden = false;
+    }
+    if (isSuper) {
       const sLink = document.getElementById("nav-super");
       if (sLink) sLink.hidden = false;
-    }
-    if (me.must_change_pw || me.must_change_password || me.force_password_change) {
-      openChangePasswordModal({ forced: true });
+      const cpBtn = document.getElementById("chpwd-btn");
+      if (cpBtn) cpBtn.hidden = false;
+      if (me.must_change_pw || me.must_change_password || me.force_password_change) {
+        openChangePasswordModal({ forced: true });
+      }
     }
   }).catch(() => {});
   if (!sid) return null;

@@ -106,6 +106,10 @@ function openOrgModal() {
 
 function openAdminModal(existing) {
   const editing = !!existing;
+  const isEditingSuper = editing && existing.role === "super_admin";
+  const roleOpts = isEditingSuper
+    ? '<option value="super_admin">Super Admin</option>'
+    : '<option value="admin">Admin</option><option value="owner">Owner</option>';
   const orgOpts = (orgs.length ? orgs : [{ organization_id: "uclm", organization_name: "UCLM" }, { organization_id: "dost", organization_name: "DOST" }])
     .map((o) => `<option value="${escapeHtml(o.organization_id || o.id)}">${escapeHtml(o.organization_name || o.name || o.organization_id)}</option>`).join("");
   const layer = openModal(`<div class="modal-head"><h2>${editing ? "Edit administrator" : "Create administrator"}</h2></div><form id="adm-form" novalidate>
@@ -113,7 +117,7 @@ function openAdminModal(existing) {
       <div class="field" style="grid-column:1/-1"><label for="a-name">Full name</label><input id="a-name" value="${editing ? escapeHtml(existing.full_name) : ""}" required><span class="field-error" data-e="name"></span></div>
       <div class="field" style="grid-column:1/-1"><label for="a-email">Email</label><input type="email" id="a-email" value="${editing ? escapeHtml(existing.email) : ""}" required><span class="field-error" data-e="email"></span></div>
       <div class="field"><label for="a-org">Organization</label><select id="a-org">${orgOpts}</select></div>
-      <div class="field"><label for="a-role">Role</label><select id="a-role"><option value="admin">Admin</option><option value="super_admin">Super Admin</option><option value="owner">Owner</option></select></div>
+      <div class="field"><label for="a-role">Role</label><select id="a-role"${isEditingSuper ? " disabled" : ""}>${roleOpts}</select></div>
       ${editing ? "" : '<div class="field" style="grid-column:1/-1"><label for="a-pw">Temporary password</label><input type="password" id="a-pw" required><span class="hint">At least 8 characters. User will be prompted to change on first login.</span><span class="field-error" data-e="pw"></span></div>'}
     </div>
     <div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button><button type="submit" class="btn-primary" id="a-save">${editing ? "Save changes" : "Create account"}</button></div></form>`, { wide: true });
@@ -203,8 +207,8 @@ async function loadData() {
   try {
     const me = await getMe();
     const role = String(me.role || "").toLowerCase();
-    if (!me.is_super_admin && role !== "owner" && role !== "super_admin" && role !== "superadmin") {
-      document.getElementById("super-message").innerHTML = '<div class="card empty"><h3>Access restricted</h3><p>Only Owner or Super Admin accounts can access this page.</p><a class="btn-primary" href="programs.html">Back to programs</a></div>';
+    if (!me.is_super_admin && role !== "super_admin" && role !== "superadmin") {
+      document.getElementById("super-message").innerHTML = '<div class="card empty"><h3>Access restricted</h3><p>Only Super Admin accounts can access this page.</p><a class="btn-primary" href="programs.html">Back to programs</a></div>';
       return;
     }
     document.getElementById("super-content").hidden = false;

@@ -225,8 +225,8 @@ INSERT INTO organizations (organization_id, organization_name, theme_primary_col
 -- All demo accounts use the password: admin123 (stored as a PBKDF2-SHA256 hash with a unique salt per account).
 -- Make hashes for new accounts with hash_password.py.
 INSERT INTO administrators (organization_id, full_name, email, password_hash, role, is_active, must_change_pw) VALUES
-('uclm', 'Alicia Ramos', 'alicia.ramos@uclm.edu.ph', 'pbkdf2:sha256:1000000$XEeahqdWeTXXeckP$2a1ee5311e704f1ede888a5e2943141a5ad4542efee993338142412334c56402', 'owner', 1, 0),
-('dost', 'Marco Villanueva', 'marco.villanueva@dost.gov.ph', 'pbkdf2:sha256:1000000$PU2AoDZVatgg2NAM$448cf6b6405c3d229e22b1f91fc9f1b604fb5b1d3f4fff37eaa8bd6321505e93', 'owner', 1, 0),
+('uclm', 'Alicia Ramos', 'alicia.ramos@uclm.edu.ph', 'pbkdf2:sha256:1000000$XEeahqdWeTXXeckP$2a1ee5311e704f1ede888a5e2943141a5ad4542efee993338142412334c56402', 'admin', 1, 0),
+('dost', 'Marco Villanueva', 'marco.villanueva@dost.gov.ph', 'pbkdf2:sha256:1000000$PU2AoDZVatgg2NAM$448cf6b6405c3d229e22b1f91fc9f1b604fb5b1d3f4fff37eaa8bd6321505e93', 'admin', 1, 0),
 ('uclm', 'System Super Admin', 'superadmin@edumatch.ph', 'pbkdf2:sha256:1000000$wjPLTHtyVtmX3sxx$39feaa3c6972e071d5db81a9d46406b48e7c55e4a345ff0c6b0436452a7d2721', 'super_admin', 1, 0);
 
 INSERT INTO requirement_types (code, label, value_kind, unit, is_sensitive, notes) VALUES

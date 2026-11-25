@@ -22,7 +22,7 @@
 <script src="app.js"></script>
 <script>
 renderShell("programs");
-let ROWS = [], statusFilter = "all";
+let ROWS = [], statusFilter = "all", IS_SUPER_ADMIN = false;
 const grid = document.getElementById("programs-grid");
 grid.innerHTML = Array.from({length: 3}, () => '<div class="pcard"><span class="skeleton" style="height:20px;width:70%"></span><span class="skeleton" style="height:14px;width:40%"></span><span class="skeleton" style="height:40px"></span></div>').join("");
 const PIPE = { Open: 0, Screening: 1, Ranking: 2, Closed: 3 };
@@ -43,8 +43,8 @@ function render() {
       '<div class="chips">' + ruleSummaryChips(p) + '</div>' +
       '<div class="pipeline" title="Progress: add applicants, screening, ranking, closed">' + [0,1,2,3].map((i) => '<i class="' + (i <= lvl ? "on" : "") + '"></i>').join("") + '</div>' +
       '<div class="foot"><span class="counts">' + p.available_slots + ' slots</span>' +
-      (p.status !== "Closed" ? '<button class="icon-btn" data-archive="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" title="Archive (close) program" aria-label="Archive ' + escapeHtml(p.scholarship_name) + '">' + ICON.archive + '</button>' : '') +
-      '<button class="icon-btn" data-del-prog="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" title="Delete program" aria-label="Delete ' + escapeHtml(p.scholarship_name) + '">' + ICON.trash + '</button>' +
+      (IS_SUPER_ADMIN && p.status !== "Closed" ? '<button class="icon-btn" data-archive="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" title="Archive (close) program" aria-label="Archive ' + escapeHtml(p.scholarship_name) + '">' + ICON.archive + '</button>' : '') +
+      (IS_SUPER_ADMIN ? '<button class="icon-btn" data-del-prog="' + p.scholarship_id + '" data-name="' + escapeHtml(p.scholarship_name) + '" title="Delete program" aria-label="Delete ' + escapeHtml(p.scholarship_name) + '">' + ICON.trash + '</button>' : '') +
       '<a class="btn-secondary" href="program-form.html?scholarship=' + p.scholarship_id + '">' + ICON.edit + 'Edit</a>' +
       '<a class="btn-primary" href="applicants.html?scholarship=' + p.scholarship_id + '">Open →</a></div></article>';
   }).join("");
@@ -59,12 +59,13 @@ document.getElementById("status-chips").addEventListener("click", (e) => {
 });
 document.getElementById("prog-search").addEventListener("input", debounce(render, 120));
 grid.addEventListener("click", async (e) => {
+  if (!IS_SUPER_ADMIN) return;
   const ar = e.target.closest("[data-archive]");
   if (ar) {
     const id = ar.dataset.archive, name = ar.dataset.name;
     if (!(await confirmDialog({ title: `Archive "${name}"?`, message: "Archiving closes this program so no new screening or ranking can run. You can reopen it later by editing.", confirmText: "Archive program" }))) return;
     try {
-      await apiFetch(`/api/scholarships/${id}/archive`, { method: "POST" });
+      await apiFetch(`/api/scholarships/${id}`, { method: "DELETE" });
       toast(`Archived ${name}.`, "success");
       ROWS = await apiFetch("/api/scholarships"); renderChips(); render();
     } catch (err) { toast(friendlyError(err), "error"); }
@@ -75,14 +76,19 @@ grid.addEventListener("click", async (e) => {
     const id = dl.dataset.delProg, name = dl.dataset.name;
     if (!(await confirmDialog({ title: `Delete "${name}"?`, danger: true, message: "This permanently deletes the program and all of its applicants, screening results, and rankings.", confirmText: "Delete program" }))) return;
     try {
-      await apiFetch(`/api/scholarships/${id}`, { method: "DELETE" });
+      await apiFetch(`/api/scholarships/${id}?permanent=true`, { method: "DELETE" });
       toast(`Deleted ${name}.`, "success");
       ROWS = await apiFetch("/api/scholarships"); renderChips(); render();
     } catch (err) { toast(friendlyError(err), "error"); }
   }
 });
 (async () => {
-  try { ROWS = await apiFetch("/api/scholarships"); renderChips(); render(); }
-  catch (err) { grid.innerHTML = ""; showError("programs-message", err); }
+  try {
+    const [me, rows] = await Promise.all([getMe().catch(() => null), apiFetch("/api/scholarships")]);
+    const role = String((me && me.role) || "").toLowerCase();
+    IS_SUPER_ADMIN = Boolean(me && (me.is_super_admin || role === "super_admin" || role === "superadmin"));
+    ROWS = rows;
+    renderChips(); render();
+  } catch (err) { grid.innerHTML = ""; showError("programs-message", err); }
 })();
 </script></body></html>
