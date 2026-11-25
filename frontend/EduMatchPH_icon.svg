@@ -1,8 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="14" fill="#0B1E3D"/>
-  <path d="M32 10L52 19V33C52 44.5 43.4 53.5 32 56C20.6 53.5 12 44.5 12 33V19L32 10Z" fill="#142B54" stroke="#E8A63C" stroke-width="2.5"/>
-  <path d="M32 19L45 25L32 31L19 25L32 19Z" fill="#E8A63C"/>
-  <path d="M23 28.5V35.5C23 38.5 27 41 32 41C37 41 41 38.5 41 35.5V28.5L32 32.8L23 28.5Z" fill="#FBF8F2"/>
-  <path d="M44 26V36" stroke="#E8A63C" stroke-width="2.4" stroke-linecap="round"/>
-  <circle cx="44" cy="37.5" r="2.2" fill="#E8A63C"/>
+  <rect width="64" height="64" rx="14" fill="#FFFFFF"/>
+  <!-- 4-point star at top -->
+  <path d="M32 6L34.2 12.2L40.4 14.4L34.2 16.6L32 22.8L29.8 16.6L23.6 14.4L29.8 12.2L32 6Z" fill="#1B3D6E"/>
+  <!-- Open book / bracket sides -->
+  <path d="M13 20H17.5V43.5L32 49.5L46.5 43.5V20H51V46L32 54L13 46V20Z" fill="#1B3D6E"/>
+  <path d="M19.5 18.5H24V38.5L32 42L40 38.5V18.5H44.5V41L32 46.5L19.5 41V18.5Z" fill="#3B82C4" opacity="0.28"/>
+  <!-- Blue arrow (bottom-right swoosh up to top-left) -->
+  <path d="M47 36C51 42 46.5 49 38.5 45.5L22.5 23.5L18.5 26L20.5 14L31.5 19.5L27.5 21.8L43.5 41.5C46 43 48 40 46 37Z" fill="#1D74C6"/>
+  <!-- Green arrow (bottom-left swoosh up to top-right) -->
+  <path d="M17 36C13 42 17.5 49 25.5 45.5L41.5 23.5L45.5 26L43.5 14L32.5 19.5L36.5 21.8L20.5 41.5C18 43 16 40 18 37Z" fill="#33A854"/>
 </svg>
