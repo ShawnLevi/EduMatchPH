@@ -48,6 +48,15 @@ def predict_priority(applicant, scholarship):
     return round(float(max(0, min(100, score))), 2)  # clip to 0-100
 
 
+def predict_priorities(applicants, scholarship):
+    """Batch-predict priority scores for a list of eligible applicants."""
+    if not applicants:
+        return []
+    X = pd.DataFrame([_row(a, scholarship) for a in applicants])[FEATURES]
+    scores = MODEL.predict(X)
+    return [round(float(max(0, min(100, s))), 2) for s in scores]
+
+
 # Plain labels for the three inputs that belong to the applicant.
 APPLICANT_FEATURES = [
     ("gwa", "GWA"),

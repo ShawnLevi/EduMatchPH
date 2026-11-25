@@ -1,8 +1,9 @@
 from flask import Blueprint, abort, jsonify, request
 
 from db import db, json_safe
-from helpers import (has_ranking, load_scholarship, record_audit, screen_one,
-                     write_ranking)
+from helpers import (has_ranking, load_applicant_requirements_map,
+                     load_program_requirements, load_scholarship, record_audit,
+                     screen_one, write_ranking)
 from ranking import explain_priority
 
 screening_bp = Blueprint("screening", __name__)
@@ -19,9 +20,20 @@ def screen_scholarship(scholarship_id):
                     (scholarship_id,))
         cur.execute("SELECT * FROM applicants WHERE scholarship_id=%s",
                     (scholarship_id,))
+        applicants = cur.fetchall()
+        req_labels = load_program_requirements(cur, scholarship_id)
+        submitted_map = (
+            load_applicant_requirements_map(
+                cur, [a["applicant_id"] for a in applicants]
+            )
+            if req_labels and applicants else {}
+        )
         results = []
-        for a in cur.fetchall():
-            is_eligible = screen_one(cur, a, scholarship)
+        for a in applicants:
+            is_eligible = screen_one(
+                cur, a, scholarship, req_labels,
+                submitted_map.get(a["applicant_id"], []),
+            )
             results.append({"applicant_id": a["applicant_id"],
                             "eligible": bool(is_eligible)})
         cur.execute("UPDATE scholarship_programs SET status='Screening'"
@@ -156,20 +168,27 @@ def get_screening_details(scholarship_id):
     with db() as (conn, cur):
         load_scholarship(cur, scholarship_id)
         cur.execute(
-            "SELECT sr.result_id, a.applicant_id, a.full_name, sr.eligible"
+            "SELECT sr.result_id, a.applicant_id, a.full_name, sr.eligible,"
+            " rs.criterion_name, rs.applicant_value, rs.threshold_value, rs.met"
             " FROM screening_results sr"
             " JOIN applicants a ON a.applicant_id = sr.applicant_id"
-            " WHERE sr.scholarship_id=%s ORDER BY a.applicant_id",
+            " LEFT JOIN screening_reasons rs ON rs.result_id = sr.result_id"
+            " WHERE sr.scholarship_id=%s"
+            " ORDER BY a.applicant_id, rs.reason_id",
             (scholarship_id,))
-        out = []
+        by_result = {}
         for r in cur.fetchall():
-            cur.execute(
-                "SELECT criterion_name, applicant_value, threshold_value, met"
-                " FROM screening_reasons WHERE result_id=%s ORDER BY reason_id",
-                (r["result_id"],))
-            reasons = [{**x, "met": bool(x["met"])} for x in cur.fetchall()]
-            out.append({"applicant_id": r["applicant_id"],
-                        "full_name": r["full_name"],
-                        "eligible": bool(r["eligible"]),
-                        "reasons": reasons})
-        return jsonify(out)
+            entry = by_result.setdefault(r["result_id"], {
+                "applicant_id": r["applicant_id"],
+                "full_name": r["full_name"],
+                "eligible": bool(r["eligible"]),
+                "reasons": [],
+            })
+            if r["criterion_name"] is not None:
+                entry["reasons"].append({
+                    "criterion_name": r["criterion_name"],
+                    "applicant_value": r["applicant_value"],
+                    "threshold_value": r["threshold_value"],
+                    "met": bool(r["met"]),
+                })
+        return jsonify(list(by_result.values()))

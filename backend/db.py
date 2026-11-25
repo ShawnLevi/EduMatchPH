@@ -1,4 +1,5 @@
 import datetime
+import os
 from contextlib import contextmanager
 from decimal import Decimal
 
@@ -7,10 +8,11 @@ import mysql.connector
 
 def get_connection():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",  # XAMPP's default MySQL has no password
-        database="edumatch_db",
+        host=os.environ.get("DB_HOST", "localhost"),
+        port=int(os.environ.get("DB_PORT", 3306)),
+        user=os.environ.get("DB_USER", "root"),
+        password=os.environ.get("DB_PASSWORD", ""),  # XAMPP default
+        database=os.environ.get("DB_NAME", "edumatch_db"),
         charset="utf8mb4",
         collation="utf8mb4_unicode_ci",
     )

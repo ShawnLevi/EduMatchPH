@@ -2,8 +2,10 @@ from flask import Blueprint, abort, jsonify, request
 
 from db import db
 from helpers import (CRITERIA_FIELDS, PROGRAM_FIELDS, current_org,
-                     json_body, load_scholarship, program_json, record_audit,
-                     same_value, scales_by_id)
+                     json_body, load_program_requirements,
+                     load_programs_requirements_map, load_scholarship,
+                     normalize_req_list, program_json, record_audit,
+                     same_value, save_program_requirements, scales_by_id)
 from validation import clean_program
 
 programs_bp = Blueprint("programs", __name__)
@@ -27,7 +29,12 @@ def list_scholarships():
             sql += " AND sp.is_archived = 0"
         sql += " ORDER BY sp.scholarship_id"
         cur.execute(sql, (org,))
-        rows = [program_json(r) for r in cur.fetchall()]
+        raw_rows = cur.fetchall()
+        req_map = load_programs_requirements_map(
+            cur, [r["scholarship_id"] for r in raw_rows]
+        )
+        rows = [program_json(r, req_map.get(r["scholarship_id"], []))
+                for r in raw_rows]
         for r in rows:
             r["is_archived"] = bool(r["is_archived"])
         return jsonify(rows)
@@ -37,14 +44,17 @@ def list_scholarships():
 def get_scholarship(scholarship_id):
     with db() as (conn, cur):
         row = load_scholarship(cur, scholarship_id)
-        return jsonify(program_json(row))
+        reqs = load_program_requirements(cur, scholarship_id)
+        return jsonify(program_json(row, reqs))
 
 
 @programs_bp.route("/api/scholarships", methods=["POST"])
 def create_scholarship():
-    clean, error = clean_program(json_body(), scales_by_id())
+    body = json_body()
+    clean, error = clean_program(body, scales_by_id())
     if error:
         abort(400, error)
+    reqs = normalize_req_list(body.get("additional_requirements"))
     with db() as (conn, cur):
         cur.execute(
             "INSERT INTO scholarship_programs (organization_id, "
@@ -52,6 +62,8 @@ def create_scholarship():
             + ",".join(["%s"] * len(PROGRAM_FIELDS)) + ")",
             (current_org(), *[clean[f] for f in PROGRAM_FIELDS]))
         new_id = cur.lastrowid
+        if reqs:
+            save_program_requirements(cur, new_id, reqs)
         record_audit(cur, "PROGRAM_CREATE", "scholarship", new_id,
                      f"Created program {clean['scholarship_name']}")
         conn.commit()
@@ -60,11 +72,15 @@ def create_scholarship():
 
 @programs_bp.route("/api/scholarships/<int:scholarship_id>", methods=["PUT"])
 def update_scholarship(scholarship_id):
-    clean, error = clean_program(json_body(), scales_by_id())
+    body = json_body()
+    clean, error = clean_program(body, scales_by_id())
     if error:
         abort(400, error)
+    has_reqs_field = "additional_requirements" in body
+    new_reqs = normalize_req_list(body.get("additional_requirements")) if has_reqs_field else None
     with db() as (conn, cur):
         old = load_scholarship(cur, scholarship_id)
+        old_reqs = load_program_requirements(cur, scholarship_id)
         if clean["grade_scale"] != old["grade_scale"]:
             cur.execute("SELECT COUNT(*) AS n FROM applicants"
                         " WHERE scholarship_id=%s", (scholarship_id,))
@@ -72,14 +88,18 @@ def update_scholarship(scholarship_id):
                 abort(400, "The grade scale cannot change once the program "
                            "has applicants. Delete them first or create a "
                            "new program")
-        criteria_changed = any(not same_value(f, clean[f], old[f])
-                               for f in CRITERIA_FIELDS)
+        reqs_changed = has_reqs_field and (new_reqs != old_reqs)
+        criteria_changed = reqs_changed or any(
+            not same_value(f, clean[f], old[f]) for f in CRITERIA_FIELDS
+        )
         slots_changed = clean["available_slots"] != old["available_slots"]
         cur.execute(
             "UPDATE scholarship_programs SET "
             + ", ".join(f"{f}=%s" for f in PROGRAM_FIELDS)
             + " WHERE scholarship_id=%s",
             (*[clean[f] for f in PROGRAM_FIELDS], scholarship_id))
+        if has_reqs_field:
+            save_program_requirements(cur, scholarship_id, new_reqs)
         if criteria_changed:
             cur.execute("DELETE FROM screening_results WHERE scholarship_id=%s",
                         (scholarship_id,))
