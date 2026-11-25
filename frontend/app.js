@@ -361,7 +361,7 @@ async function renderShell(active) {
       const sLink = document.getElementById("nav-super");
       if (sLink) sLink.hidden = false;
     }
-    if (me.must_change_password || me.force_password_change) {
+    if (me.must_change_pw || me.must_change_password || me.force_password_change) {
       openChangePasswordModal({ forced: true });
     }
   }).catch(() => {});

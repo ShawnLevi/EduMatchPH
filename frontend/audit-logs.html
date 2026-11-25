@@ -42,17 +42,22 @@ function render() {
   const cats = [["all", "All"], ["auth", "Logins & Security"], ["screening", "Screening & Ranking"], ["account", "Accounts"], ["other", "Programs & Other"]];
   document.getElementById("cat-chips").innerHTML = cats.map(([k, l]) => `<button type="button" class="chip ${cat === k ? "active" : ""}" data-c="${k}">${l}</button>`).join("");
   const q = document.getElementById("log-search").value.trim().toLowerCase();
-  filtered = logs.filter((r) => (cat === "all" || categoryOf(r.action) === cat) &&
-    (!q || [r.actor_name, r.actor_email, r.action, r.target, r.details].join(" ").toLowerCase().includes(q)));
+  filtered = logs.filter((r) => {
+    const actor = r.admin_name || r.actor_name || r.admin_email || r.actor_email || "";
+    const target = r.target || (r.target_type ? `${r.target_type}${r.target_id ? " #" + r.target_id : ""}` : "");
+    return (cat === "all" || categoryOf(r.action) === cat) &&
+      (!q || [actor, r.action, target, r.details, r.organization_id].join(" ").toLowerCase().includes(q));
+  });
   if (!filtered.length) {
     body.innerHTML = '<tr><td colspan="5"><div class="empty"><h3>No audit log entries</h3><p>Activity will appear here as administrators log in, update programs, and run screening or ranking.</p></div></td></tr>';
     return;
   }
   body.innerHTML = filtered.map((r) => {
     const dt = r.created_at || r.timestamp || "";
-    const actor = r.actor_name || r.actor_email || r.admin_id || "System";
+    const actor = r.admin_name || r.actor_name || r.admin_email || r.actor_email || r.admin_id || "System";
+    const target = r.target || (r.target_type ? `${r.target_type}${r.target_id ? " #" + r.target_id : ""}` : "");
     return `<tr><td style="white-space:nowrap">${escapeHtml(dt)}</td><td><b>${escapeHtml(actor)}</b></td>` +
-      `<td><span class="pill neutral">${escapeHtml(r.action || "")}</span></td><td>${escapeHtml(r.target || "")}</td><td class="hint">${escapeHtml(r.details || "")}</td></tr>`;
+      `<td><span class="pill neutral">${escapeHtml(r.action || "")}</span></td><td>${escapeHtml(target)}</td><td class="hint">${escapeHtml(r.details || "")}</td></tr>`;
   }).join("");
 }
 
@@ -60,7 +65,13 @@ document.getElementById("cat-chips").addEventListener("click", (e) => { const b 
 document.getElementById("log-search").addEventListener("input", debounce(render, 120));
 document.getElementById("export-logs-btn").addEventListener("click", () => {
   if (!filtered.length) { toast("Nothing to export.", "error"); return; }
-  const rows = [["Timestamp", "Actor", "Action", "Target", "Details"], ...filtered.map((r) => [r.created_at || r.timestamp || "", r.actor_name || r.actor_email || "", r.action || "", r.target || "", r.details || ""])];
+  const rows = [["Timestamp", "Actor", "Action", "Target", "Details"], ...filtered.map((r) => [
+    r.created_at || r.timestamp || "",
+    r.admin_name || r.actor_name || r.admin_email || r.actor_email || "",
+    r.action || "",
+    r.target || (r.target_type ? `${r.target_type}${r.target_id ? " #" + r.target_id : ""}` : ""),
+    r.details || ""
+  ])];
   downloadBlob(new Blob([toCsv(rows)], { type: "text/csv" }), "edumatch_audit_logs.csv");
   toast("Audit logs exported.", "success");
 });
