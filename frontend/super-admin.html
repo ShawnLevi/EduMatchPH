@@ -94,8 +94,8 @@ function openOrgModal() {
     if (!(await confirmDialog({ title: "Onboard organization?", message: `Create ${name} (${id.toUpperCase()}) with these branding settings?`, confirmText: "Onboard" }))) return;
     await withLoading($("#o-save", layer.el), async () => {
       try {
-        await apiFetch("/api/super-admin/organizations", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({
-          organization_id: id, name, logo_path: $("#o-logo", layer.el).value.trim() || null,
+        await apiFetch("/api/organizations", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({
+          organization_id: id, organization_name: name, logo_path: $("#o-logo", layer.el).value.trim() || null,
           theme_primary_color: $("#o-prim", layer.el).value.trim(), theme_accent_color: $("#o-acc", layer.el).value.trim(), theme_bg_color: $("#o-bg", layer.el).value.trim(),
         }) });
         layer.close(); toast(`Onboarded ${name}.`, "success"); loadData();
@@ -106,8 +106,8 @@ function openOrgModal() {
 
 function openAdminModal(existing) {
   const editing = !!existing;
-  const orgOpts = (orgs.length ? orgs : [{ organization_id: "uclm", name: "UCLM" }, { organization_id: "dost", name: "DOST" }])
-    .map((o) => `<option value="${escapeHtml(o.organization_id || o.id)}">${escapeHtml(o.name || o.organization_id)}</option>`).join("");
+  const orgOpts = (orgs.length ? orgs : [{ organization_id: "uclm", organization_name: "UCLM" }, { organization_id: "dost", organization_name: "DOST" }])
+    .map((o) => `<option value="${escapeHtml(o.organization_id || o.id)}">${escapeHtml(o.organization_name || o.name || o.organization_id)}</option>`).join("");
   const layer = openModal(`<div class="modal-head"><h2>${editing ? "Edit administrator" : "Create administrator"}</h2></div><form id="adm-form" novalidate>
     <div class="grid2">
       <div class="field" style="grid-column:1/-1"><label for="a-name">Full name</label><input id="a-name" value="${editing ? escapeHtml(existing.full_name) : ""}" required><span class="field-error" data-e="name"></span></div>
@@ -136,10 +136,10 @@ function openAdminModal(existing) {
       try {
         if (editing) {
           const id = existing.admin_id || existing.id;
-          await apiFetch(`/api/super-admin/admins/${id}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ full_name, email, organization_id, role }) });
+          await apiFetch(`/api/admins/${id}`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ full_name, email, organization_id, role }) });
           toast(`Updated ${full_name}.`, "success");
         } else {
-          await apiFetch("/api/super-admin/admins", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ full_name, email, organization_id, role, password: $("#a-pw", layer.el).value }) });
+          await apiFetch("/api/admins", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ full_name, email, organization_id, role, password: $("#a-pw", layer.el).value }) });
           toast(`Created account for ${full_name}.`, "success");
         }
         layer.close(); loadData();
@@ -158,11 +158,21 @@ body.addEventListener("click", async (e) => {
   const rs = e.target.closest("[data-reset]");
   if (rs) {
     const a = admins.find((x) => String(x.admin_id || x.id) === rs.dataset.reset);
-    if (!a || !(await confirmDialog({ title: "Reset password?", message: `Reset password for ${a.full_name} and require password change on next login?`, confirmText: "Reset password" }))) return;
-    try {
-      const r = await apiFetch(`/api/super-admin/admins/${rs.dataset.reset}/reset-password`, { method: "POST" });
-      toast(r && r.temporary_password ? `Temporary password: ${r.temporary_password}` : `Password reset for ${a.full_name}.`, "success", { duration: 10000 });
-    } catch (err) { toast(friendlyError(err), "error"); }
+    if (!a) return;
+    const layer = openModal(`<div class="modal-head"><h2>Reset password</h2></div><p class="lede" style="margin-bottom:1rem">Set a new temporary password for <b>${escapeHtml(a.full_name)}</b>. They will be required to change it on next login.</p><form id="rp-form" novalidate><div class="field"><label for="rp-pw">New temporary password</label><input type="password" id="rp-pw" autocomplete="new-password" required><span class="hint">At least 8 characters.</span><span class="field-error" data-e="pw"></span></div><div class="modal-actions"><button type="button" class="btn-secondary" data-cancel>Cancel</button><button type="submit" class="btn-primary" id="rp-save">Reset password</button></div></form>`);
+    $("[data-cancel]", layer.el).addEventListener("click", () => layer.close());
+    $("#rp-form", layer.el).addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const new_password = $("#rp-pw", layer.el).value;
+      if (new_password.length < 8) { $("[data-e=pw]", layer.el).textContent = "New password must be at least 8 characters."; return; }
+      await withLoading($("#rp-save", layer.el), async () => {
+        try {
+          await apiFetch(`/api/admins/${rs.dataset.reset}/reset-password`, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ new_password }) });
+          layer.close();
+          toast(`Password reset for ${a.full_name}.`, "success");
+        } catch (err) { toast(friendlyError(err), "error"); }
+      });
+    });
     return;
   }
   const tg = e.target.closest("[data-toggle]");
@@ -171,7 +181,7 @@ body.addEventListener("click", async (e) => {
     const verb = active ? "Deactivate" : "Reactivate";
     if (!a || !(await confirmDialog({ title: `${verb} ${a.full_name}?`, danger: active, confirmText: verb, message: active ? "They will no longer be able to log in until reactivated." : "They will regain access to log in." }))) return;
     try {
-      await apiFetch(`/api/super-admin/admins/${tg.dataset.toggle}/${active ? "deactivate" : "reactivate"}`, { method: "POST" });
+      await apiFetch(`/api/admins/${tg.dataset.toggle}/${active ? "deactivate" : "reactivate"}`, { method: "POST" });
       toast(`${a.full_name} ${active ? "deactivated" : "reactivated"}.`, "success"); loadData();
     } catch (err) { toast(friendlyError(err), "error"); }
   }
@@ -180,8 +190,8 @@ body.addEventListener("click", async (e) => {
 async function loadData() {
   body.innerHTML = skeletonRows(6, 4);
   try {
-    const [m, list] = await Promise.all([loadMeta().catch(() => ({})), apiFetch("/api/super-admin/admins")]);
-    orgs = (m && m.organizations) || [];
+    const [orgList, list] = await Promise.all([apiFetch("/api/organizations").catch(() => []), apiFetch("/api/admins")]);
+    orgs = Array.isArray(orgList) ? orgList : (orgList && orgList.organizations) || [];
     admins = Array.isArray(list) ? list : (list && list.admins) || [];
     render();
   } catch (err) {

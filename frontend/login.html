@@ -48,13 +48,13 @@ function renderOrgs(orgs) {
   orgBox.innerHTML = list.map((o, i) => {
     const id = String(o.organization_id || o.id || "").toLowerCase();
     const label = o.short_name || o.code || o.name || id.toUpperCase();
-    const sub = o.full_name || o.description || "";
+    const sub = o.organization_name || o.full_name || o.description || "";
     const checked = last ? id === last : i === 0;
     return `<input type="radio" name="org" id="org-${escapeHtml(id)}" value="${escapeHtml(id)}" ${checked ? "checked" : ""}>` +
       `<label for="org-${escapeHtml(id)}">${escapeHtml(label)}${sub ? `<small>${escapeHtml(sub)}</small>` : ""}</label>`;
   }).join("");
 }
-loadMeta().then((m) => renderOrgs(m && m.organizations)).catch(() => renderOrgs(FALLBACK_ORGS));
+apiFetch("/api/organizations").then(renderOrgs).catch(() => renderOrgs(FALLBACK_ORGS));
 
 const pw = document.getElementById("login-password"), form = document.getElementById("login-form"), msgEl = document.getElementById("login-message");
 const params = new URLSearchParams(window.location.search);
