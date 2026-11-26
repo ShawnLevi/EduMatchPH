@@ -236,7 +236,7 @@ async function openApplicantForm(existing) {
   const layer = openModal(`<div class="modal-head"><h2>${editing ? "Edit applicant" : "Add applicant"}</h2></div><form id="af" novalidate>
     <div class="grid2">
       <div class="field" style="grid-column:1/-1"><label for="f_name">Full name</label><input id="f_name" autocomplete="off"><span class="field-error" data-e="name"></span></div>
-      <div class="field"><label for="f_gwa">GWA</label><input type="number" id="f_gwa" step="any" min="${scale.min_value}" max="${scale.max_value}"><span class="hint">${escapeHtml(scaleHintText(scale))}</span><span class="field-error" data-e="gwa"></span></div>
+      <div class="field"><label for="f_gwa">GWA</label><input type="number" id="f_gwa" step="any" min="${scale.min_value}" max="${scale.max_value}"><span class="hint">${escapeHtml(scaleHintText(scale))} Enter finalized numeric GWA only (resolve INC, DRP, or conditional 4.00 marks first).</span><span class="field-error" data-e="gwa"></span></div>
       <div class="field"><label for="f_ent">Entrance score (0-100)</label><input type="number" id="f_ent" min="0" max="100"><span class="field-error" data-e="ent"></span></div>
       <div class="field"><label for="f_inc">Household income (PHP/year)</label><input type="number" id="f_inc" min="0"><span class="field-error" data-e="inc"></span></div>
       <div class="field"><label for="f_yr">Year level</label><select id="f_yr"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
@@ -452,13 +452,20 @@ function renderSummary() {
 function buildCsvTemplate() {
   const isShs = program && program.grade_scale === "SHS_PERCENT";
   const g1 = isShs ? "92" : "1.55", g2 = isShs ? "88" : "1.85";
+  const reqs = programReqs();
+  if (reqs.length) {
+    const reqJoined = csvCell(reqs.join("; "));
+    return `full_name,gwa,entrance_score,household_income,course,year_level,location,submitted_requirements\nJuan Dela Cruz,${g1},88,180000,BS Computer Science,2,Lapu-Lapu City,${reqJoined}\nMaria Clara Santos,${g2},91,145000,BS Information Technology,1,Mandaue City,${reqJoined}\n`;
+  }
   return `full_name,gwa,entrance_score,household_income,course,year_level,location\nJuan Dela Cruz,${g1},88,180000,BS Computer Science,2,Lapu-Lapu City\nMaria Clara Santos,${g2},91,145000,BS Information Technology,1,Mandaue City\n`;
 }
 function openImport() {
+  const reqs = programReqs();
+  const reqNote = reqs.length ? ` Optional column: <code>submitted_requirements</code> (separate multiple items with <code>;</code>, e.g. <code>${escapeHtml(reqs.join("; "))}</code>).` : "";
   const layer = openModal(`<div class="modal-head" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap"><h2>Import applicants</h2><button class="btn-secondary small" id="tpl" type="button">${ICON.download}Download CSV template</button></div>
     <div class="dropzone" id="dz" tabindex="0"><div class="ico">${ICON.upload}</div><b>Drop a .csv or .xlsx file here</b><div class="hint">or click to choose a file (max 2 MB, 1000 rows)</div></div>
     <input type="file" id="imp-file" accept=".csv,.xlsx" hidden>
-    <p class="hint" style="margin:.7rem 0 0">Columns: <code>full_name, gwa, entrance_score, household_income, course, year_level, location</code>.</p>
+    <p class="hint" style="margin:.7rem 0 0">Columns: <code>full_name, gwa, entrance_score, household_income, course, year_level, location</code>.${reqNote} Common abbreviations (e.g. <code>BSIT</code>, <code>BSCS</code>, <code>mandaue</code>) are normalized automatically.</p>
     <div id="imp-out" style="margin-top:1rem"></div>
     <div class="modal-actions"><button class="btn-secondary" data-cancel type="button">Close</button><button class="btn-primary" id="imp-go" type="button" hidden>Import</button></div>`, { wide: true });
   const dz = $("#dz", layer.el), inp = $("#imp-file", layer.el), out = $("#imp-out", layer.el), go = $("#imp-go", layer.el);
@@ -480,13 +487,20 @@ function openImport() {
     out.innerHTML = '<div class="skeleton" style="height:60px"></div>';
     try {
       const r = await up(false);
-      out.innerHTML = `<p><b>${escapeHtml(fl.name)}</b>: ${r.valid_rows} of ${r.total_rows} rows are valid.` + (r.errors.length ? ` <span style="color:var(--no)">${r.errors.length} problem row${r.errors.length > 1 ? "s" : ""} will be skipped.</span>` : "") + "</p>" +
+      const normNote = r.normalized_count ? ` <span class="pill neutral" style="margin-left:.35rem">${r.normalized_count} auto-normalized</span>` : "";
+      const fmtCell = (a, field) => {
+        const c = (a.corrections || []).find((x) => x.field === field);
+        return c ? `${escapeHtml(a[field])} <span class="hint" title="Auto-corrected from '${escapeHtml(c.from)}'">(from ${escapeHtml(c.from)})</span>` : escapeHtml(a[field]);
+      };
+      const showReqsCol = reqs.length > 0 || (r.sample || []).some((a) => (a.submitted_requirements || []).length > 0);
+      out.innerHTML = `<p><b>${escapeHtml(fl.name)}</b>: ${r.valid_rows} of ${r.total_rows} rows are valid.${normNote}` + (r.errors.length ? ` <span style="color:var(--no)">${r.errors.length} problem row${r.errors.length > 1 ? "s" : ""} will be skipped.</span>` : "") + "</p>" +
         (r.errors.length ? `<div class="table-scroll" style="max-height:150px;overflow:auto"><table><thead><tr><th>Row</th><th>Problem</th></tr></thead><tbody>${r.errors.map((x) => `<tr><td>${x.row}</td><td>${escapeHtml(x.error)}</td></tr>`).join("")}</tbody></table></div>` +
           `<p style="margin:.6rem 0 0"><button class="btn-secondary small" id="dl-errors" type="button">Download problem rows (CSV)</button> <span class="hint">Fix them and import the file again. The last two columns are ignored.</span></p>` : "") +
-        (r.sample.length ? `<p class="hint" style="margin-top:.8rem">Preview of valid rows</p><div class="table-scroll"><table><thead><tr><th>Name</th><th>GWA</th><th>Course</th><th>Location</th></tr></thead><tbody>${r.sample.map((a) => `<tr><td>${escapeHtml(a.full_name)}</td><td>${a.gwa}</td><td>${escapeHtml(a.course)}</td><td>${escapeHtml(a.location)}</td></tr>`).join("")}</tbody></table></div>` : "");
+        (r.sample.length ? `<p class="hint" style="margin-top:.8rem">Preview of valid rows</p><div class="table-scroll"><table><thead><tr><th>Name</th><th>GWA</th><th>Course</th><th>Location</th>${showReqsCol ? "<th>Prerequisites</th>" : ""}</tr></thead><tbody>${r.sample.map((a) => `<tr><td>${escapeHtml(a.full_name)}</td><td>${a.gwa}</td><td>${fmtCell(a, "course")}</td><td>${fmtCell(a, "location")}</td>${showReqsCol ? `<td class="hint">${escapeHtml((a.submitted_requirements || []).join(", ") || "—")}</td>` : ""}</tr>`).join("")}</tbody></table></div>` : "");
       const dl = $("#dl-errors", layer.el);
       if (dl) dl.addEventListener("click", () => {
-        const cols = ["full_name", "gwa", "entrance_score", "household_income", "course", "year_level", "location"];
+        const hasSubCol = r.errors.some((x) => x.record && "submitted_requirements" in x.record);
+        const cols = ["full_name", "gwa", "entrance_score", "household_income", "course", "year_level", "location", ...(hasSubCol ? ["submitted_requirements"] : [])];
         downloadBlob(new Blob([toCsv([[...cols, "row_number", "problem"], ...r.errors.map((x) => [...cols.map((c) => (x.record || {})[c] || ""), x.row, x.error])])], { type: "text/csv" }), "import_problem_rows.csv");
       });
       if (r.valid_rows > 0) { go.textContent = `Import ${r.valid_rows} valid rows`; go.hidden = false; }

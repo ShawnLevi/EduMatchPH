@@ -4,7 +4,7 @@ from db import db, json_safe
 from helpers import (has_ranking, load_applicant_requirements_map,
                      load_program_requirements, load_scholarship, record_audit,
                      screen_one, write_ranking)
-from ranking import explain_priority
+from ranking import check_outlier_warnings, explain_priority
 
 screening_bp = Blueprint("screening", __name__)
 
@@ -155,6 +155,7 @@ def explain_applicant(scholarship_id, applicant_id):
             "compared_with": f"the average of {len(pool)} eligible applicants"
                              " in this program",
             "effects": explain_priority(applicant, pool, scholarship),
+            "outlier_warnings": check_outlier_warnings(applicant, scholarship),
             "note": "Effects are in priority points. They show how this "
                     "applicant's inputs differ from the average and how the "
                     "model weighs that difference. The score is decision "

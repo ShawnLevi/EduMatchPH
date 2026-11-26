@@ -11,7 +11,7 @@ from helpers import (has_ranking, json_body, load_applicant_requirements_map,
                      normalize_req_list, program_scale, renumber_ranking,
                      require_open_program, save_applicant_requirements,
                      screen_one, write_ranking)
-from validation import clean_applicant
+from validation import clean_applicant, clean_applicant_import
 
 applicants_bp = Blueprint("applicants", __name__)
 
@@ -205,19 +205,31 @@ def bulk_delete_applicants(scholarship_id):
                     scholarship["scholarship_name"]:
                 abort(400, "Type the program name exactly to delete all "
                            "applicants")
-            cur.execute(f"SELECT {APPLICANT_RESTORE_COLS} FROM applicants"
+            cur.execute(f"SELECT applicant_id, {APPLICANT_RESTORE_COLS} FROM applicants"
                         " WHERE scholarship_id=%s ORDER BY applicant_id",
                         (scholarship_id,))
         else:
             ids = selected_ids(data, cur, scholarship_id)
             marks = ",".join(["%s"] * len(ids))
-            cur.execute(f"SELECT {APPLICANT_RESTORE_COLS} FROM applicants"
+            cur.execute(f"SELECT applicant_id, {APPLICANT_RESTORE_COLS} FROM applicants"
                         f" WHERE applicant_id IN ({marks})"
                         " ORDER BY applicant_id", tuple(ids))
         rows = cur.fetchall()
         if not rows:
             abort(400, "This program has no applicants to delete")
-        restore = [json_safe(r) for r in rows]
+        req_map = load_applicant_requirements_map(
+            cur, [r["applicant_id"] for r in rows]
+        )
+        restore = []
+        for r in rows:
+            item = json_safe({k: r[k] for k in (
+                "full_name", "gwa", "entrance_score", "household_income",
+                "course", "year_level", "location",
+            )})
+            reqs_for_row = req_map.get(r["applicant_id"], [])
+            if reqs_for_row:
+                item["submitted_requirements"] = reqs_for_row
+            restore.append(item)
         if delete_all:
             cur.execute("DELETE FROM applicants WHERE scholarship_id=%s",
                         (scholarship_id,))
@@ -261,6 +273,11 @@ def restore_applicants(scholarship_id):
                 skipped += 1
                 continue
             cur.execute(INSERT_APPLICANT, applicant_values(scholarship_id, clean))
+            new_id = cur.lastrowid
+            if isinstance(item, dict) and item.get("submitted_requirements"):
+                reqs_list = normalize_req_list(item.get("submitted_requirements"))
+                if reqs_list:
+                    save_applicant_requirements(cur, new_id, reqs_list)
             restored += 1
         conn.commit()
         return jsonify({"restored": restored, "skipped": skipped})
@@ -305,6 +322,25 @@ def screen_selected_applicants(scholarship_id):
                         "ineligible": len(ids) - eligible, "ranked": want_rank})
 
 
+def _extract_import_requirements(raw_headers, row_cells, record, prog_reqs):
+    """Extract submitted custom prerequisites from optional spreadsheet columns:
+    either a 'submitted_requirements' column or individual columns matching the
+    program's additional_requirements with truthy markers (yes/1/true/submitted)."""
+    reqs = normalize_req_list(record.get("submitted_requirements"))
+    if prog_reqs:
+        truthy = {"1", "yes", "y", "true", "submitted", "verified", "ok", "x", "✓"}
+        prog_by_lower = {r.strip().lower(): r for r in prog_reqs if r.strip()}
+        for j, raw_h in enumerate(raw_headers):
+            col_clean = str(raw_h or "").strip().lower()
+            col_norm = col_clean.replace("_", " ")
+            matched = prog_by_lower.get(col_clean) or prog_by_lower.get(col_norm)
+            if matched and j < len(row_cells):
+                cell_val = str(row_cells[j] or "").strip().lower()
+                if cell_val in truthy:
+                    reqs.append(matched)
+    return normalize_req_list(reqs)
+
+
 @applicants_bp.route("/api/scholarships/<int:scholarship_id>/applicants/import",
                      methods=["POST"])
 def import_applicants(scholarship_id):
@@ -316,7 +352,8 @@ def import_applicants(scholarship_id):
     if not rows:
         abort(400, "The file is empty")
 
-    header = [str(h or "").strip().lower().replace(" ", "_") for h in rows[0]]
+    raw_headers = [str(h or "").strip() for h in rows[0]]
+    header = [h.lower().replace(" ", "_") for h in raw_headers]
     missing = [c for c in IMPORT_COLUMNS if c not in header]
     if missing:
         abort(400, "Missing column(s): " + ", ".join(missing))
@@ -324,11 +361,13 @@ def import_applicants(scholarship_id):
     if len(body) > MAX_IMPORT_ROWS:
         abort(400, f"More than {MAX_IMPORT_ROWS} rows. Split the file")
 
-    valid, errors, seen = [], [], set()
+    valid, valid_reqs, preview_items, errors, seen = [], [], [], [], set()
+    normalized_count = 0
     with db() as (conn, cur):
         program = load_scholarship(cur, scholarship_id)
         require_open_program(program, "import applicants")
         scale = program_scale(program)
+        prog_reqs = load_program_requirements(cur, scholarship_id)
         cur.execute(
             "SELECT full_name, course, year_level, location"
             " FROM applicants WHERE scholarship_id=%s",
@@ -343,7 +382,7 @@ def import_applicants(scholarship_id):
                 continue
             record = {h: (r[j] if j < len(r) else None)
                       for j, h in enumerate(header)}
-            clean, error = clean_applicant(record, scale)
+            clean, corrections, error = clean_applicant_import(record, scale)
             if error is None:
                 key = (clean["full_name"].lower(), clean["course"],
                        clean["year_level"], clean["location"])
@@ -351,20 +390,44 @@ def import_applicants(scholarship_id):
                     error = "Duplicate applicant"
                 seen.add(key)
             if error:
-                errors.append({"row": i, "error": error, "record": {
+                rec_out = {
                     c: ("" if record.get(c) is None else str(record.get(c)))
-                    for c in IMPORT_COLUMNS}})
+                    for c in IMPORT_COLUMNS
+                }
+                if "submitted_requirements" in record:
+                    rec_out["submitted_requirements"] = (
+                        "" if record.get("submitted_requirements") is None
+                        else str(record.get("submitted_requirements"))
+                    )
+                errors.append({"row": i, "error": error, "record": rec_out})
             else:
+                row_reqs = _extract_import_requirements(
+                    raw_headers, r, record, prog_reqs
+                )
+                if corrections:
+                    normalized_count += 1
                 valid.append(clean)
+                valid_reqs.append(row_reqs)
+                sample_row = dict(clean)
+                if row_reqs:
+                    sample_row["submitted_requirements"] = row_reqs
+                if corrections:
+                    sample_row["corrections"] = corrections
+                preview_items.append(sample_row)
         if not preview and valid:
-            cur.executemany(INSERT_APPLICANT,
-                            [applicant_values(scholarship_id, a) for a in valid])
+            for a, reqs_list in zip(valid, valid_reqs):
+                cur.execute(INSERT_APPLICANT,
+                            applicant_values(scholarship_id, a))
+                new_id = cur.lastrowid
+                if reqs_list:
+                    save_applicant_requirements(cur, new_id, reqs_list)
             conn.commit()
     return jsonify({
         "preview": preview,
         "total_rows": len(body),
         "valid_rows": len(valid),
+        "normalized_count": normalized_count,
         "imported": 0 if preview else len(valid),
         "errors": errors,
-        "sample": valid[:5],
+        "sample": preview_items[:5],
     })

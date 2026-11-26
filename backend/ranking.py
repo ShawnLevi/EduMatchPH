@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import joblib
 import pandas as pd
@@ -6,12 +7,20 @@ import pandas as pd
 # Load the model relative to THIS file, so it works from any folder.
 _MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "models", "edumatch_priority_model.joblib")
-_bundle = joblib.load(_MODEL_PATH)
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=UserWarning)
+    _bundle = joblib.load(_MODEL_PATH)
 MODEL = _bundle["model"]
 FEATURES = _bundle["features"]
 # FEATURES is: ['gwa', 'entrance_score', 'household_income',
 #               'sch_min_gwa', 'sch_min_entrance', 'sch_income_cap']
 # The two GWA features are STANDINGS (0-100, higher is better), not raw grades.
+
+# Training distribution bounds from train_edumatch.py (used for outlier alerts).
+TRAIN_INCOME_MAX = 2_400_000.0
+TRAIN_ENTRANCE_MIN = 40.0
+TRAIN_STANDING_MIN = 75.0
+TRAIN_STANDING_MAX = 100.0
 
 
 def gwa_standing(value, best, passing):
@@ -55,6 +64,36 @@ def predict_priorities(applicants, scholarship):
     X = pd.DataFrame([_row(a, scholarship) for a in applicants])[FEATURES]
     scores = MODEL.predict(X)
     return [round(float(max(0, min(100, s))), 2) for s in scores]
+
+
+def check_outlier_warnings(applicant, scholarship):
+    """Identify inputs outside the synthetic model's training distribution or
+    linear predictions that had to be clipped to [0, 100]."""
+    r = _row(applicant, scholarship)
+    X = pd.DataFrame([r])[FEATURES]
+    raw_score = float(MODEL.predict(X)[0])
+    warnings_out = []
+    if r["household_income"] > TRAIN_INCOME_MAX:
+        warnings_out.append(
+            f"Household income (PHP {r['household_income']:,.0f}) exceeds the "
+            f"model's training range (up to PHP {TRAIN_INCOME_MAX:,.0f}/yr)."
+        )
+    if r["entrance_score"] < TRAIN_ENTRANCE_MIN:
+        warnings_out.append(
+            f"Entrance score ({int(r['entrance_score'])}) is below the "
+            f"model's training range ({int(TRAIN_ENTRANCE_MIN)}-99)."
+        )
+    if r["gwa"] < TRAIN_STANDING_MIN or r["gwa"] > TRAIN_STANDING_MAX:
+        warnings_out.append(
+            "Converted GWA standing falls outside the 75-100 passing-to-best "
+            "training range."
+        )
+    if raw_score < 0.0 or raw_score > 100.0:
+        warnings_out.append(
+            f"Raw linear score ({raw_score:.2f}) fell outside 0-100 and was "
+            f"clipped to {max(0.0, min(100.0, raw_score)):.2f}."
+        )
+    return warnings_out
 
 
 # Plain labels for the three inputs that belong to the applicant.
