@@ -8,9 +8,9 @@ from werkzeug.exceptions import HTTPException
 from db import db, json_safe
 from helpers import (has_ranking, json_body, load_applicant_requirements_map,
                      load_program_requirements, load_scholarship,
-                     normalize_req_list, program_scale, renumber_ranking,
-                     require_open_program, save_applicant_requirements,
-                     screen_one, write_ranking)
+                     normalize_req_list, program_scale, record_audit,
+                     renumber_ranking, require_open_program,
+                     save_applicant_requirements, screen_one, write_ranking)
 from validation import clean_applicant, clean_applicant_import
 
 applicants_bp = Blueprint("applicants", __name__)
@@ -102,6 +102,9 @@ def add_applicant(scholarship_id):
         new_id = cur.lastrowid
         if submitted:
             save_applicant_requirements(cur, new_id, submitted)
+        record_audit(cur, "APPLICANT_CREATE", "applicant", new_id,
+                     f"Added applicant {clean['full_name']} to {program['scholarship_name']}",
+                     org_id=program["organization_id"])
         conn.commit()
         return jsonify({"applicant_id": new_id}), 201
 
@@ -161,6 +164,9 @@ def update_applicant(scholarship_id, applicant_id):
         ranked = has_ranking(cur, scholarship_id)
         if ranked:
             renumber_ranking(cur, program)
+        record_audit(cur, "APPLICANT_UPDATE", "applicant", applicant_id,
+                     f"Updated applicant {clean['full_name']} in {program['scholarship_name']}",
+                     org_id=program["organization_id"])
         conn.commit()
         return jsonify({"updated": applicant_id,
                         "was_screened": was_screened,
@@ -173,9 +179,10 @@ def delete_applicant(scholarship_id, applicant_id):
     with db() as (conn, cur):
         scholarship = load_scholarship(cur, scholarship_id)
         require_open_program(scholarship, "delete applicants")
-        cur.execute("SELECT 1 FROM applicants WHERE applicant_id=%s"
+        cur.execute("SELECT full_name FROM applicants WHERE applicant_id=%s"
                     " AND scholarship_id=%s", (applicant_id, scholarship_id))
-        if cur.fetchone() is None:
+        victim = cur.fetchone()
+        if victim is None:
             abort(404, "Applicant not found")
         cur.execute("DELETE FROM applicants WHERE applicant_id=%s",
                     (applicant_id,))
@@ -187,6 +194,9 @@ def delete_applicant(scholarship_id, applicant_id):
         if ranking_cleared:
             cur.execute("UPDATE scholarship_programs SET status='Screening'"
                         " WHERE scholarship_id=%s", (scholarship_id,))
+        record_audit(cur, "APPLICANT_DELETE", "applicant", applicant_id,
+                     f"Deleted applicant {victim['full_name']} from {scholarship['scholarship_name']}",
+                     org_id=scholarship["organization_id"])
         conn.commit()
         return jsonify({"deleted": applicant_id,
                         "ranking_cleared": ranking_cleared})
@@ -247,6 +257,9 @@ def bulk_delete_applicants(scholarship_id):
         elif ranking_cleared:
             cur.execute("UPDATE scholarship_programs SET status='Screening'"
                         " WHERE scholarship_id=%s", (scholarship_id,))
+        record_audit(cur, "APPLICANT_BULK_DELETE", "scholarship", scholarship_id,
+                     f"Deleted {len(restore)} applicant(s) from {scholarship['scholarship_name']}",
+                     org_id=scholarship["organization_id"])
         conn.commit()
         return jsonify({"deleted": len(restore),
                         "ranking_cleared": ranking_cleared,
@@ -279,6 +292,10 @@ def restore_applicants(scholarship_id):
                 if reqs_list:
                     save_applicant_requirements(cur, new_id, reqs_list)
             restored += 1
+        if restored:
+            record_audit(cur, "APPLICANT_RESTORE", "scholarship", scholarship_id,
+                         f"Restored {restored} applicant(s) to {program['scholarship_name']}",
+                         org_id=program["organization_id"])
         conn.commit()
         return jsonify({"restored": restored, "skipped": skipped})
 
@@ -421,6 +438,11 @@ def import_applicants(scholarship_id):
                 new_id = cur.lastrowid
                 if reqs_list:
                     save_applicant_requirements(cur, new_id, reqs_list)
+            record_audit(
+                cur, "APPLICANT_IMPORT", "scholarship", scholarship_id,
+                f"Imported {len(valid)} applicant(s) from {upload.filename or 'spreadsheet'}",
+                org_id=program["organization_id"],
+            )
             conn.commit()
     return jsonify({
         "preview": preview,

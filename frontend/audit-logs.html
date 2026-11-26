@@ -33,15 +33,25 @@ const body = document.getElementById("logs-body");
 
 function categoryOf(action) {
   const a = String(action || "").toLowerCase();
-  if (/login|logout|password/.test(a)) return "auth";
-  if (/admin|user|org|role/.test(a)) return "account";
+  if (/login|logout|password|locked/.test(a)) return "auth";
+  if (/admin|user|org|role|profile/.test(a)) return "account";
+  if (/applicant/.test(a)) return "applicant";
+  if (/export|backup/.test(a)) return "export";
   if (/screen|rank|shortlist/.test(a)) return "screening";
   return "other";
 }
 function render() {
-  const counts = { all: logs.length, auth: 0, screening: 0, account: 0, other: 0 };
+  const counts = { all: logs.length, auth: 0, screening: 0, applicant: 0, export: 0, account: 0, other: 0 };
   logs.forEach((r) => { counts[categoryOf(r.action)] = (counts[categoryOf(r.action)] || 0) + 1; });
-  const cats = [["all", "All"], ["auth", "Logins & Security"], ["screening", "Screening & Ranking"], ["account", "Accounts"], ["other", "Programs & Other"]];
+  const cats = [
+    ["all", "All"],
+    ["auth", "Logins & Security"],
+    ["applicant", "Applicants & Imports"],
+    ["screening", "Screening & Ranking"],
+    ["export", "Exports & Backups"],
+    ["account", "Accounts & Orgs"],
+    ["other", "Programs"],
+  ];
   document.getElementById("cat-chips").innerHTML = cats.map(([k, l]) => `<button type="button" class="chip ${cat === k ? "active" : ""}" data-c="${k}">${l}<span class="count">${counts[k] || 0}</span></button>`).join("");
   const q = document.getElementById("log-search").value.trim().toLowerCase();
   filtered = logs.filter((r) => {

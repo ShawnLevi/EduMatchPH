@@ -14,6 +14,9 @@ from db import db
 from ranking import MODEL, FEATURES
 
 results = []
+with db() as (conn, cur):
+    cur.execute("SELECT COALESCE(MAX(log_id), 0) AS mx FROM audit_logs")
+    _START_MAX_LOG_ID = cur.fetchone()["mx"]
 
 
 def check(name, ok, detail=""):
@@ -844,6 +847,53 @@ try:
     check("Audit logs record ORG_DEACTIVATE and ORG_REACTIVATE",
           "ORG_DEACTIVATE" in sa_logs and "ORG_REACTIVATE" in sa_logs, sa_logs)
 
+    print("--- Batch 3: Expanded audit logs, single-origin serving, pooling, secret key & SQL backup")
+    p_b3 = make_program(uclm, scholarship_name="TEST Batch3 Audit")
+    b3_url = f"/api/scholarships/{p_b3}"
+    r_b3_add = uclm.post(b3_url + "/applicants", json={**GOOD, "full_name": "Audit Person"})
+    b3_aid = r_b3_add.get_json()["applicant_id"]
+    uclm.put(f"{b3_url}/applicants/{b3_aid}", json={**GOOD, "full_name": "Audit Person Edited", "gwa": 1.55})
+    b3_csv = "full_name,gwa,entrance_score,household_income,course,year_level,location\nAudit Imported,1.65,86,180000,BS Computer Science,2,Cebu City\n"
+    uclm.post(b3_url + "/applicants/import",
+              data={"file": (io.BytesIO(b3_csv.encode("utf-8")), "audit.csv"), "preview": "false"},
+              content_type="multipart/form-data")
+    uclm.post(b3_url + "/screen")
+    uclm.post(b3_url + "/rank")
+    uclm.get(b3_url + "/shortlist.csv")
+    uclm.get(b3_url + "/applicants.csv")
+    uclm.get(b3_url + "/screening-reasons.csv")
+    uclm.delete(f"{b3_url}/applicants/{b3_aid}")
+
+    uclm_logs = [x["action"] for x in uclm.get("/api/audit-logs?limit=50").get_json()]
+    for expected_action in ("APPLICANT_CREATE", "APPLICANT_UPDATE", "APPLICANT_IMPORT",
+                            "EXPORT_SHORTLIST_CSV", "EXPORT_APPLICANTS_CSV",
+                            "EXPORT_REASONS_CSV", "APPLICANT_DELETE"):
+        check(f"Audit log records {expected_action}", expected_action in uclm_logs, uclm_logs[:15])
+
+    # Single-origin static frontend serving
+    r_root = anon.get("/")
+    r_login_html = anon.get("/login.html")
+    check("Single-origin '/' serves landing HTML (200)",
+          r_root.status_code == 200 and b"EduMatch PH" in r_root.data)
+    check("Single-origin '/login.html' serves login HTML (200)",
+          r_login_html.status_code == 200 and b"login-form" in r_login_html.data)
+    check("Path traversal outside frontend is rejected (404)",
+          anon.get("/../backend/app.py").status_code == 404)
+
+    # Secret key hardening check
+    check("app.secret_key is not hardcoded 'dev-only-change-me'",
+          app.secret_key != "dev-only-change-me" and len(str(app.secret_key)) >= 32)
+
+    # SQL Backup endpoint RBAC & validity
+    check("Owner cannot download full database SQL backup (403)",
+          error_ok(uclm.get("/api/admin/backup.sql"), 403))
+    r_bak = sa.get("/api/admin/backup.sql")
+    bak_text = r_bak.data.decode("utf-8")
+    check("Super Admin downloads valid SQL backup containing all 12 tables",
+          r_bak.status_code == 200 and "CREATE TABLE `organizations`" in bak_text
+          and "CREATE TABLE `audit_logs`" in bak_text
+          and "SET FOREIGN_KEY_CHECKS = 1;" in bak_text)
+
     print("--- Model loads from any folder")
     code = f"import sys; sys.path.insert(0, r'{os.path.dirname(os.path.abspath(__file__))}'); import ranking; print('ok')"
     out = subprocess.run([sys.executable, "-c", code], cwd="/" if os.name != "nt" else "C:\\", capture_output=True, text=True)
@@ -856,7 +906,7 @@ finally:
         cur.execute("DELETE FROM scholarship_programs WHERE scholarship_name LIKE 'TEST %'")
         cur.execute("DELETE FROM administrators WHERE email LIKE 'test_%@edumatch.ph'")
         cur.execute("DELETE FROM organizations WHERE organization_id LIKE 'test_%'")
-        cur.execute("DELETE FROM audit_logs WHERE details LIKE '%test_%' OR details LIKE '%TEST %'")
+        cur.execute("DELETE FROM audit_logs WHERE log_id > %s OR details LIKE '%test_%' OR details LIKE '%TEST %'", (_START_MAX_LOG_ID,))
         conn.commit()
 
 print(f"\n{sum(results)} of {len(results)} checks passed")

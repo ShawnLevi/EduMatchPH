@@ -12,6 +12,7 @@
   <div class="toolbar" style="margin-bottom:1.1rem">
     <button class="btn-primary" id="new-org-btn" type="button">+ Onboard organization</button>
     <button class="btn-secondary" id="new-admin-btn" type="button">+ Create admin account</button>
+    <button class="btn-secondary" id="backup-db-btn" type="button">Download SQL backup</button>
     <span class="grow"></span>
     <div class="input-icon" style="max-width:280px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input type="search" id="admin-search" data-search placeholder="Search admins  ( / )" aria-label="Search admins"></div>
@@ -345,6 +346,13 @@ function openAdminModal(existing) {
 
 document.getElementById("new-org-btn").addEventListener("click", () => openOrgModal());
 document.getElementById("new-admin-btn").addEventListener("click", () => openAdminModal());
+document.getElementById("backup-db-btn").addEventListener("click", (e) => withLoading(e.currentTarget, async () => {
+  try {
+    const stamp = new Date().toISOString().slice(0, 10);
+    await downloadFile("/api/admin/backup.sql", `edumatch_backup_${stamp}.sql`);
+    toast("Database SQL backup downloaded.", "success");
+  } catch (err) { toast(friendlyError(err), "error"); }
+}));
 document.getElementById("status-chips").addEventListener("click", (e) => { const b = e.target.closest("[data-s]"); if (b) { statusFilter = b.dataset.s; render(); } });
 document.getElementById("admin-search").addEventListener("input", debounce(render, 120));
 body.addEventListener("click", async (e) => {
@@ -437,6 +445,7 @@ async function loadData() {
     }
     if (!isSuper) {
       document.getElementById("new-org-btn").hidden = true;
+      document.getElementById("backup-db-btn").hidden = true;
       document.querySelector("h1").textContent = "Team & Organization Branding";
       document.querySelector(".lede").textContent = "Customize your institution's branding, logo, and theme, and manage staff administrator accounts.";
     }

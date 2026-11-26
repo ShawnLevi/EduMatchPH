@@ -4,7 +4,7 @@ import io
 from flask import Blueprint, Response, abort, jsonify
 
 from db import db
-from helpers import load_program_requirements, load_scholarship
+from helpers import load_program_requirements, load_scholarship, record_audit
 
 exports_bp = Blueprint("exports", __name__)
 
@@ -31,6 +31,13 @@ def export_shortlist(scholarship_id):
             " WHERE sr.scholarship_id=%s ORDER BY rr.rank_position",
             (scholarship_id,))
         rows = cur.fetchall()
+        if rows:
+            record_audit(
+                cur, "EXPORT_SHORTLIST_CSV", "scholarship", scholarship_id,
+                f"Exported shortlist CSV ({len(rows)} rows) for {scholarship['scholarship_name']}",
+                org_id=scholarship["organization_id"],
+            )
+            conn.commit()
     if not rows:
         abort(400, "Run ranking first. There is nothing to export yet")
     table = [["rank", "full_name", "priority_score", "status", "grade_scale",
@@ -63,7 +70,7 @@ def csv_response(rows, filename):
 def export_applicants(scholarship_id):
     """Every applicant of the program with the screening and ranking result."""
     with db() as (conn, cur):
-        load_scholarship(cur, scholarship_id)
+        scholarship = load_scholarship(cur, scholarship_id)
         cur.execute(
             "SELECT a.full_name, a.gwa, a.entrance_score, a.household_income,"
             " a.course, a.year_level, a.location, sr.eligible,"
@@ -74,6 +81,13 @@ def export_applicants(scholarship_id):
             " WHERE a.scholarship_id=%s ORDER BY a.applicant_id",
             (scholarship_id,))
         rows = cur.fetchall()
+        if rows:
+            record_audit(
+                cur, "EXPORT_APPLICANTS_CSV", "scholarship", scholarship_id,
+                f"Exported applicants CSV ({len(rows)} rows) for {scholarship['scholarship_name']}",
+                org_id=scholarship["organization_id"],
+            )
+            conn.commit()
     if not rows:
         abort(400, "This program has no applicants to export")
     table = [["full_name", "gwa", "entrance_score", "household_income",
@@ -97,7 +111,7 @@ def export_screening_reasons(scholarship_id):
     """One row per screened applicant with the six criteria: the applicant's
     value, the requirement and met or not met."""
     with db() as (conn, cur):
-        load_scholarship(cur, scholarship_id)
+        scholarship = load_scholarship(cur, scholarship_id)
         cur.execute(
             "SELECT sr.result_id, sr.eligible, a.full_name,"
             " rs.criterion_name, rs.applicant_value, rs.threshold_value, rs.met"
@@ -107,6 +121,13 @@ def export_screening_reasons(scholarship_id):
             " WHERE sr.scholarship_id=%s ORDER BY a.applicant_id, rs.reason_id",
             (scholarship_id,))
         rows = cur.fetchall()
+        if rows:
+            record_audit(
+                cur, "EXPORT_REASONS_CSV", "scholarship", scholarship_id,
+                f"Exported screening reasons CSV for {scholarship['scholarship_name']}",
+                org_id=scholarship["organization_id"],
+            )
+            conn.commit()
     if not rows:
         abort(400, "Run screening first. There are no results to export yet")
     people = {}

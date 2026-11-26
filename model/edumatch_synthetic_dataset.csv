@@ -1,0 +1,501 @@
+applicant_id,gwa,entrance_score,household_income,course,year_level,location,scholarship_id,scholarship_name,sch_min_gwa,sch_income_cap,sch_eligible_field,sch_eligible_years,sch_location_req,sch_min_entrance,meets_gwa,meets_income,meets_field,meets_year,meets_location,meets_entrance,eligible,priority_target
+APP-1000,87.63,80,551800,BS Civil Engineering,3,Consolacion,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1000,87.63,80,551800,BS Civil Engineering,3,Consolacion,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1000,87.63,80,551800,BS Civil Engineering,3,Consolacion,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,1,1,0,0,
+APP-1000,87.63,80,551800,BS Civil Engineering,3,Consolacion,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,28.26
+APP-1000,87.63,80,551800,BS Civil Engineering,3,Consolacion,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,1,1,1,1,21.5
+APP-1001,84.87,72,73100,BS Accountancy,4,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1001,84.87,72,73100,BS Accountancy,4,Cebu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,1,0,
+APP-1001,84.87,72,73100,BS Accountancy,4,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,1,1,1,1,0,
+APP-1001,84.87,72,73100,BS Accountancy,4,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,41.18
+APP-1001,84.87,72,73100,BS Accountancy,4,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1002,89.82,83,323100,BS Information Technology,1,Mandaue City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,0,1,1,0,
+APP-1002,89.82,83,323100,BS Information Technology,1,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,46.55
+APP-1002,89.82,83,323100,BS Information Technology,1,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1002,89.82,83,323100,BS Information Technology,1,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1002,89.82,83,323100,BS Information Technology,1,Mandaue City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1003,93.14,89,154200,BS Hospitality Management,2,Lapu-Lapu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,1,1,44.34
+APP-1003,93.14,89,154200,BS Hospitality Management,2,Lapu-Lapu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,61.8
+APP-1003,93.14,89,154200,BS Hospitality Management,2,Lapu-Lapu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,0,1,0,
+APP-1003,93.14,89,154200,BS Hospitality Management,2,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,0,1,1,0,
+APP-1003,93.14,89,154200,BS Hospitality Management,2,Lapu-Lapu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,63.31
+APP-1004,75.58,40,182000,BS Hospitality Management,2,Mandaue City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,1,1,1,0,0,0,
+APP-1004,75.58,40,182000,BS Hospitality Management,2,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,0,1,1,1,1,0,0,
+APP-1004,75.58,40,182000,BS Hospitality Management,2,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,0,1,1,1,1,0,0,
+APP-1004,75.58,40,182000,BS Hospitality Management,2,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,0,0,
+APP-1004,75.58,40,182000,BS Hospitality Management,2,Mandaue City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1005,80.3,59,98400,BS Biology,2,Minglanilla,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,1,1,1,0,0,0,
+APP-1005,80.3,59,98400,BS Biology,2,Minglanilla,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,0,0,
+APP-1005,80.3,59,98400,BS Biology,2,Minglanilla,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1005,80.3,59,98400,BS Biology,2,Minglanilla,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,0,1,1,1,1,0,0,
+APP-1005,80.3,59,98400,BS Biology,2,Minglanilla,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,1,1,0,0,
+APP-1006,85.52,70,153700,AB Communication,1,Lapu-Lapu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1006,85.52,70,153700,AB Communication,1,Lapu-Lapu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,32.22
+APP-1006,85.52,70,153700,AB Communication,1,Lapu-Lapu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,23.97
+APP-1006,85.52,70,153700,AB Communication,1,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,1,1,0,0,
+APP-1006,85.52,70,153700,AB Communication,1,Lapu-Lapu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,0,1,0,0,
+APP-1007,84.74,63,423400,BS Psychology,1,Consolacion,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,0,0,
+APP-1007,84.74,63,423400,BS Psychology,1,Consolacion,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1007,84.74,63,423400,BS Psychology,1,Consolacion,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,0,0,0,
+APP-1007,84.74,63,423400,BS Psychology,1,Consolacion,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1007,84.74,63,423400,BS Psychology,1,Consolacion,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,0,0,1,1,0,0,
+APP-1008,88.77,68,271400,BS Business Administration,1,Minglanilla,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1008,88.77,68,271400,BS Business Administration,1,Minglanilla,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1008,88.77,68,271400,BS Business Administration,1,Minglanilla,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1008,88.77,68,271400,BS Business Administration,1,Minglanilla,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,1,1,0,0,
+APP-1008,88.77,68,271400,BS Business Administration,1,Minglanilla,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,0,1,0,0,
+APP-1009,79.11,62,553500,BS Electronics Engineering,1,Lapu-Lapu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,0,1,1,1,0,0,
+APP-1009,79.11,62,553500,BS Electronics Engineering,1,Lapu-Lapu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,0,0,1,1,1,1,0,
+APP-1009,79.11,62,553500,BS Electronics Engineering,1,Lapu-Lapu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,0,1,0,0,
+APP-1009,79.11,62,553500,BS Electronics Engineering,1,Lapu-Lapu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,0,0,1,1,1,0,0,
+APP-1009,79.11,62,553500,BS Electronics Engineering,1,Lapu-Lapu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,0,1,0,0,
+APP-1010,92.18,90,392400,BS Psychology,2,Danao City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,1,1,1,0,
+APP-1010,92.18,90,392400,BS Psychology,2,Danao City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,0,0,1,1,0,
+APP-1010,92.18,90,392400,BS Psychology,2,Danao City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,55.56
+APP-1010,92.18,90,392400,BS Psychology,2,Danao City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1010,92.18,90,392400,BS Psychology,2,Danao City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1011,91.26,74,248300,AB Communication,3,Lapu-Lapu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,0,0,1,0,
+APP-1011,91.26,74,248300,AB Communication,3,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,0,1,0,0,
+APP-1011,91.26,74,248300,AB Communication,3,Lapu-Lapu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,40.81
+APP-1011,91.26,74,248300,AB Communication,3,Lapu-Lapu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,0,1,1,0,0,
+APP-1011,91.26,74,248300,AB Communication,3,Lapu-Lapu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,1,1,0,0,
+APP-1012,86.01,75,557500,AB Communication,3,Minglanilla,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,0,0,0,1,0,0,
+APP-1012,86.01,75,557500,AB Communication,3,Minglanilla,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1012,86.01,75,557500,AB Communication,3,Minglanilla,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,19.08
+APP-1012,86.01,75,557500,AB Communication,3,Minglanilla,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,1,1,0,0,
+APP-1012,86.01,75,557500,AB Communication,3,Minglanilla,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1013,89.23,83,248200,AB Communication,2,Mandaue City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1013,89.23,83,248200,AB Communication,2,Mandaue City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,1,1,1,0,
+APP-1013,89.23,83,248200,AB Communication,2,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,28.67
+APP-1013,89.23,83,248200,AB Communication,2,Mandaue City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,0,1,0,
+APP-1013,89.23,83,248200,AB Communication,2,Mandaue City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1014,89.4,77,316000,BS Accountancy,2,Lapu-Lapu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,35.64
+APP-1014,89.4,77,316000,BS Accountancy,2,Lapu-Lapu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1014,89.4,77,316000,BS Accountancy,2,Lapu-Lapu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,0,0,1,0,0,
+APP-1014,89.4,77,316000,BS Accountancy,2,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,0,1,0,0,
+APP-1014,89.4,77,316000,BS Accountancy,2,Lapu-Lapu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,1,1,1,0,
+APP-1015,81.71,71,157300,AB Communication,1,Lapu-Lapu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,1,1,1,0,1,0,
+APP-1015,81.71,71,157300,AB Communication,1,Lapu-Lapu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,0,1,0,0,
+APP-1015,81.71,71,157300,AB Communication,1,Lapu-Lapu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,0,1,0,0,
+APP-1015,81.71,71,157300,AB Communication,1,Lapu-Lapu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1015,81.71,71,157300,AB Communication,1,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,1,1,0,0,
+APP-1016,89.28,82,197100,BS Information Technology,2,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1016,89.28,82,197100,BS Information Technology,2,Cebu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,46.99
+APP-1016,89.28,82,197100,BS Information Technology,2,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,1,1,1,33.84
+APP-1016,89.28,82,197100,BS Information Technology,2,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1016,89.28,82,197100,BS Information Technology,2,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1017,82.45,72,122700,BS Education,1,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,22.67
+APP-1017,82.45,72,122700,BS Education,1,Mandaue City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,25.39
+APP-1017,82.45,72,122700,BS Education,1,Mandaue City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,0,1,0,0,
+APP-1017,82.45,72,122700,BS Education,1,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,1,0,
+APP-1017,82.45,72,122700,BS Education,1,Mandaue City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,1,1,0,0,
+APP-1018,94.74,83,349200,BS Psychology,1,Danao City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,0,1,1,0,
+APP-1018,94.74,83,349200,BS Psychology,1,Danao City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1018,94.74,83,349200,BS Psychology,1,Danao City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,52.68
+APP-1018,94.74,83,349200,BS Psychology,1,Danao City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1018,94.74,83,349200,BS Psychology,1,Danao City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,0,1,0,
+APP-1019,86.23,69,91100,BS Hospitality Management,2,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,36.39
+APP-1019,86.23,69,91100,BS Hospitality Management,2,Talisay City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,35.32
+APP-1019,86.23,69,91100,BS Hospitality Management,2,Talisay City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1019,86.23,69,91100,BS Hospitality Management,2,Talisay City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,0,0,
+APP-1019,86.23,69,91100,BS Hospitality Management,2,Talisay City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,0,1,0,
+APP-1020,83.86,71,307100,BS Psychology,2,Cebu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,1,0,
+APP-1020,83.86,71,307100,BS Psychology,2,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,1,1,0,0,
+APP-1020,83.86,71,307100,BS Psychology,2,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1020,83.86,71,307100,BS Psychology,2,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1020,83.86,71,307100,BS Psychology,2,Cebu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1021,84.13,68,168000,BS Biology,1,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,19.28
+APP-1021,84.13,68,168000,BS Biology,1,Mandaue City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,0,1,0,
+APP-1021,84.13,68,168000,BS Biology,1,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,0,0,
+APP-1021,84.13,68,168000,BS Biology,1,Mandaue City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1021,84.13,68,168000,BS Biology,1,Mandaue City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,0,1,0,0,
+APP-1022,93.35,89,390900,BS Business Administration,2,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1022,93.35,89,390900,BS Business Administration,2,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,1,1,0,
+APP-1022,93.35,89,390900,BS Business Administration,2,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,1,1,1,1,1,48.0
+APP-1022,93.35,89,390900,BS Business Administration,2,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1022,93.35,89,390900,BS Business Administration,2,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,1,1,26.56
+APP-1023,89.25,65,301200,BS Information Technology,2,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1023,89.25,65,301200,BS Information Technology,2,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,1,0,1,0,0,
+APP-1023,89.25,65,301200,BS Information Technology,2,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1023,89.25,65,301200,BS Information Technology,2,Cebu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,1,0,1,0,0,
+APP-1023,89.25,65,301200,BS Information Technology,2,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,1,1,0,
+APP-1024,86.78,70,584700,BS Biology,3,Danao City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,15.29
+APP-1024,86.78,70,584700,BS Biology,3,Danao City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,1,1,0,0,
+APP-1024,86.78,70,584700,BS Biology,3,Danao City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,0,0,1,0,
+APP-1024,86.78,70,584700,BS Biology,3,Danao City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1024,86.78,70,584700,BS Biology,3,Danao City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,0,0,
+APP-1025,86.09,72,297500,AB Communication,3,Mandaue City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,1,1,0,0,
+APP-1025,86.09,72,297500,AB Communication,3,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,21.3
+APP-1025,86.09,72,297500,AB Communication,3,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1025,86.09,72,297500,AB Communication,3,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,29.48
+APP-1025,86.09,72,297500,AB Communication,3,Mandaue City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,1,1,0,0,
+APP-1026,92.77,96,71300,BS Electronics Engineering,3,Mandaue City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1026,92.77,96,71300,BS Electronics Engineering,3,Mandaue City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,1,1,1,1,71.98
+APP-1026,92.77,96,71300,BS Electronics Engineering,3,Mandaue City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,0,0,1,0,
+APP-1026,92.77,96,71300,BS Electronics Engineering,3,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,72.7
+APP-1026,92.77,96,71300,BS Electronics Engineering,3,Mandaue City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,1,1,1,1,1,63.1
+APP-1027,86.14,90,181400,BS Hospitality Management,1,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,1,1,1,0,
+APP-1027,86.14,90,181400,BS Hospitality Management,1,Lapu-Lapu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,35.73
+APP-1027,86.14,90,181400,BS Hospitality Management,1,Lapu-Lapu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1027,86.14,90,181400,BS Hospitality Management,1,Lapu-Lapu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,0,1,0,
+APP-1027,86.14,90,181400,BS Hospitality Management,1,Lapu-Lapu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,0,1,1,0,
+APP-1028,87.57,73,91400,BS Psychology,3,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1028,87.57,73,91400,BS Psychology,3,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,0,1,1,0,
+APP-1028,87.57,73,91400,BS Psychology,3,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,40.83
+APP-1028,87.57,73,91400,BS Psychology,3,Cebu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,36.9
+APP-1028,87.57,73,91400,BS Psychology,3,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,37.54
+APP-1029,87.03,77,137100,BS Psychology,2,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1029,87.03,77,137100,BS Psychology,2,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1029,87.03,77,137100,BS Psychology,2,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,44.05
+APP-1029,87.03,77,137100,BS Psychology,2,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,1,1,1,0,
+APP-1029,87.03,77,137100,BS Psychology,2,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,1,1,1,33.82
+APP-1030,96.42,88,482600,BS Accountancy,2,Talisay City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,0,0,0,1,1,0,
+APP-1030,96.42,88,482600,BS Accountancy,2,Talisay City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1030,96.42,88,482600,BS Accountancy,2,Talisay City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,1,1,1,1,1,56.77
+APP-1030,96.42,88,482600,BS Accountancy,2,Talisay City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,1,1,32.22
+APP-1030,96.42,88,482600,BS Accountancy,2,Talisay City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1031,82.02,66,280800,BS Hospitality Management,3,Talisay City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,1,1,0,0,
+APP-1031,82.02,66,280800,BS Hospitality Management,3,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1031,82.02,66,280800,BS Hospitality Management,3,Talisay City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,1,1,1,0,0,
+APP-1031,82.02,66,280800,BS Hospitality Management,3,Talisay City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,0,0,
+APP-1031,82.02,66,280800,BS Hospitality Management,3,Talisay City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1032,85.94,70,122600,BS Information Technology,2,Toledo City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,29.63
+APP-1032,85.94,70,122600,BS Information Technology,2,Toledo City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,25.57
+APP-1032,85.94,70,122600,BS Information Technology,2,Toledo City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,0,1,0,
+APP-1032,85.94,70,122600,BS Information Technology,2,Toledo City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,0,0,
+APP-1032,85.94,70,122600,BS Information Technology,2,Toledo City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1033,82.61,73,100900,BS Electronics Engineering,2,Talisay City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1033,82.61,73,100900,BS Electronics Engineering,2,Talisay City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,1,1,1,0,1,0,
+APP-1033,82.61,73,100900,BS Electronics Engineering,2,Talisay City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,34.95
+APP-1033,82.61,73,100900,BS Electronics Engineering,2,Talisay City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,28.23
+APP-1033,82.61,73,100900,BS Electronics Engineering,2,Talisay City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,1,1,1,0,
+APP-1034,86.72,76,193000,BS Information Technology,3,Lapu-Lapu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1034,86.72,76,193000,BS Information Technology,3,Lapu-Lapu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1034,86.72,76,193000,BS Information Technology,3,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,0,0,
+APP-1034,86.72,76,193000,BS Information Technology,3,Lapu-Lapu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,31.33
+APP-1034,86.72,76,193000,BS Information Technology,3,Lapu-Lapu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,25.81
+APP-1035,90.18,82,88900,BS Information Technology,4,Consolacion,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1035,90.18,82,88900,BS Information Technology,4,Consolacion,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,0,0,
+APP-1035,90.18,82,88900,BS Information Technology,4,Consolacion,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,0,0,1,0,
+APP-1035,90.18,82,88900,BS Information Technology,4,Consolacion,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,55.61
+APP-1035,90.18,82,88900,BS Information Technology,4,Consolacion,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,62.56
+APP-1036,87.14,59,124700,BS Civil Engineering,4,Danao City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,0,0,
+APP-1036,87.14,59,124700,BS Civil Engineering,4,Danao City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1036,87.14,59,124700,BS Civil Engineering,4,Danao City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,0,0,0,0,
+APP-1036,87.14,59,124700,BS Civil Engineering,4,Danao City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,0,0,
+APP-1036,87.14,59,124700,BS Civil Engineering,4,Danao City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,0,0,
+APP-1037,84.81,64,229500,AB Communication,2,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,0,0,
+APP-1037,84.81,64,229500,AB Communication,2,Talisay City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1037,84.81,64,229500,AB Communication,2,Talisay City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,1,1,0,0,
+APP-1037,84.81,64,229500,AB Communication,2,Talisay City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1037,84.81,64,229500,AB Communication,2,Talisay City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,0,0,0,
+APP-1038,87.44,58,387000,BS Computer Science,2,Toledo City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1038,87.44,58,387000,BS Computer Science,2,Toledo City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,0,0,
+APP-1038,87.44,58,387000,BS Computer Science,2,Toledo City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,1,1,0,0,
+APP-1038,87.44,58,387000,BS Computer Science,2,Toledo City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,0,0,
+APP-1038,87.44,58,387000,BS Computer Science,2,Toledo City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,0,0,
+APP-1039,96.53,78,275800,BS Biology,3,Consolacion,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,60.39
+APP-1039,96.53,78,275800,BS Biology,3,Consolacion,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,0,0,
+APP-1039,96.53,78,275800,BS Biology,3,Consolacion,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1039,96.53,78,275800,BS Biology,3,Consolacion,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,0,0,1,0,
+APP-1039,96.53,78,275800,BS Biology,3,Consolacion,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1040,91.48,76,45700,BS Accountancy,1,Minglanilla,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,51.61
+APP-1040,91.48,76,45700,BS Accountancy,1,Minglanilla,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,1,0,1,1,0,
+APP-1040,91.48,76,45700,BS Accountancy,1,Minglanilla,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,0,1,0,
+APP-1040,91.48,76,45700,BS Accountancy,1,Minglanilla,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,0,1,1,0,
+APP-1040,91.48,76,45700,BS Accountancy,1,Minglanilla,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,0,0,
+APP-1041,87.43,79,228400,BS Accountancy,4,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1041,87.43,79,228400,BS Accountancy,4,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,0,1,1,0,
+APP-1041,87.43,79,228400,BS Accountancy,4,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,26.54
+APP-1041,87.43,79,228400,BS Accountancy,4,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1041,87.43,79,228400,BS Accountancy,4,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,33.75
+APP-1042,79.12,55,197700,BS Electronics Engineering,2,Talisay City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1042,79.12,55,197700,BS Electronics Engineering,2,Talisay City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,1,1,0,0,
+APP-1042,79.12,55,197700,BS Electronics Engineering,2,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,0,1,1,1,1,0,0,
+APP-1042,79.12,55,197700,BS Electronics Engineering,2,Talisay City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,0,0,
+APP-1042,79.12,55,197700,BS Electronics Engineering,2,Talisay City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1043,88.7,67,244400,BS Computer Science,1,Mandaue City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,0,1,0,0,
+APP-1043,88.7,67,244400,BS Computer Science,1,Mandaue City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1043,88.7,67,244400,BS Computer Science,1,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,28.77
+APP-1043,88.7,67,244400,BS Computer Science,1,Mandaue City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,0,1,0,0,
+APP-1043,88.7,67,244400,BS Computer Science,1,Mandaue City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,0,1,0,
+APP-1044,85.77,89,515100,BS Computer Science,1,Lapu-Lapu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,0,1,1,1,1,0,
+APP-1044,85.77,89,515100,BS Computer Science,1,Lapu-Lapu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,1,0,
+APP-1044,85.77,89,515100,BS Computer Science,1,Lapu-Lapu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,0,1,1,0,
+APP-1044,85.77,89,515100,BS Computer Science,1,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,0,1,1,1,1,0,
+APP-1044,85.77,89,515100,BS Computer Science,1,Lapu-Lapu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,27.63
+APP-1045,87.14,68,52600,BS Hospitality Management,4,Talisay City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1045,87.14,68,52600,BS Hospitality Management,4,Talisay City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,0,0,1,0,
+APP-1045,87.14,68,52600,BS Hospitality Management,4,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,36.29
+APP-1045,87.14,68,52600,BS Hospitality Management,4,Talisay City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,0,0,
+APP-1045,87.14,68,52600,BS Hospitality Management,4,Talisay City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,1,1,0,0,
+APP-1046,89.84,76,131100,BS Education,1,Toledo City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1046,89.84,76,131100,BS Education,1,Toledo City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,0,1,1,0,
+APP-1046,89.84,76,131100,BS Education,1,Toledo City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,37.67
+APP-1046,89.84,76,131100,BS Education,1,Toledo City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,1,1,0,0,
+APP-1046,89.84,76,131100,BS Education,1,Toledo City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,37.28
+APP-1047,87.76,88,272800,BS Education,1,Toledo City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,40.21
+APP-1047,87.76,88,272800,BS Education,1,Toledo City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1047,87.76,88,272800,BS Education,1,Toledo City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,1,0,
+APP-1047,87.76,88,272800,BS Education,1,Toledo City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,1,0,
+APP-1047,87.76,88,272800,BS Education,1,Toledo City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,0,1,1,0,
+APP-1048,92.6,99,70900,AB Communication,1,Mandaue City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,0,0,1,1,0,
+APP-1048,92.6,99,70900,AB Communication,1,Mandaue City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,69.44
+APP-1048,92.6,99,70900,AB Communication,1,Mandaue City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,1,1,64.32
+APP-1048,92.6,99,70900,AB Communication,1,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,74.67
+APP-1048,92.6,99,70900,AB Communication,1,Mandaue City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,1,1,1,0,
+APP-1049,87.67,67,472200,BS Information Technology,1,Talisay City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,0,1,1,1,0,0,
+APP-1049,87.67,67,472200,BS Information Technology,1,Talisay City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,0,1,0,0,
+APP-1049,87.67,67,472200,BS Information Technology,1,Talisay City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1049,87.67,67,472200,BS Information Technology,1,Talisay City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,0,1,0,
+APP-1049,87.67,67,472200,BS Information Technology,1,Talisay City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1050,88.04,75,237600,BS Civil Engineering,1,Consolacion,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,1,1,1,0,0,
+APP-1050,88.04,75,237600,BS Civil Engineering,1,Consolacion,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,0,1,1,0,
+APP-1050,88.04,75,237600,BS Civil Engineering,1,Consolacion,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,36.98
+APP-1050,88.04,75,237600,BS Civil Engineering,1,Consolacion,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,18.78
+APP-1050,88.04,75,237600,BS Civil Engineering,1,Consolacion,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1051,87.75,83,319600,BS Accountancy,3,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1051,87.75,83,319600,BS Accountancy,3,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,39.98
+APP-1051,87.75,83,319600,BS Accountancy,3,Mandaue City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1051,87.75,83,319600,BS Accountancy,3,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1051,87.75,83,319600,BS Accountancy,3,Mandaue City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,1,0,
+APP-1052,76.32,69,132700,BS Hospitality Management,1,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1052,76.32,69,132700,BS Hospitality Management,1,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,0,1,1,1,1,1,0,
+APP-1052,76.32,69,132700,BS Hospitality Management,1,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,0,1,0,0,
+APP-1052,76.32,69,132700,BS Hospitality Management,1,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,1,1,1,1,1,0,
+APP-1052,76.32,69,132700,BS Hospitality Management,1,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,1,0,1,0,0,
+APP-1053,84.4,64,313200,BS Hospitality Management,4,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1053,84.4,64,313200,BS Hospitality Management,4,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,1,1,0,0,
+APP-1053,84.4,64,313200,BS Hospitality Management,4,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,1,1,1,0,0,
+APP-1053,84.4,64,313200,BS Hospitality Management,4,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1053,84.4,64,313200,BS Hospitality Management,4,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,0,0,
+APP-1054,84.62,67,366800,AB Communication,4,Consolacion,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1054,84.62,67,366800,AB Communication,4,Consolacion,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1054,84.62,67,366800,AB Communication,4,Consolacion,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,1,1,0,0,
+APP-1054,84.62,67,366800,AB Communication,4,Consolacion,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,1,1,0,0,
+APP-1054,84.62,67,366800,AB Communication,4,Consolacion,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,0,0,1,0,
+APP-1055,87.82,72,218500,BS Biology,2,Lapu-Lapu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,0,1,0,
+APP-1055,87.82,72,218500,BS Biology,2,Lapu-Lapu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,1,1,0,0,
+APP-1055,87.82,72,218500,BS Biology,2,Lapu-Lapu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1055,87.82,72,218500,BS Biology,2,Lapu-Lapu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1055,87.82,72,218500,BS Biology,2,Lapu-Lapu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,24.91
+APP-1056,85.97,74,218700,AB Communication,1,Toledo City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,1,1,0,0,
+APP-1056,85.97,74,218700,AB Communication,1,Toledo City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1056,85.97,74,218700,AB Communication,1,Toledo City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,21.42
+APP-1056,85.97,74,218700,AB Communication,1,Toledo City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,0,1,0,0,
+APP-1056,85.97,74,218700,AB Communication,1,Toledo City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,27.66
+APP-1057,96.34,88,223600,BS Biology,3,Lapu-Lapu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1057,96.34,88,223600,BS Biology,3,Lapu-Lapu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1057,96.34,88,223600,BS Biology,3,Lapu-Lapu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,1,1,1,1,1,54.3
+APP-1057,96.34,88,223600,BS Biology,3,Lapu-Lapu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,1,1,53.55
+APP-1057,96.34,88,223600,BS Biology,3,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,1,0,1,1,0,
+APP-1058,81.75,64,110700,BS Accountancy,1,Toledo City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,1,1,0,0,
+APP-1058,81.75,64,110700,BS Accountancy,1,Toledo City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,0,1,0,0,
+APP-1058,81.75,64,110700,BS Accountancy,1,Toledo City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,22.92
+APP-1058,81.75,64,110700,BS Accountancy,1,Toledo City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,17.78
+APP-1058,81.75,64,110700,BS Accountancy,1,Toledo City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,0,1,1,1,1,0,0,
+APP-1059,89.04,76,172600,BS Electronics Engineering,2,Mandaue City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,1,0,1,0,0,
+APP-1059,89.04,76,172600,BS Electronics Engineering,2,Mandaue City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,30.67
+APP-1059,89.04,76,172600,BS Electronics Engineering,2,Mandaue City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1059,89.04,76,172600,BS Electronics Engineering,2,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,45.13
+APP-1059,89.04,76,172600,BS Electronics Engineering,2,Mandaue City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,1,0,1,0,0,
+APP-1060,76.8,54,172000,BS Computer Science,4,Consolacion,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,0,1,1,1,1,0,0,
+APP-1060,76.8,54,172000,BS Computer Science,4,Consolacion,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,0,1,1,1,1,0,0,
+APP-1060,76.8,54,172000,BS Computer Science,4,Consolacion,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,0,1,1,1,1,0,0,
+APP-1060,76.8,54,172000,BS Computer Science,4,Consolacion,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,1,1,0,0,
+APP-1060,76.8,54,172000,BS Computer Science,4,Consolacion,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,0,0,
+APP-1061,83.8,69,239800,BS Psychology,4,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1061,83.8,69,239800,BS Psychology,4,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,7.62
+APP-1061,83.8,69,239800,BS Psychology,4,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,0,1,1,0,
+APP-1061,83.8,69,239800,BS Psychology,4,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1061,83.8,69,239800,BS Psychology,4,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1062,92.46,77,351500,BS Hospitality Management,3,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,0,1,0,0,
+APP-1062,92.46,77,351500,BS Hospitality Management,3,Lapu-Lapu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,0,0,
+APP-1062,92.46,77,351500,BS Hospitality Management,3,Lapu-Lapu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1062,92.46,77,351500,BS Hospitality Management,3,Lapu-Lapu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,1,1,1,1,1,40.33
+APP-1062,92.46,77,351500,BS Hospitality Management,3,Lapu-Lapu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,41.67
+APP-1063,88.01,77,98100,BS Education,1,Consolacion,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,42.58
+APP-1063,88.01,77,98100,BS Education,1,Consolacion,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,1,1,0,0,
+APP-1063,88.01,77,98100,BS Education,1,Consolacion,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1063,88.01,77,98100,BS Education,1,Consolacion,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,0,1,1,0,
+APP-1063,88.01,77,98100,BS Education,1,Consolacion,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,45.57
+APP-1064,92.26,85,175000,BS Computer Science,3,Danao City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,52.23
+APP-1064,92.26,85,175000,BS Computer Science,3,Danao City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,43.83
+APP-1064,92.26,85,175000,BS Computer Science,3,Danao City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1064,92.26,85,175000,BS Computer Science,3,Danao City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,1,0,1,1,0,
+APP-1064,92.26,85,175000,BS Computer Science,3,Danao City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,56.07
+APP-1065,88.82,89,473800,AB Communication,3,Minglanilla,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1065,88.82,89,473800,AB Communication,3,Minglanilla,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1065,88.82,89,473800,AB Communication,3,Minglanilla,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,0,0,1,0,
+APP-1065,88.82,89,473800,AB Communication,3,Minglanilla,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,0,0,0,1,1,0,
+APP-1065,88.82,89,473800,AB Communication,3,Minglanilla,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,1,1,1,0,
+APP-1066,87.38,71,119200,AB Communication,2,Cebu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1066,87.38,71,119200,AB Communication,2,Cebu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,34.22
+APP-1066,87.38,71,119200,AB Communication,2,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,34.82
+APP-1066,87.38,71,119200,AB Communication,2,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1066,87.38,71,119200,AB Communication,2,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,34.69
+APP-1067,85.63,71,113600,BS Education,3,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,29.84
+APP-1067,85.63,71,113600,BS Education,3,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,26.49
+APP-1067,85.63,71,113600,BS Education,3,Mandaue City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1067,85.63,71,113600,BS Education,3,Mandaue City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,1,1,0,0,
+APP-1067,85.63,71,113600,BS Education,3,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,34.01
+APP-1068,90.77,84,214400,AB Communication,1,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,0,1,1,0,
+APP-1068,90.77,84,214400,AB Communication,1,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,0,1,1,0,
+APP-1068,90.77,84,214400,AB Communication,1,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1068,90.77,84,214400,AB Communication,1,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,1,1,1,34.49
+APP-1068,90.77,84,214400,AB Communication,1,Cebu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,0,0,1,1,0,
+APP-1069,85.99,72,319200,AB Communication,1,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,1,1,0,0,
+APP-1069,85.99,72,319200,AB Communication,1,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1069,85.99,72,319200,AB Communication,1,Cebu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1069,85.99,72,319200,AB Communication,1,Cebu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,25.54
+APP-1069,85.99,72,319200,AB Communication,1,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1070,79.44,55,190400,BS Biology,2,Talisay City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,0,1,1,1,1,0,0,
+APP-1070,79.44,55,190400,BS Biology,2,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,0,1,1,1,1,0,0,
+APP-1070,79.44,55,190400,BS Biology,2,Talisay City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,0,0,
+APP-1070,79.44,55,190400,BS Biology,2,Talisay City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,0,0,1,1,1,0,0,
+APP-1070,79.44,55,190400,BS Biology,2,Talisay City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,1,1,0,0,
+APP-1071,82.54,64,431000,BS Information Technology,1,Talisay City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1071,82.54,64,431000,BS Information Technology,1,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,0,0,
+APP-1071,82.54,64,431000,BS Information Technology,1,Talisay City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1071,82.54,64,431000,BS Information Technology,1,Talisay City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,0,1,0,0,
+APP-1071,82.54,64,431000,BS Information Technology,1,Talisay City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,0,1,1,0,0,0,
+APP-1072,81.59,63,321600,BS Computer Science,1,Consolacion,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,1,1,0,0,
+APP-1072,81.59,63,321600,BS Computer Science,1,Consolacion,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1072,81.59,63,321600,BS Computer Science,1,Consolacion,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,0,0,
+APP-1072,81.59,63,321600,BS Computer Science,1,Consolacion,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,0,1,0,0,
+APP-1072,81.59,63,321600,BS Computer Science,1,Consolacion,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1073,86.69,93,318700,BS Electronics Engineering,4,Minglanilla,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1073,86.69,93,318700,BS Electronics Engineering,4,Minglanilla,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1073,86.69,93,318700,BS Electronics Engineering,4,Minglanilla,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,1,0,
+APP-1073,86.69,93,318700,BS Electronics Engineering,4,Minglanilla,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,1,0,
+APP-1073,86.69,93,318700,BS Electronics Engineering,4,Minglanilla,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,0,0,1,0,
+APP-1074,84.87,86,266600,BS Civil Engineering,4,Talisay City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,1,0,
+APP-1074,84.87,86,266600,BS Civil Engineering,4,Talisay City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,1,1,1,0,
+APP-1074,84.87,86,266600,BS Civil Engineering,4,Talisay City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,1,0,
+APP-1074,84.87,86,266600,BS Civil Engineering,4,Talisay City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,1,0,
+APP-1074,84.87,86,266600,BS Civil Engineering,4,Talisay City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,1,1,1,0,
+APP-1075,90.69,84,800600,BS Accountancy,2,Consolacion,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,0,0,0,1,1,0,
+APP-1075,90.69,84,800600,BS Accountancy,2,Consolacion,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,0,1,1,1,0,0,
+APP-1075,90.69,84,800600,BS Accountancy,2,Consolacion,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,0,0,1,1,1,0,
+APP-1075,90.69,84,800600,BS Accountancy,2,Consolacion,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,0,1,1,1,1,0,
+APP-1075,90.69,84,800600,BS Accountancy,2,Consolacion,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1076,88.42,64,166500,BS Civil Engineering,4,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1076,88.42,64,166500,BS Civil Engineering,4,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,32.81
+APP-1076,88.42,64,166500,BS Civil Engineering,4,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,1,1,0,0,
+APP-1076,88.42,64,166500,BS Civil Engineering,4,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,0,1,0,0,
+APP-1076,88.42,64,166500,BS Civil Engineering,4,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,0,0,
+APP-1077,88.11,69,54600,BS Accountancy,4,Cebu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,1,1,0,0,
+APP-1077,88.11,69,54600,BS Accountancy,4,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,43.72
+APP-1077,88.11,69,54600,BS Accountancy,4,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,1,1,1,0,0,
+APP-1077,88.11,69,54600,BS Accountancy,4,Cebu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,0,0,
+APP-1077,88.11,69,54600,BS Accountancy,4,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,1,1,0,0,
+APP-1078,89.74,89,511300,BS Hospitality Management,1,Talisay City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,1,0,
+APP-1078,89.74,89,511300,BS Hospitality Management,1,Talisay City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,41.81
+APP-1078,89.74,89,511300,BS Hospitality Management,1,Talisay City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1078,89.74,89,511300,BS Hospitality Management,1,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1078,89.74,89,511300,BS Hospitality Management,1,Talisay City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,0,0,1,1,0,
+APP-1079,86.14,72,142400,BS Biology,2,Minglanilla,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,0,1,0,
+APP-1079,86.14,72,142400,BS Biology,2,Minglanilla,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,0,0,
+APP-1079,86.14,72,142400,BS Biology,2,Minglanilla,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,1,1,0,0,
+APP-1079,86.14,72,142400,BS Biology,2,Minglanilla,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,28.83
+APP-1079,86.14,72,142400,BS Biology,2,Minglanilla,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1080,92.07,82,202200,BS Civil Engineering,2,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,42.31
+APP-1080,92.07,82,202200,BS Civil Engineering,2,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,0,0,
+APP-1080,92.07,82,202200,BS Civil Engineering,2,Cebu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,1,0,1,1,0,
+APP-1080,92.07,82,202200,BS Civil Engineering,2,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1080,92.07,82,202200,BS Civil Engineering,2,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,1,1,1,1,47.14
+APP-1081,84.31,55,425900,BS Psychology,1,Lapu-Lapu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,0,1,1,1,0,0,
+APP-1081,84.31,55,425900,BS Psychology,1,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,0,0,1,1,0,0,
+APP-1081,84.31,55,425900,BS Psychology,1,Lapu-Lapu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,0,0,1,0,0,
+APP-1081,84.31,55,425900,BS Psychology,1,Lapu-Lapu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,0,0,0,
+APP-1081,84.31,55,425900,BS Psychology,1,Lapu-Lapu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,0,1,0,0,
+APP-1082,84.35,76,70000,BS Education,3,Talisay City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,1,0,
+APP-1082,84.35,76,70000,BS Education,3,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,36.7
+APP-1082,84.35,76,70000,BS Education,3,Talisay City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,1,1,1,0,
+APP-1082,84.35,76,70000,BS Education,3,Talisay City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,42.1
+APP-1082,84.35,76,70000,BS Education,3,Talisay City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,47.65
+APP-1083,87.6,73,87000,BS Computer Science,2,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,1,1,1,0,
+APP-1083,87.6,73,87000,BS Computer Science,2,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,0,0,
+APP-1083,87.6,73,87000,BS Computer Science,2,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,1,1,1,38.92
+APP-1083,87.6,73,87000,BS Computer Science,2,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1083,87.6,73,87000,BS Computer Science,2,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,47.79
+APP-1084,82.2,54,70100,BS Computer Science,2,Mandaue City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,1,1,0,0,
+APP-1084,82.2,54,70100,BS Computer Science,2,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,0,0,
+APP-1084,82.2,54,70100,BS Computer Science,2,Mandaue City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,1,1,1,0,0,0,
+APP-1084,82.2,54,70100,BS Computer Science,2,Mandaue City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,1,1,0,0,
+APP-1084,82.2,54,70100,BS Computer Science,2,Mandaue City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,0,0,
+APP-1085,92.72,76,115600,BS Hospitality Management,1,Minglanilla,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,52.64
+APP-1085,92.72,76,115600,BS Hospitality Management,1,Minglanilla,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,1,1,0,0,
+APP-1085,92.72,76,115600,BS Hospitality Management,1,Minglanilla,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,0,0,1,0,0,
+APP-1085,92.72,76,115600,BS Hospitality Management,1,Minglanilla,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,0,1,1,0,
+APP-1085,92.72,76,115600,BS Hospitality Management,1,Minglanilla,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,53.0
+APP-1086,85.15,71,248300,BS Biology,1,Talisay City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1086,85.15,71,248300,BS Biology,1,Talisay City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1086,85.15,71,248300,BS Biology,1,Talisay City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,25.96
+APP-1086,85.15,71,248300,BS Biology,1,Talisay City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1086,85.15,71,248300,BS Biology,1,Talisay City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,13.23
+APP-1087,84.37,74,261700,BS Electronics Engineering,4,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1087,84.37,74,261700,BS Electronics Engineering,4,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1087,84.37,74,261700,BS Electronics Engineering,4,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1087,84.37,74,261700,BS Electronics Engineering,4,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,0,1,1,0,
+APP-1087,84.37,74,261700,BS Electronics Engineering,4,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,22.48
+APP-1088,86.3,77,224400,BS Information Technology,1,Minglanilla,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,1,1,0,0,
+APP-1088,86.3,77,224400,BS Information Technology,1,Minglanilla,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,37.42
+APP-1088,86.3,77,224400,BS Information Technology,1,Minglanilla,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,1,0,1,1,0,
+APP-1088,86.3,77,224400,BS Information Technology,1,Minglanilla,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1088,86.3,77,224400,BS Information Technology,1,Minglanilla,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,17.67
+APP-1089,92.78,78,78800,BS Education,1,Mandaue City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,0,1,1,0,0,
+APP-1089,92.78,78,78800,BS Education,1,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,60.52
+APP-1089,92.78,78,78800,BS Education,1,Mandaue City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,0,0,1,0,0,
+APP-1089,92.78,78,78800,BS Education,1,Mandaue City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,1,1,1,1,1,0,0,
+APP-1089,92.78,78,78800,BS Education,1,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,1,1,55.71
+APP-1090,93.99,80,45100,BS Civil Engineering,1,Minglanilla,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,1,1,1,1,1,1,1,46.74
+APP-1090,93.99,80,45100,BS Civil Engineering,1,Minglanilla,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,64.18
+APP-1090,93.99,80,45100,BS Civil Engineering,1,Minglanilla,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,0,0,1,1,0,
+APP-1090,93.99,80,45100,BS Civil Engineering,1,Minglanilla,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,68.48
+APP-1090,93.99,80,45100,BS Civil Engineering,1,Minglanilla,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,1,1,1,0,1,0,0,
+APP-1091,86.13,74,195600,BS Accountancy,2,Mandaue City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,1,1,1,1,1,1,1,18.33
+APP-1091,86.13,74,195600,BS Accountancy,2,Mandaue City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1091,86.13,74,195600,BS Accountancy,2,Mandaue City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1091,86.13,74,195600,BS Accountancy,2,Mandaue City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,1,1,1,0,1,0,
+APP-1091,86.13,74,195600,BS Accountancy,2,Mandaue City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,1,1,0,0,
+APP-1092,84.13,79,141100,BS Biology,2,Lapu-Lapu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,1,1,1,1,1,1,28.84
+APP-1092,84.13,79,141100,BS Biology,2,Lapu-Lapu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,1,0,1,0,0,
+APP-1092,84.13,79,141100,BS Biology,2,Lapu-Lapu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1092,84.13,79,141100,BS Biology,2,Lapu-Lapu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,1,1,1,1,1,1,29.45
+APP-1092,84.13,79,141100,BS Biology,2,Lapu-Lapu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1093,89.83,56,251400,BS Psychology,2,Mandaue City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,1,0,1,1,0,0,0,
+APP-1093,89.83,56,251400,BS Psychology,2,Mandaue City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1093,89.83,56,251400,BS Psychology,2,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,0,0,
+APP-1093,89.83,56,251400,BS Psychology,2,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,0,0,
+APP-1093,89.83,56,251400,BS Psychology,2,Mandaue City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,1,1,0,1,1,0,0,
+APP-1094,76.47,54,292200,BS Computer Science,1,Cebu City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,0,1,0,0,
+APP-1094,76.47,54,292200,BS Computer Science,1,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,0,1,0,0,
+APP-1094,76.47,54,292200,BS Computer Science,1,Cebu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,0,0,
+APP-1094,76.47,54,292200,BS Computer Science,1,Cebu City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,0,0,1,1,1,0,0,
+APP-1094,76.47,54,292200,BS Computer Science,1,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,0,0,1,1,1,0,0,
+APP-1095,78.09,59,206000,BS Business Administration,1,Minglanilla,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,0,1,1,1,1,0,0,
+APP-1095,78.09,59,206000,BS Business Administration,1,Minglanilla,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,1,1,1,0,0,0,
+APP-1095,78.09,59,206000,BS Business Administration,1,Minglanilla,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,0,0,
+APP-1095,78.09,59,206000,BS Business Administration,1,Minglanilla,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,1,0,1,0,0,
+APP-1095,78.09,59,206000,BS Business Administration,1,Minglanilla,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1096,82.07,61,302900,BS Civil Engineering,4,Cebu City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,0,0,
+APP-1096,82.07,61,302900,BS Civil Engineering,4,Cebu City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1096,82.07,61,302900,BS Civil Engineering,4,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,0,1,0,1,0,0,
+APP-1096,82.07,61,302900,BS Civil Engineering,4,Cebu City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,1,1,0,0,
+APP-1096,82.07,61,302900,BS Civil Engineering,4,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,1,1,0,0,
+APP-1097,81.35,61,218000,BS Education,3,Cebu City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,1,1,0,1,0,0,
+APP-1097,81.35,61,218000,BS Education,3,Cebu City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,7.65
+APP-1097,81.35,61,218000,BS Education,3,Cebu City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,0,1,1,1,1,0,0,
+APP-1097,81.35,61,218000,BS Education,3,Cebu City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,0,1,1,0,0,
+APP-1097,81.35,61,218000,BS Education,3,Cebu City,SCH-02,S&T Undergraduate Grant,88,400000,STEM,1,Nationwide,80,0,1,0,0,1,0,0,
+APP-1098,88.91,67,262700,BS Computer Science,3,Mandaue City,SCH-08,Institutional Merit Award,85,900000,ANY,1|2|3|4,Nationwide,70,1,1,1,1,1,0,0,
+APP-1098,88.91,67,262700,BS Computer Science,3,Mandaue City,SCH-03,Need-Based Tuition Subsidy,80,180000,ANY,1|2|3|4,Nationwide,60,1,0,1,1,1,1,0,
+APP-1098,88.91,67,262700,BS Computer Science,3,Mandaue City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,24.8
+APP-1098,88.91,67,262700,BS Computer Science,3,Mandaue City,SCH-04,Provincial Education Aid,82,250000,ANY,1|2|3|4,Cebu,65,1,0,1,1,1,1,0,
+APP-1098,88.91,67,262700,BS Computer Science,3,Mandaue City,SCH-09,Engineering Excellence Fund,89,600000,STEM,3|4,Nationwide,82,0,1,1,1,1,0,0,
+APP-1099,82.29,66,122200,BS Electronics Engineering,3,Talisay City,SCH-07,Business Leaders Grant,86,700000,BUSINESS,2|3|4,Nationwide,72,0,1,0,1,1,0,0,
+APP-1099,82.29,66,122200,BS Electronics Engineering,3,Talisay City,SCH-06,Tech Industry Fellowship,86,800000,STEM,2|3|4,Nationwide,75,0,1,1,1,1,0,0,
+APP-1099,82.29,66,122200,BS Electronics Engineering,3,Talisay City,SCH-01,Academic Excellence Grant,90,500000,ANY,1|2|3|4,Nationwide,85,0,1,1,1,1,0,0,
+APP-1099,82.29,66,122200,BS Electronics Engineering,3,Talisay City,SCH-05,City Youth Scholarship,83,220000,ANY,1|2,Cebu City,65,0,1,1,0,0,1,0,
+APP-1099,82.29,66,122200,BS Electronics Engineering,3,Talisay City,SCH-10,Community Service Grant,80,300000,ANY,1|2|3|4,Cebu,60,1,1,1,1,1,1,1,26.51

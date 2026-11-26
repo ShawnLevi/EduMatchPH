@@ -33,8 +33,8 @@ def find_dataset():
     if len(sys.argv) > 1:
         return sys.argv[1]
     here = os.path.dirname(os.path.abspath(__file__))
-    for folder in (os.path.join(here, "data"), here, os.path.join(here, "..", "ml"),
-                   os.path.join(here, "..")):
+    for folder in (os.path.join(here, "data"), here, os.path.join(here, "..", "model"),
+                   os.path.join(here, "..", "ml"), os.path.join(here, "..")):
         p = os.path.join(folder, "edumatch_synthetic_dataset.csv")
         if os.path.exists(p):
             return p

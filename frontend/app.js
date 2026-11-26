@@ -1,6 +1,11 @@
 // EduMatch PH administrator system: shared helpers used by every page.
-// Backend and page must both use "localhost" (not 127.0.0.1) so the login cookie is sent.
-const API = "http://localhost:5000";
+// Uses relative "" on single-origin Flask/cloud deployments (e.g. :5000 or HTTPS),
+// while seamlessly matching localhost:5000 or 127.0.0.1:5000 when opened on :5500.
+const API = (window.location.protocol === "file:")
+  ? "http://localhost:5000"
+  : (window.location.port && window.location.port !== "5000" && /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname))
+    ? `${window.location.protocol}//${window.location.hostname}:5000`
+    : "";
 const STATUS_LABELS = { SHORTLIST: "Shortlisted", WAITLIST: "Waitlisted" };
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
