@@ -22,11 +22,13 @@ def login():
     with db() as (conn, cur):
         if not org or org == "__all__":
             cur.execute(
-                "SELECT * FROM administrators"
+                "SELECT *, (locked_until IS NOT NULL AND locked_until > CURRENT_TIMESTAMP) AS currently_locked"
+                " FROM administrators"
                 " WHERE email=%s AND role='super_admin'", (email,))
         else:
             cur.execute(
-                "SELECT * FROM administrators"
+                "SELECT *, (locked_until IS NOT NULL AND locked_until > CURRENT_TIMESTAMP) AS currently_locked"
+                " FROM administrators"
                 " WHERE email=%s AND (organization_id=%s OR role='super_admin')",
                 (email, org))
         admin = cur.fetchone()
@@ -34,19 +36,52 @@ def login():
             abort(401, "Wrong email or password for this organization")
         if not admin["is_active"]:
             record_audit(cur, "LOGIN_BLOCKED", "administrator",
-                         admin["admin_id"], f"Blocked login for {email}",
+                         admin["admin_id"], f"Blocked login for {email} (account inactive)",
                          org_id=admin["organization_id"],
                          admin_id=admin["admin_id"])
             conn.commit()
-            abort(403, "This account is deactivated or locked. Contact your "
+            abort(403, "This account is deactivated. Contact your "
                        "organization owner or system administrator")
+        if admin["currently_locked"]:
+            record_audit(cur, "LOGIN_BLOCKED", "administrator",
+                         admin["admin_id"], f"Blocked login during cooldown for {email}",
+                         org_id=admin["organization_id"],
+                         admin_id=admin["admin_id"])
+            conn.commit()
+            abort(403, "Account temporarily locked after 5 failed login attempts. "
+                       "Try again in a few minutes or contact your administrator")
+        cur.execute(
+            "SELECT organization_id, organization_name, is_active, logo_path,"
+            " theme_primary_color, theme_accent_color, theme_bg_color,"
+            " theme_bg_image, theme_bg_opacity, theme_surface_opacity"
+            " FROM organizations WHERE organization_id=%s",
+            (admin["organization_id"],))
+        org_row = cur.fetchone()
+        if admin["role"] != "super_admin" and org_row is not None and not org_row["is_active"]:
+            record_audit(cur, "LOGIN_BLOCKED", "organization",
+                         admin["organization_id"],
+                         f"Blocked login for {email} (organization deactivated)",
+                         org_id=admin["organization_id"],
+                         admin_id=admin["admin_id"])
+            conn.commit()
+            abort(403, "This organization's account is currently deactivated. "
+                       "Contact the system administrator")
         if not check_password_hash(admin["password_hash"], password):
-            attempts = (admin["failed_attempts"] or 0) + 1
+            prior_attempts = 0 if (admin.get("locked_until") is not None and not admin["currently_locked"]) else (admin["failed_attempts"] or 0)
+            attempts = prior_attempts + 1
             locked = attempts >= MAX_FAILED_LOGINS
-            cur.execute(
-                "UPDATE administrators SET failed_attempts=%s, is_active=%s"
-                " WHERE admin_id=%s",
-                (attempts, 0 if locked else 1, admin["admin_id"]))
+            cooldown_mins = 5 if admin["role"] == "super_admin" else 15
+            if locked:
+                cur.execute(
+                    "UPDATE administrators SET failed_attempts=%s,"
+                    " locked_until=TIMESTAMPADD(MINUTE, %s, CURRENT_TIMESTAMP)"
+                    " WHERE admin_id=%s",
+                    (attempts, cooldown_mins, admin["admin_id"]))
+            else:
+                cur.execute(
+                    "UPDATE administrators SET failed_attempts=%s, locked_until=NULL"
+                    " WHERE admin_id=%s",
+                    (attempts, admin["admin_id"]))
             record_audit(cur, "ACCOUNT_LOCKED" if locked else "LOGIN_FAILED",
                          "administrator", admin["admin_id"],
                          f"Failed attempt {attempts} for {email}",
@@ -54,25 +89,21 @@ def login():
                          admin_id=admin["admin_id"])
             conn.commit()
             if locked:
-                abort(403, "Account locked after 5 failed login attempts. "
-                           "Contact your administrator")
+                abort(403, f"Account temporarily locked for {cooldown_mins} minutes "
+                           "after 5 failed login attempts")
             abort(401, "Wrong email or password for this organization")
         cur.execute(
-            "UPDATE administrators SET failed_attempts=0,"
+            "UPDATE administrators SET failed_attempts=0, locked_until=NULL,"
             " last_login=CURRENT_TIMESTAMP WHERE admin_id=%s",
             (admin["admin_id"],))
         record_audit(cur, "LOGIN_SUCCESS", "administrator", admin["admin_id"],
                      f"{email} logged in",
                      org_id=admin["organization_id"],
                      admin_id=admin["admin_id"])
-        cur.execute(
-            "SELECT organization_id, organization_name, logo_path,"
-            " theme_primary_color, theme_accent_color, theme_bg_color,"
-            " theme_bg_image, theme_bg_opacity, theme_surface_opacity"
-            " FROM organizations WHERE organization_id=%s",
-            (admin["organization_id"],))
-        org_row = cur.fetchone()
         conn.commit()
+    if org_row is not None:
+        org_row = json_safe(org_row)
+        org_row["is_active"] = bool(org_row.get("is_active", 1))
     session.clear()
     session.permanent = True
     session["admin_id"] = admin["admin_id"]
@@ -86,7 +117,7 @@ def login():
                     "role": admin["role"],
                     "must_change_pw": bool(admin["must_change_pw"]),
                     "avatar_url": admin.get("avatar_url"),
-                    "organization": json_safe(org_row) if org_row else None})
+                    "organization": org_row})
 
 
 @auth_bp.route("/api/logout", methods=["POST"])
@@ -107,20 +138,30 @@ def me():
     with db() as (conn, cur):
         cur.execute(
             "SELECT admin_id, full_name, email, organization_id, role,"
-            " is_active, must_change_pw, avatar_url"
+            " is_active, must_change_pw, avatar_url,"
+            " (locked_until IS NOT NULL AND locked_until > CURRENT_TIMESTAMP) AS currently_locked"
             " FROM administrators WHERE admin_id=%s",
             (session["admin_id"],))
         admin = cur.fetchone()
-        if admin is None or not admin["is_active"]:
+        if admin is None or not admin["is_active"] or admin["currently_locked"]:
             session.clear()
             abort(401, "Not logged in")
         cur.execute(
-            "SELECT organization_id, organization_name, logo_path,"
+            "SELECT organization_id, organization_name, is_active, logo_path,"
             " theme_primary_color, theme_accent_color, theme_bg_color,"
             " theme_bg_image, theme_bg_opacity, theme_surface_opacity"
             " FROM organizations WHERE organization_id=%s",
             (admin["organization_id"],))
         org_row = cur.fetchone()
+        if admin["role"] != "super_admin" and org_row is not None and not org_row["is_active"]:
+            session.clear()
+            abort(403, "This organization's account is currently deactivated")
+    session["role"] = admin["role"]
+    session["organization_id"] = admin["organization_id"]
+    session["full_name"] = admin["full_name"]
+    if org_row is not None:
+        org_row = json_safe(org_row)
+        org_row["is_active"] = bool(org_row.get("is_active", 1))
     return jsonify({"admin_id": admin["admin_id"],
                     "full_name": admin["full_name"],
                     "email": admin["email"],
@@ -128,7 +169,7 @@ def me():
                     "role": admin["role"],
                     "must_change_pw": bool(admin["must_change_pw"]),
                     "avatar_url": admin.get("avatar_url"),
-                    "organization": json_safe(org_row) if org_row else None})
+                    "organization": org_row})
 
 
 @auth_bp.route("/api/me/profile", methods=["PUT"])

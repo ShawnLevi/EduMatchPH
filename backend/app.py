@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request, session
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
+from db import db
 from ranking import predict_priority  # noqa: F401 - exposed on app for test_api.py
 from routes.admin import admin_bp
 from routes.applicants import applicants_bp
@@ -55,6 +56,39 @@ def require_login():
         return None
     if "admin_id" not in session:
         return jsonify({"error": "Please log in first"}), 401
+
+    # Live session re-verification: immediately enforce account deactivation,
+    # organization deactivation, temporary lockouts, role changes, and
+    # mandatory password updates instead of trusting a 2-hour cookie blindly.
+    with db() as (conn, cur):
+        cur.execute(
+            "SELECT a.admin_id, a.organization_id, a.full_name, a.role,"
+            " a.is_active, a.must_change_pw,"
+            " (a.locked_until IS NOT NULL AND a.locked_until > CURRENT_TIMESTAMP) AS is_locked,"
+            " COALESCE(o.is_active, 1) AS org_is_active"
+            " FROM administrators a"
+            " LEFT JOIN organizations o ON o.organization_id = a.organization_id"
+            " WHERE a.admin_id=%s",
+            (session["admin_id"],),
+        )
+        live = cur.fetchone()
+    if live is None or not live["is_active"] or live["is_locked"]:
+        session.clear()
+        return jsonify({"error": "Your session is no longer active. Please log in again"}), 401
+    if live["role"] != "super_admin" and not live["org_is_active"]:
+        session.clear()
+        return jsonify({"error": "This organization's account is currently deactivated"}), 403
+
+    session["role"] = live["role"]
+    session["organization_id"] = live["organization_id"]
+    session["full_name"] = live["full_name"]
+
+    if live["must_change_pw"] and request.blueprint in (
+        "programs", "applicants", "screening", "exports"
+    ):
+        return jsonify({
+            "error": "Password change required. Please set a new password before continuing"
+        }), 403
     return None
 
 

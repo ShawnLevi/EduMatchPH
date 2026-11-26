@@ -43,13 +43,24 @@ def _clean_media(value, label):
 
 @admin_bp.route("/api/organizations", methods=["GET"])
 def list_organizations():
+    logged_in = "admin_id" in session
     with db() as (conn, cur):
-        cur.execute(
-            "SELECT organization_id, organization_name, logo_path,"
-            " theme_primary_color, theme_accent_color, theme_bg_color,"
-            " theme_bg_image, theme_bg_opacity, theme_surface_opacity"
-            " FROM organizations ORDER BY organization_name")
-        return jsonify([json_safe(r) for r in cur.fetchall()])
+        if logged_in:
+            cur.execute(
+                "SELECT organization_id, organization_name, is_active, logo_path,"
+                " theme_primary_color, theme_accent_color, theme_bg_color,"
+                " theme_bg_image, theme_bg_opacity, theme_surface_opacity"
+                " FROM organizations ORDER BY organization_name")
+        else:
+            # Public login dropdown only needs identifiers & status — never send
+            # multi-megabyte base64 logos or background images to unauthenticated clients.
+            cur.execute(
+                "SELECT organization_id, organization_name, is_active"
+                " FROM organizations ORDER BY organization_name")
+        rows = [json_safe(r) for r in cur.fetchall()]
+    for r in rows:
+        r["is_active"] = bool(r.get("is_active", 1))
+    return jsonify(rows)
 
 
 @admin_bp.route("/api/organizations", methods=["POST"])
@@ -82,7 +93,7 @@ def create_organization():
             " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             (org_id, org_name, logo_path, primary, accent, bg, bg_img, bg_op, surf_op))
         record_audit(cur, "ORG_CREATE", "organization", org_id,
-                     f"Created organization {org_name}")
+                     f"Created organization {org_name}", org_id=org_id)
         conn.commit()
     return jsonify({"organization_id": org_id}), 201
 
@@ -115,15 +126,51 @@ def update_organization(org_id):
             " WHERE organization_id=%s",
             (org_name, logo_path, primary, accent, bg, bg_img, bg_op, surf_op, org_id))
         record_audit(cur, "ORG_UPDATE", "organization", org_id,
-                     f"Updated branding/details for {org_id}")
+                     f"Updated branding/details for {org_id}", org_id=org_id)
         conn.commit()
     return jsonify({"organization_id": org_id})
+
+
+@admin_bp.route("/api/organizations/<org_id>/deactivate", methods=["POST"])
+def deactivate_organization(org_id):
+    require_roles("super_admin")
+    with db() as (conn, cur):
+        cur.execute("SELECT organization_name FROM organizations WHERE organization_id=%s",
+                    (org_id,))
+        org = cur.fetchone()
+        if org is None:
+            abort(404, "Organization not found")
+        cur.execute("UPDATE organizations SET is_active=0 WHERE organization_id=%s",
+                    (org_id,))
+        record_audit(cur, "ORG_DEACTIVATE", "organization", org_id,
+                     f"Deactivated organization {org['organization_name']} ({org_id})",
+                     org_id=org_id)
+        conn.commit()
+    return jsonify({"organization_id": org_id, "is_active": False})
+
+
+@admin_bp.route("/api/organizations/<org_id>/reactivate", methods=["POST"])
+def reactivate_organization(org_id):
+    require_roles("super_admin")
+    with db() as (conn, cur):
+        cur.execute("SELECT organization_name FROM organizations WHERE organization_id=%s",
+                    (org_id,))
+        org = cur.fetchone()
+        if org is None:
+            abort(404, "Organization not found")
+        cur.execute("UPDATE organizations SET is_active=1 WHERE organization_id=%s",
+                    (org_id,))
+        record_audit(cur, "ORG_REACTIVATE", "organization", org_id,
+                     f"Reactivated organization {org['organization_name']} ({org_id})",
+                     org_id=org_id)
+        conn.commit()
+    return jsonify({"organization_id": org_id, "is_active": True})
 
 
 def _load_managed_admin(cur, admin_id):
     cur.execute(
         "SELECT admin_id, organization_id, full_name, email, role, is_active,"
-        " last_login, failed_attempts, must_change_pw, date_added"
+        " last_login, failed_attempts, locked_until, must_change_pw, date_added"
         " FROM administrators WHERE admin_id=%s", (admin_id,))
     row = cur.fetchone()
     if row is None:
@@ -131,6 +178,21 @@ def _load_managed_admin(cur, admin_id):
     if current_role() != "super_admin" and row["organization_id"] != current_org():
         abort(404, "Administrator not found")
     return row
+
+
+def _guard_target_hierarchy(target):
+    """Prevent an Organization Owner from editing, resetting, or deactivating
+    any Global Super Admin account."""
+    if target["role"] == "super_admin" and current_role() != "super_admin":
+        abort(403, "Only a Super Admin can modify a Super Admin account")
+
+
+def _active_super_admin_count(cur):
+    cur.execute(
+        "SELECT COUNT(*) AS n FROM administrators"
+        " WHERE role='super_admin' AND is_active=1"
+    )
+    return cur.fetchone()["n"]
 
 
 def _active_owner_count(cur, org_id):
@@ -145,28 +207,28 @@ def _active_owner_count(cur, org_id):
 def list_admins():
     require_roles("super_admin", "owner")
     org = request.args.get("organization_id")
+    cols = (
+        "admin_id, organization_id, full_name, email, role, is_active,"
+        " last_login, failed_attempts, locked_until, must_change_pw, date_added,"
+        " (locked_until IS NOT NULL AND locked_until > CURRENT_TIMESTAMP) AS is_locked"
+    )
     with db() as (conn, cur):
         if current_role() == "super_admin":
             if org:
                 cur.execute(
-                    "SELECT admin_id, organization_id, full_name, email, role,"
-                    " is_active, last_login, failed_attempts, must_change_pw,"
-                    " date_added FROM administrators WHERE organization_id=%s"
+                    f"SELECT {cols} FROM administrators WHERE organization_id=%s"
                     " ORDER BY admin_id", (org,))
             else:
                 cur.execute(
-                    "SELECT admin_id, organization_id, full_name, email, role,"
-                    " is_active, last_login, failed_attempts, must_change_pw,"
-                    " date_added FROM administrators ORDER BY organization_id, admin_id")
+                    f"SELECT {cols} FROM administrators ORDER BY organization_id, admin_id")
         else:
             cur.execute(
-                "SELECT admin_id, organization_id, full_name, email, role,"
-                " is_active, last_login, failed_attempts, must_change_pw,"
-                " date_added FROM administrators WHERE organization_id=%s"
+                f"SELECT {cols} FROM administrators WHERE organization_id=%s"
                 " ORDER BY admin_id", (current_org(),))
         rows = [json_safe(r) for r in cur.fetchall()]
     for r in rows:
         r["is_active"] = bool(r["is_active"])
+        r["is_locked"] = bool(r.get("is_locked"))
         r["must_change_pw"] = bool(r["must_change_pw"])
     return jsonify(rows)
 
@@ -217,6 +279,7 @@ def update_admin(admin_id):
     data = json_body()
     with db() as (conn, cur):
         target = _load_managed_admin(cur, admin_id)
+        _guard_target_hierarchy(target)
         full_name = str(data.get("full_name") or target["full_name"]).strip()
         email = str(data.get("email") or target["email"]).strip().lower()
         new_role = str(data.get("role") or target["role"]).strip()
@@ -229,6 +292,9 @@ def update_admin(admin_id):
             abort(400, "Invalid role")
         if admin_id == session["admin_id"] and new_role != target["role"]:
             abort(400, "You cannot change your own role")
+        if target["role"] == "super_admin" and new_role != "super_admin" and target["is_active"]:
+            if _active_super_admin_count(cur) <= 1:
+                abort(400, "Cannot demote the last active Super Admin")
         if target["role"] == "owner" and new_role != "owner" and target["is_active"]:
             if _active_owner_count(cur, target["organization_id"]) <= 1:
                 abort(400, "Cannot demote the last active owner of an organization")
@@ -254,9 +320,10 @@ def reset_admin_password(admin_id):
         abort(400, "New password must be at least 8 characters")
     with db() as (conn, cur):
         target = _load_managed_admin(cur, admin_id)
+        _guard_target_hierarchy(target)
         cur.execute(
             "UPDATE administrators SET password_hash=%s, must_change_pw=1,"
-            " failed_attempts=0 WHERE admin_id=%s",
+            " failed_attempts=0, locked_until=NULL WHERE admin_id=%s",
             (generate_password_hash(new_pw, method="pbkdf2:sha256"), admin_id))
         record_audit(cur, "ADMIN_RESET_PW", "administrator", admin_id,
                      f"Reset password for {target['email']}")
@@ -271,6 +338,10 @@ def deactivate_admin(admin_id):
         abort(400, "You cannot deactivate your own account")
     with db() as (conn, cur):
         target = _load_managed_admin(cur, admin_id)
+        _guard_target_hierarchy(target)
+        if target["role"] == "super_admin" and target["is_active"]:
+            if _active_super_admin_count(cur) <= 1:
+                abort(400, "Cannot deactivate the last active Super Admin")
         if target["role"] == "owner" and target["is_active"]:
             if _active_owner_count(cur, target["organization_id"]) <= 1:
                 abort(400, "Cannot deactivate the last active owner of an organization")
@@ -287,11 +358,12 @@ def reactivate_admin(admin_id):
     require_roles("super_admin", "owner")
     with db() as (conn, cur):
         target = _load_managed_admin(cur, admin_id)
+        _guard_target_hierarchy(target)
         cur.execute(
-            "UPDATE administrators SET is_active=1, failed_attempts=0"
+            "UPDATE administrators SET is_active=1, failed_attempts=0, locked_until=NULL"
             " WHERE admin_id=%s", (admin_id,))
         record_audit(cur, "ADMIN_REACTIVATE", "administrator", admin_id,
-                     f"Reactivated {target['email']}")
+                     f"Reactivated/unlocked {target['email']}")
         conn.commit()
     return jsonify({"ok": True})
 
