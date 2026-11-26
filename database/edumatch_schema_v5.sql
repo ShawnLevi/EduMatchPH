@@ -73,7 +73,7 @@ CREATE TABLE grade_scales (
 INSERT INTO grade_scales (scale_id, label, min_value, max_value, best_value, passing_value, higher_is_better, notes) VALUES
 ('SHS_PERCENT', 'Senior high school general average (0 to 100, higher is better)', 0, 100, 100, 75, 1, 'For incoming freshmen. Passing 75 per DepEd; confirm with the school.'),
 ('COLLEGE_1_5', 'College GWA (1.00 is best, 5.00 is worst, lower is better)', 1, 5, 1, 3, 0, 'UCLM college scale. Passing 3.00; confirm with the UCLM scholarship office.'),
-('SCALE_5_BEST', 'Reversed scale (5.00 is best, 1.00 is worst, higher is better)', 1, 5, 5, 3, 1, 'EXAMPLE of a school that grades the opposite way. Confirm before real use.');
+('SCALE_5_BEST', 'Reversed scale (5.00 is best, 1.00 is worst, higher is better)', 1, 5, 5, 3, 1, 'For partner institutions using a 5.00-highest cumulative scale where 3.00 is passing.');
 
 -- ------------------------------------------------------------
 -- CLUSTER 2: SCHOLARSHIP PROGRAMS (corrected — 6 real criteria)

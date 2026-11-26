@@ -8,11 +8,12 @@ from ranking import predict_priorities, predict_priority, program_standing
 
 
 def normalize_req_list(raw):
-    """Turn a list (or comma-separated string) into deduplicated requirement labels."""
+    """Turn a list (or delimited string) into deduplicated requirement labels."""
     if raw is None:
         return []
     if isinstance(raw, str):
-        items = [x.strip() for x in raw.split(",")]
+        sep = ";" if ";" in raw else ("|" if "|" in raw else ",")
+        items = [x.strip() for x in raw.split(sep)]
     elif isinstance(raw, (list, tuple)):
         items = [str(x or "").strip() for x in raw]
     else:

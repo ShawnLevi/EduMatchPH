@@ -703,6 +703,78 @@ try:
     check("Remaining ranked applicants renumber without gaps after edit",
           [x["rank_position"] for x in sl_after] == [1], sl_after)
 
+    print("--- Batch 1: Expanded Cebu/UCLM courses, 3-tier smart import, custom prereq import & outlier warnings")
+    meta_b1 = anon.get("/api/meta").get_json()
+    for expected_course in ("BS Mechanical Engineering", "BS Electrical Engineering",
+                            "BS Industrial Engineering", "BS Computer Engineering",
+                            "BS Customs Administration", "BS Tourism Management",
+                            "BS Medical Technology", "BS Pharmacy"):
+        check(f"Expanded course available: {expected_course}",
+              expected_course in meta_b1["courses"])
+    p_b1_biz = make_program(uclm, scholarship_name="TEST Batch1 Biz", eligible_field="BUSINESS")
+    uclm.post(f"/api/scholarships/{p_b1_biz}/applicants",
+              json={**GOOD, "full_name": "Customs Student", "course": "BS Customs Administration"})
+    uclm.post(f"/api/scholarships/{p_b1_biz}/screen")
+    check("BS Customs Administration passes BUSINESS field screening",
+          uclm.get(f"/api/scholarships/{p_b1_biz}/screening").get_json()[0]["eligible"] is True)
+
+    p_b1_imp = make_program(
+        uclm, scholarship_name="TEST Smart Import Prereqs",
+        eligible_field="ANY", income_cap=10_000_000,
+        additional_requirements=["PEME / Medical Clearance", "Drug Test Clearance"],
+    )
+    b1_csv = (
+        "full_name,gwa,entrance_score,household_income,course,year_level,location,submitted_requirements\n"
+        "Layer1 Canon,1.50,90,150000,bs computer science,1,lapu lapu\n"
+        "Layer2 Alias,1.60,88,160000,BSIT,2,mandaue,PEME / Medical Clearance; Drug Test Clearance\n"
+        "Layer3 FuzzyAuto,1.70,85,170000,BS Computer Sience,3,Minglanila,PEME / Medical Clearance; Drug Test Clearance\n"
+        "Layer3 DidYouMean,1.75,85,170000,Computer Sci,2,Cebu City,\n"
+        "Outlier Rich,1.80,35,5000000,BS Pharmacy,4,Cebu City,PEME / Medical Clearance; Drug Test Clearance\n"
+    )
+    r_b1_pv = uclm.post(
+        f"/api/scholarships/{p_b1_imp}/applicants/import",
+        data={"file": (io.BytesIO(b1_csv.encode("utf-8")), "smart.csv"), "preview": "true"},
+        content_type="multipart/form-data",
+    ).get_json()
+    check("Smart CSV preview: 4 valid (normalized) and 1 medium-confidence rejection",
+          r_b1_pv["valid_rows"] == 4 and r_b1_pv["normalized_count"] >= 3
+          and len(r_b1_pv["errors"]) == 1, r_b1_pv)
+    check("Medium-confidence typo shows 'Did you mean' suggestion",
+          "Did you mean" in r_b1_pv["errors"][0]["error"], r_b1_pv["errors"])
+    r_b1_go = uclm.post(
+        f"/api/scholarships/{p_b1_imp}/applicants/import",
+        data={"file": (io.BytesIO(b1_csv.encode("utf-8")), "smart.csv"), "preview": "false"},
+        content_type="multipart/form-data",
+    ).get_json()
+    check("Smart CSV import saves all 4 valid rows with prerequisites",
+          r_b1_go["imported"] == 4, r_b1_go)
+    b1_apps = {a["full_name"]: a for a in uclm.get(f"/api/scholarships/{p_b1_imp}/applicants").get_json()}
+    check("Layer 1 & 2 normalized BSIT -> BS Information Technology and mandaue -> Mandaue City",
+          b1_apps["Layer2 Alias"]["course"] == "BS Information Technology"
+          and b1_apps["Layer2 Alias"]["location"] == "Mandaue City"
+          and b1_apps["Layer1 Canon"]["location"] == "Lapu-Lapu City", b1_apps)
+    check("Layer 3 high-confidence auto-corrected BS Computer Sience -> BS Computer Science",
+          b1_apps["Layer3 FuzzyAuto"]["course"] == "BS Computer Science"
+          and b1_apps["Layer3 FuzzyAuto"]["location"] == "Minglanilla", b1_apps)
+    uclm.post(f"/api/scholarships/{p_b1_imp}/screen")
+    b1_scr = {d["full_name"]: d["eligible"] for d in uclm.get(f"/api/scholarships/{p_b1_imp}/screening").get_json()}
+    check("Imported applicants with submitted_requirements pass custom prerequisite screening",
+          b1_scr["Layer2 Alias"] is True and b1_scr["Layer3 FuzzyAuto"] is True
+          and b1_scr["Layer1 Canon"] is False, b1_scr)
+    # Outlier warning check on 'Outlier Rich' (entrance 35 < 40, income 5M > 2.4M, min_entrance=60 so lower min_entrance to rank)
+    uclm.put(f"/api/scholarships/{p_b1_imp}", json={
+        **PROGRAM, "scholarship_name": "TEST Smart Import Prereqs",
+        "income_cap": 10_000_000, "min_entrance": 30,
+        "additional_requirements": ["PEME / Medical Clearance", "Drug Test Clearance"],
+    })
+    uclm.post(f"/api/scholarships/{p_b1_imp}/screen")
+    uclm.post(f"/api/scholarships/{p_b1_imp}/rank")
+    outlier_id = b1_apps["Outlier Rich"]["applicant_id"]
+    ex_out = uclm.get(f"/api/scholarships/{p_b1_imp}/applicants/{outlier_id}/explanation").get_json()
+    check("Explanation flags outlier_warnings for out-of-distribution income/entrance",
+          isinstance(ex_out.get("outlier_warnings"), list) and len(ex_out["outlier_warnings"]) >= 2,
+          ex_out.get("outlier_warnings"))
+
     print("--- Model loads from any folder")
     code = f"import sys; sys.path.insert(0, r'{os.path.dirname(os.path.abspath(__file__))}'); import ranking; print('ok')"
     out = subprocess.run([sys.executable, "-c", code], cwd="/" if os.name != "nt" else "C:\\", capture_output=True, text=True)

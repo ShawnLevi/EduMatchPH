@@ -1,20 +1,41 @@
 from reference import LOCALITIES
 
 STEM_COURSES = {
-    "BS Computer Science", "BS Information Technology",
-    "BS Civil Engineering", "BS Electronics Engineering", "BS Biology",
+    "BS Architecture",
+    "BS Biology",
+    "BS Civil Engineering",
+    "BS Computer Engineering",
+    "BS Computer Science",
+    "BS Electrical Engineering",
+    "BS Electronics Engineering",
+    "BS Industrial Engineering",
+    "BS Information Systems",
+    "BS Information Technology",
+    "BS Mechanical Engineering",
+    "BS Medical Technology",
+    "BS Pharmacy",
 }
 BUSINESS_COURSES = {
-    "BS Business Administration", "BS Accountancy",
+    "BS Accountancy",
+    "BS Business Administration",
+    "BS Customs Administration",
+    "BS Entrepreneurship",
     "BS Hospitality Management",
+    "BS Management Accounting",
+    "BS Tourism Management",
 }
 MARITIME_COURSES = {
-    "BS Marine Transportation", "BS Marine Engineering",
+    "BS Marine Engineering",
+    "BS Marine Transportation",
+    "BS Naval Architecture and Marine Engineering",
 }
 CRIMINOLOGY_COURSES = {"BS Criminology"}
-NURSING_COURSES = {"BS Nursing"}
+NURSING_COURSES = {"BS Midwifery", "BS Nursing"}
 EDUCATION_COURSES = {
-    "BS Education", "BS Elementary Education", "BS Secondary Education",
+    "BS Early Childhood Education",
+    "BS Education",
+    "BS Elementary Education",
+    "BS Secondary Education",
 }
 
 FIELD_COURSES = {

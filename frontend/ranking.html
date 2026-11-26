@@ -129,8 +129,13 @@ function explanationHtml(e) {
   const sentence = (pos.length ? `Raised by <b>${pos.map((x) => escapeHtml(x.label)).join("</b> and <b>")}</b>` : "No input raised the score above average") +
     (neg.length ? `; lowered by <b>${escapeHtml(neg[0].label)}</b>.` : ".");
   const sign = (n) => (n > 0 ? "+" : "") + n;
+  const outlierHtml = Array.isArray(e.outlier_warnings) && e.outlier_warnings.length
+    ? `<div class="alert warn" style="margin:.6rem 0;flex-direction:column;align-items:flex-start;gap:.25rem"><b>Out-of-range / Extrapolation Notice</b>` +
+      e.outlier_warnings.map((w) => `<span style="font-size:.82rem">${escapeHtml(w)}</span>`).join("") + `</div>`
+    : "";
   return `<div class="gauge" style="--v:${Math.min(100, e.priority_score)}"><div>${e.priority_score}</div></div>` +
     `<p style="text-align:center;margin:0 0 .4rem"><span class="pill ${e.status === "SHORTLIST" ? "ok" : "wait"}">${escapeHtml(STATUS_LABELS[e.status])}</span> Rank ${e.rank_position}</p>` +
+    outlierHtml +
     `<div class="insight">${sentence}</div>` +
     `<h3 style="margin:1rem 0 .3rem">What moved the score</h3><p class="hint" style="margin:0 0 .4rem">Compared with ${escapeHtml(e.compared_with)}. Green pushes the score up, red pulls it down.</p>` +
     eff.map((x) => {
