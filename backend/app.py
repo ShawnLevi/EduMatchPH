@@ -1,7 +1,8 @@
 import datetime
 import os
+import secrets
 
-from flask import Flask, jsonify, request, session
+from flask import Flask, abort, jsonify, request, send_from_directory, session
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
@@ -14,16 +15,46 @@ from routes.exports import exports_bp
 from routes.programs import programs_bp
 from routes.screening import screening_bp
 
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "frontend"))
+
+
+def _load_secret_key():
+    """Require EDUMATCH_SECRET in production; persist a random 256-bit local key
+    in development instead of falling back to a predictable constant string."""
+    env_secret = os.environ.get("EDUMATCH_SECRET", "").strip()
+    is_prod = os.environ.get("EDUMATCH_ENV", "").strip().lower() == "production"
+    if env_secret and env_secret != "dev-only-change-me":
+        return env_secret
+    if is_prod:
+        raise RuntimeError(
+            "EDUMATCH_SECRET environment variable must be set in production"
+        )
+    secret_file = os.path.join(BACKEND_DIR, ".edumatch_secret")
+    try:
+        if os.path.exists(secret_file):
+            saved = open(secret_file, "r", encoding="utf-8").read().strip()
+            if len(saved) >= 32:
+                return saved
+        generated = secrets.token_hex(32)
+        with open(secret_file, "w", encoding="utf-8") as fh:
+            fh.write(generated)
+        return generated
+    except OSError:
+        return secrets.token_hex(32)
+
+
 app = Flask(__name__)
-# Set EDUMATCH_SECRET in the environment. It signs the login cookie.
-app.secret_key = os.environ.get("EDUMATCH_SECRET", "dev-only-change-me")
+app.secret_key = _load_secret_key()
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = (
+    os.environ.get("EDUMATCH_ENV", "").strip().lower() == "production"
+)
 app.permanent_session_lifetime = datetime.timedelta(hours=2)
-# The frontend runs on another port (for example 5500) on localhost, so allow
-# localhost / 127.0.0.1 on any port, WITH cookies (the login).
+# Allow both single-origin (:5000 / deployed domain) and local dev servers (:5500)
 CORS(app, supports_credentials=True,
-     origins=r"http://(localhost|127\.0\.0\.1)(:\d+)?")
+     origins=r"https?://(localhost|127\.0\.0\.1)(:\d+)?")
 
 
 @app.errorhandler(HTTPException)
@@ -45,6 +76,8 @@ PUBLIC_ENDPOINTS = {
     "auth.me",
     "auth.meta",
     "admin.list_organizations",
+    "serve_root",
+    "serve_frontend",
 }
 
 
@@ -98,6 +131,27 @@ app.register_blueprint(programs_bp)
 app.register_blueprint(applicants_bp)
 app.register_blueprint(screening_bp)
 app.register_blueprint(exports_bp)
+
+
+@app.route("/", methods=["GET"])
+def serve_root():
+    if os.path.isdir(FRONTEND_DIR):
+        return send_from_directory(FRONTEND_DIR, "index.html")
+    abort(404, "Frontend directory not found")
+
+
+@app.route("/<path:asset>", methods=["GET"])
+def serve_frontend(asset):
+    if asset == "api" or asset.startswith("api/"):
+        abort(404, "API endpoint not found")
+    full = os.path.abspath(os.path.join(FRONTEND_DIR, asset))
+    if (
+        os.path.isdir(FRONTEND_DIR)
+        and full.startswith(FRONTEND_DIR + os.sep)
+        and os.path.isfile(full)
+    ):
+        return send_from_directory(FRONTEND_DIR, asset)
+    abort(404, "Resource not found")
 
 
 if __name__ == "__main__":

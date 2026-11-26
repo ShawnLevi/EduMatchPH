@@ -4,10 +4,14 @@ from contextlib import contextmanager
 from decimal import Decimal
 
 import mysql.connector
+from mysql.connector import pooling
+
+_POOL = None
+_POOL_KEY = None
 
 
-def get_connection():
-    return mysql.connector.connect(
+def _db_config():
+    return dict(
         host=os.environ.get("DB_HOST", "localhost"),
         port=int(os.environ.get("DB_PORT", 3306)),
         user=os.environ.get("DB_USER", "root"),
@@ -16,6 +20,32 @@ def get_connection():
         charset="utf8mb4",
         collation="utf8mb4_unicode_ci",
     )
+
+
+def get_connection():
+    """Return a pooled MySQL connection (falling back to direct connect if pooling
+    is disabled or reconnecting)."""
+    global _POOL, _POOL_KEY
+    cfg = _db_config()
+    if os.environ.get("DB_USE_POOL", "1") == "0":
+        return mysql.connector.connect(**cfg)
+    key = (cfg["host"], cfg["port"], cfg["user"], cfg["database"])
+    if _POOL is None or _POOL_KEY != key:
+        pool_size = min(max(int(os.environ.get("DB_POOL_SIZE", 8)), 1), 32)
+        _POOL = pooling.MySQLConnectionPool(
+            pool_name="edumatch_pool",
+            pool_size=pool_size,
+            pool_reset_session=True,
+            **cfg,
+        )
+        _POOL_KEY = key
+    try:
+        conn = _POOL.get_connection()
+        if not conn.is_connected():
+            conn.reconnect(attempts=2, delay=0)
+        return conn
+    except Exception:
+        return mysql.connector.connect(**cfg)
 
 
 _SCHEMA_ENSURED = False
@@ -84,6 +114,12 @@ def db():
     cur = conn.cursor(dictionary=True)
     try:
         yield conn, cur
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
     finally:
         cur.close()
         conn.close()

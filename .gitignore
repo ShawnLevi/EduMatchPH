@@ -3,3 +3,7 @@ __pycache__/
 venv/
 .idea/
 .env
+.edumatch_secret
+backend/.edumatch_secret
+backend/backups/
+model/output/

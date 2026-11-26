@@ -1,8 +1,10 @@
+import datetime
 import re
 
-from flask import Blueprint, abort, jsonify, request, session
+from flask import Blueprint, Response, abort, jsonify, request, session
 from werkzeug.security import generate_password_hash
 
+from backup_db import generate_sql_backup
 from db import db, json_safe
 from helpers import (current_org, current_role, json_body, record_audit,
                      require_roles)
@@ -393,3 +395,17 @@ def get_audit_logs():
                         " ORDER BY al.log_id DESC LIMIT %s",
                         (current_org(), limit))
         return jsonify([json_safe(r) for r in cur.fetchall()])
+
+
+@admin_bp.route("/api/admin/backup.sql", methods=["GET"])
+def download_sql_backup():
+    require_roles("super_admin")
+    sql_text = generate_sql_backup(record_event=True)
+    stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    return Response(
+        sql_text,
+        mimetype="application/sql",
+        headers={
+            "Content-Disposition": f"attachment; filename=edumatch_backup_{stamp}.sql"
+        },
+    )
