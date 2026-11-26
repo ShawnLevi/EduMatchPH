@@ -110,17 +110,21 @@ function toast(message, type = "info", opts = {}) {
 
 // ---------- modal, confirm dialog, drawer ----------
 const _layers = [];
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && _layers.length) _layers[_layers.length - 1].close(); });
-function openModal(html, { wide = false, onClose } = {}) {
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && _layers.length && !_layers[_layers.length - 1].locked) {
+    _layers[_layers.length - 1].close();
+  }
+});
+function openModal(html, { wide = false, locked = false, onClose } = {}) {
   const overlay = document.createElement("div");
   overlay.className = "overlay";
   overlay.innerHTML = `<div class="modal${wide ? " wide" : ""}" role="dialog" aria-modal="true">${html}</div>`;
   const prevFocus = document.activeElement;
-  const layer = { el: overlay.firstElementChild, close() {
+  const layer = { el: overlay.firstElementChild, locked, close() {
     const i = _layers.indexOf(layer); if (i >= 0) _layers.splice(i, 1);
     overlay.remove(); if (prevFocus && prevFocus.focus) prevFocus.focus(); if (onClose) onClose();
   } };
-  overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) layer.close(); });
+  if (!locked) overlay.addEventListener("mousedown", (e) => { if (e.target === overlay) layer.close(); });
   document.body.appendChild(overlay); _layers.push(layer);
   const first = $("input:not([type=hidden]),select,textarea", layer.el) || $("button", layer.el);
   if (first) setTimeout(() => first.focus(), 30);
@@ -517,11 +521,14 @@ function openChangePasswordModal({ forced = false } = {}) {
     `<div class="field"><label for="cp-cur">Current password</label><input type="password" id="cp-cur" autocomplete="current-password" required><span class="field-error" data-e="cur"></span></div>` +
     `<div class="field"><label for="cp-new">New password</label><input type="password" id="cp-new" autocomplete="new-password" required><span class="hint">At least 8 characters.</span><span class="field-error" data-e="new"></span></div>` +
     `<div class="field"><label for="cp-con">Confirm new password</label><input type="password" id="cp-con" autocomplete="new-password" required><span class="field-error" data-e="con"></span></div>` +
-    `</div><div class="modal-actions">${forced ? "" : '<button type="button" class="btn-secondary" data-cancel>Cancel</button>'}<button type="submit" class="btn-primary" id="cp-save">Update password</button></div></form>`
+    `</div><div class="modal-actions">${forced ? '<button type="button" class="btn-secondary" data-logout>Log out</button>' : '<button type="button" class="btn-secondary" data-cancel>Cancel</button>'}<button type="submit" class="btn-primary" id="cp-save">Update password</button></div></form>`,
+    { locked: forced }
   );
   const f = $("#cp-form", layer.el);
   const cancel = $("[data-cancel]", layer.el);
   if (cancel) cancel.addEventListener("click", () => layer.close());
+  const loBtn = $("[data-logout]", layer.el);
+  if (loBtn) loBtn.addEventListener("click", () => logout());
   f.addEventListener("submit", async (e) => {
     e.preventDefault();
     $$("[data-e]", f).forEach((x) => (x.textContent = ""));
@@ -535,8 +542,11 @@ function openChangePasswordModal({ forced = false } = {}) {
     await withLoading($("#cp-save", f), async () => {
       try {
         await apiFetch("/api/change-password", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ current_password: cur, new_password: nw }) });
+        const cached = loadThemeCache();
+        if (cached) { cached.must_change_pw = false; saveThemeCache(cached); }
         layer.close();
         toast("Password updated successfully.", "success");
+        if (forced) window.location.reload();
       } catch (er) { err("cur", friendlyError(er)); }
     });
   });

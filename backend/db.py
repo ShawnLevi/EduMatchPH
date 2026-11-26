@@ -18,10 +18,68 @@ def get_connection():
     )
 
 
+_SCHEMA_ENSURED = False
+
+
+def ensure_schema():
+    """Idempotently add new governance columns on existing local databases so
+    switching branches or pulling updates never crashes without re-importing SQL."""
+    global _SCHEMA_ENSURED
+    if _SCHEMA_ENSURED:
+        return
+    try:
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+        try:
+            cur.execute("SHOW COLUMNS FROM organizations LIKE 'is_active'")
+            if cur.fetchone() is None:
+                cur.execute(
+                    "ALTER TABLE organizations"
+                    " ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1"
+                    " AFTER organization_name"
+                )
+            cur.execute("SHOW COLUMNS FROM administrators LIKE 'locked_until'")
+            if cur.fetchone() is None:
+                cur.execute(
+                    "ALTER TABLE administrators"
+                    " ADD COLUMN locked_until TIMESTAMP NULL"
+                    " AFTER failed_attempts"
+                )
+            # Ensure seeded starter organizations each have an active Owner
+            for org_id, seed_email in (
+                ("uclm", "alicia.ramos@uclm.edu.ph"),
+                ("dost", "marco.villanueva@dost.gov.ph"),
+            ):
+                cur.execute(
+                    "SELECT COUNT(*) AS n FROM administrators"
+                    " WHERE organization_id=%s AND role='owner' AND is_active=1",
+                    (org_id,),
+                )
+                if cur.fetchone()["n"] == 0:
+                    cur.execute(
+                        "UPDATE administrators SET role='owner'"
+                        " WHERE email=%s AND organization_id=%s AND role='admin'",
+                        (seed_email, org_id),
+                    )
+            cur.execute(
+                "UPDATE grade_scales"
+                " SET notes='For partner institutions using a 5.00-highest cumulative scale where 3.00 is passing.'"
+                " WHERE scale_id='SCALE_5_BEST' AND notes LIKE 'EXAMPLE%'"
+            )
+            conn.commit()
+            _SCHEMA_ENSURED = True
+        finally:
+            cur.close()
+            conn.close()
+    except Exception:
+        pass
+
+
 @contextmanager
 def db():
     """with db() as (conn, cur): ...  Always closes, even after an error.
     If an error happens before conn.commit(), nothing is saved."""
+    ensure_schema()
     conn = get_connection()
     cur = conn.cursor(dictionary=True)
     try:

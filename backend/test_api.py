@@ -775,6 +775,75 @@ try:
           isinstance(ex_out.get("outlier_warnings"), list) and len(ex_out["outlier_warnings"]) >= 2,
           ex_out.get("outlier_warnings"))
 
+    print("--- Batch 2: Org deactivate/reactivate, RBAC hierarchy, live session & password guards")
+    pub_orgs = anon.get("/api/organizations").get_json()
+    auth_orgs = sa.get("/api/organizations").get_json()
+    check("Public /api/organizations strips base64 logo/bg media while auth keeps them",
+          all("logo_path" not in o and "theme_bg_image" not in o for o in pub_orgs)
+          and all("logo_path" in o and "is_active" in o for o in auth_orgs))
+
+    sa_row = next(a for a in sa.get("/api/admins").get_json() if a["email"] == "superadmin@edumatch.ph")
+    sa_id = sa_row["admin_id"]
+    check("UCLM Owner cannot reset Super Admin password (403)",
+          error_ok(uclm.post(f"/api/admins/{sa_id}/reset-password", json={"new_password": "HackedPassword1"}), 403))
+    check("UCLM Owner cannot deactivate Super Admin (403)",
+          error_ok(uclm.post(f"/api/admins/{sa_id}/deactivate"), 403))
+    check("Super Admin cannot deactivate self / last Super Admin (400)",
+          error_ok(sa.post(f"/api/admins/{sa_id}/deactivate"), 400))
+
+    r_b2_staff = owner_c.post("/api/admins", json={
+        "full_name": "Test Staff B2", "email": "test_staff_b2@edumatch.ph",
+        "password": "Password123", "role": "admin",
+    })
+    b2_staff_id = r_b2_staff.get_json()["admin_id"]
+    staff_c = app.test_client()
+    assert login(staff_c, "test_org", "test_staff_b2@edumatch.ph", "Password123").status_code == 200
+    check("Account with must_change_pw=1 is blocked from scholarship API until password changed (403)",
+          error_ok(staff_c.get("/api/scholarships"), 403))
+    check("Changing password clears must_change_pw (200)",
+          staff_c.post("/api/change-password", json={"current_password": "Password123", "new_password": "NewPassword456"}).status_code == 200)
+    check("After password change, staff admin can read scholarships (200)",
+          staff_c.get("/api/scholarships").status_code == 200)
+
+    # Create a program in test_org (first clear owner_c's must_change_pw)
+    owner_c.post("/api/change-password", json={"current_password": "Password123", "new_password": "OwnerNewPassword9"})
+    t_org_prog = make_program(owner_c, scholarship_name="TEST Org Lifecycle")
+    check("Regular staff admin cannot delete/archive program via API (403)",
+          error_ok(staff_c.delete(f"/api/scholarships/{t_org_prog}"), 403))
+    check("Owner can archive/delete own org program (200)",
+          owner_c.delete(f"/api/scholarships/{t_org_prog}").status_code == 200)
+    t_org_prog2 = make_program(owner_c, scholarship_name="TEST Org Preserved")
+
+    # Immediate session invalidation when account is deactivated
+    owner_c.post(f"/api/admins/{b2_staff_id}/deactivate")
+    check("Deactivated admin's existing session is invalidated immediately (401)",
+          error_ok(staff_c.get("/api/scholarships"), 401))
+    owner_c.post(f"/api/admins/{b2_staff_id}/reactivate")
+
+    # Organization deactivate & reactivate
+    check("Owner cannot deactivate organization (403)",
+          error_ok(owner_c.post("/api/organizations/test_org/deactivate"), 403))
+    r_deact_org = sa.post("/api/organizations/test_org/deactivate")
+    check("Super Admin deactivates organization (200)",
+          r_deact_org.status_code == 200 and r_deact_org.get_json()["is_active"] is False)
+    check("Active Owner session in deactivated org is blocked immediately (403)",
+          error_ok(owner_c.get("/api/scholarships"), 403))
+    check("Owner login to deactivated organization is blocked (403)",
+          error_ok(login(app.test_client(), "test_org", "test_owner@edumatch.ph", "OwnerNewPassword9"), 403))
+    check("Global Super Admin can still log in when org is deactivated (200)",
+          login(app.test_client(), "test_org", "superadmin@edumatch.ph", "admin123").status_code == 200)
+    r_react_org = sa.post("/api/organizations/test_org/reactivate")
+    check("Super Admin reactivates organization (200)",
+          r_react_org.status_code == 200 and r_react_org.get_json()["is_active"] is True)
+    owner_re = app.test_client()
+    check("Owner can log in again after organization reactivation (200)",
+          login(owner_re, "test_org", "test_owner@edumatch.ph", "OwnerNewPassword9").status_code == 200)
+    check("Historical programs preserved across org deactivation/reactivation",
+          any(p["scholarship_id"] == t_org_prog2 for p in owner_re.get("/api/scholarships").get_json()))
+    sa_logs = [x["action"] for x in sa.get("/api/audit-logs?organization_id=test_org").get_json()]
+    check("Audit logs record ORG_DEACTIVATE and ORG_REACTIVATE",
+          "ORG_DEACTIVATE" in sa_logs and "ORG_REACTIVATE" in sa_logs, sa_logs)
+
     print("--- Model loads from any folder")
     code = f"import sys; sys.path.insert(0, r'{os.path.dirname(os.path.abspath(__file__))}'); import ranking; print('ok')"
     out = subprocess.run([sys.executable, "-c", code], cwd="/" if os.name != "nt" else "C:\\", capture_output=True, text=True)

@@ -5,7 +5,8 @@ from helpers import (CRITERIA_FIELDS, PROGRAM_FIELDS, current_org,
                      current_role, json_body, load_program_requirements,
                      load_programs_requirements_map, load_scholarship,
                      normalize_req_list, program_json, record_audit,
-                     same_value, save_program_requirements, scales_by_id)
+                     require_roles, same_value, save_program_requirements,
+                     scales_by_id)
 from validation import clean_program
 
 programs_bp = Blueprint("programs", __name__)
@@ -131,6 +132,7 @@ def update_scholarship(scholarship_id):
 def delete_or_archive_scholarship(scholarship_id):
     """Archive a program that already has applicants (setting is_archived=1 and
     status='Closed'), or permanently delete it when empty or ?permanent=true."""
+    require_roles("super_admin", "owner")
     permanent = request.args.get("permanent", "").lower() == "true"
     with db() as (conn, cur):
         program = load_scholarship(cur, scholarship_id)
@@ -155,6 +157,7 @@ def delete_or_archive_scholarship(scholarship_id):
 
 @programs_bp.route("/api/scholarships/<int:scholarship_id>/restore", methods=["POST"])
 def restore_scholarship(scholarship_id):
+    require_roles("super_admin", "owner")
     with db() as (conn, cur):
         program = load_scholarship(cur, scholarship_id)
         cur.execute(
